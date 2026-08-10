@@ -329,6 +329,18 @@ Expr *Parser::parsePrimary() {
         Expr *operand = parsePrimary();
         return arena_.makeExpr(LengthExpr{operand}, line);
     }
+    if (checkWord("call")) {
+        int line = peek().line;
+        advance(); // call
+        std::string name = expectIdentName();
+        expectWord("with");
+        std::vector<Expr *> args;
+        while (!checkWord("done")) {
+            args.push_back(parseExpr());
+        }
+        advance(); // done
+        return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
+    }
     if (t.kind == TokKind::Ident)  { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
     error("expected a number, a string, a name, true, false, or length of here");
 }

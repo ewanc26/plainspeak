@@ -40,6 +40,14 @@ std::string emitExpr(const Expr *e) {
             return mangle(node.name);
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             return "ps_int(ps_strlen(" + emitExpr(node.operand) + "))";
+        } else if constexpr (std::is_same_v<T, CallExpr>) {
+            std::string result = mangle(node.name) + "(";
+            for (size_t i = 0; i < node.args.size(); ++i) {
+                if (i > 0) result += ", ";
+                result += emitExpr(node.args[i]);
+            }
+            result += ")";
+            return result;
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             const char *fn = node.op == BinOp::Add ? "ps_add"
                             : node.op == BinOp::Sub ? "ps_sub"

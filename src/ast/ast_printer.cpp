@@ -16,6 +16,13 @@ std::string printExpr(const Expr *e) {
             return node.name;
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             return "Length of " + printExpr(node.operand);
+        } else if constexpr (std::is_same_v<T, CallExpr>) {
+            std::string args;
+            for (size_t i = 0; i < node.args.size(); ++i) {
+                if (i > 0) args += ", ";
+                args += printExpr(node.args[i]);
+            }
+            return "Call " + node.name + " with " + args + " done";
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             const char *op = node.op == BinOp::Add ? "plus"
                           : node.op == BinOp::Sub ? "minus"

@@ -95,7 +95,7 @@ Additive       ::= Multiplicative ( ("plus" | "minus") Multiplicative )*
 
 Multiplicative ::= Primary ( ("times" | "divided by") Primary )*
 
-Primary        ::= NUMBER | STRING | IDENT | "true" | "false" | "Length" "of" Expr
+Primary        ::= NUMBER | STRING | IDENT | "true" | "false" | "Length" "of" Expr | "Call" IDENT "with" Expr ("," Expr)* "done"
 ```
 
 Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative.

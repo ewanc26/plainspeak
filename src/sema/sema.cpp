@@ -78,6 +78,19 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
             }
             return Type::Int;
+        } else if constexpr (std::is_same_v<T, CallExpr>) {
+            if (!procTable_.count(node.name)) {
+                diags.push_back({7, line, "I don't know what to do with \"" + node.name + "\" — it is used here but never defined. Use Procedure to create it first."});
+            } else {
+                const auto &expected = procTable_[node.name];
+                if (node.args.size() != expected.size()) {
+                    diags.push_back({8, line, "Call to \"" + node.name + "\" expects " + std::to_string(expected.size()) + " arguments but got " + std::to_string(node.args.size()) + "."});
+                }
+                for (size_t i = 0; i < node.args.size(); ++i) {
+                    inferExpr(node.args[i], line, diags);
+                }
+            }
+            return Type::Int;
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             Type operand = inferExpr(node.operand, line, diags);
             if (operand != Type::String) {
