@@ -114,8 +114,29 @@ Stmt *Parser::parseIf() {
     Expr *cond = parseExpr();
     expectWord("then");
     expectColon();
-    auto body = parseBlockUntil("end", "if");
-    return arena_.makeStmt(IfStmt{cond, std::move(body)}, line);
+
+    std::vector<Stmt *> thenBody;
+    while (!(checkWord("else") || (checkWord("end") && checkWordAt(1, "if")))) {
+        if (peek().kind == TokKind::Eof)
+            error("reached end of file while looking for \"else\" or \"end if\" to close this block");
+        thenBody.push_back(parseStmt());
+    }
+
+    std::vector<Stmt *> elseBody;
+    if (checkWord("else")) {
+        advance(); // else
+        expectColon();
+        while (!(checkWord("end") && checkWordAt(1, "if"))) {
+            if (peek().kind == TokKind::Eof)
+                error("reached end of file while looking for \"end if\" to close this block");
+            elseBody.push_back(parseStmt());
+        }
+    }
+
+    advance(); // end
+    advance(); // if
+    expectDot();
+    return arena_.makeStmt(IfStmt{cond, std::move(thenBody), std::move(elseBody)}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {

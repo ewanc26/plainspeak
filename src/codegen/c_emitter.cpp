@@ -13,7 +13,7 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
             if constexpr (std::is_same_v<T, SetStmt>) out.insert(node.name);
             else if constexpr (std::is_same_v<T, AddStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, out);
-            else if constexpr (std::is_same_v<T, IfStmt>) collectVars(node.thenBody, out);
+            else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, out); collectVars(node.elseBody, out); }
         }, s->node);
     }
 }
@@ -66,7 +66,14 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
         } else if constexpr (std::is_same_v<T, IfStmt>) {
             out << indent << "if (ps_truthy(" << emitExpr(node.cond) << ")) {\n";
             for (Stmt *inner : node.thenBody) emitStmt(inner, out, indent + "    ", loopCounter);
-            out << indent << "}\n";
+            out << indent << "}";
+            if (!node.elseBody.empty()) {
+                out << " else {\n";
+                for (Stmt *inner : node.elseBody) emitStmt(inner, out, indent + "    ", loopCounter);
+                out << indent << "}\n";
+            } else {
+                out << "\n";
+            }
         }
     }, s->node);
 }

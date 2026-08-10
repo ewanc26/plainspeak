@@ -25,7 +25,7 @@ struct SayStmt   { Expr *expr; };
 struct SetStmt   { std::string name; Expr *expr; };
 struct AddStmt   { Expr *expr; std::string varName; };
 struct RepeatStmt{ Expr *count; std::vector<Stmt *> body; };
-struct IfStmt    { Expr *cond; std::vector<Stmt *> thenBody; };
+struct IfStmt    { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
 
 using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, RepeatStmt, IfStmt>;
 struct Stmt { StmtNode node; int line; };

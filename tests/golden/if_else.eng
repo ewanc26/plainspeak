@@ -1,0 +1,6 @@
+Set x to 3.
+If x is greater than 5 then:
+    Say "big".
+Else:
+    Say "small".
+End if.

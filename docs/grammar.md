@@ -44,10 +44,12 @@ RepeatStmt  ::= "Repeat" Expr "times" ":" Stmt* "End" "repeat" "."
                     Add 1 to total.
                 End repeat.
 
-IfStmt      ::= "If" Expr "then" ":" Stmt* "End" "if" "."
+IfStmt      ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
                 e.g.
                 If total is greater than 5 then:
                     Say "big".
+                Else:
+                    Say "small".
                 End if.
 ```
 
@@ -68,7 +70,7 @@ second `is` has nothing valid on its left).
 
 ## Known gaps in v0 (deliberately out of scope for the scaffold)
 
-- No `else` branch, no `while`, no user-defined procedures.
+- No `while`, no user-defined procedures.
 - No static type checking — type mismatches (e.g. `Add "x" to 5`) are
   caught at runtime by `plainspeak_runtime.c`, not by a sema pass. A real
   sema pass belongs in `src/sema/` per AGENTS.md's pipeline and should
