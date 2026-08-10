@@ -26,7 +26,7 @@ case-insensitive exact match, never fuzzy (AGENTS.md §4.2):
 ## Statements
 
 ```
-Stmt        ::= SayStmt | SetStmt | AddStmt | RepeatStmt | IfStmt | WhileStmt | CallStmt | ProcedureStmt
+Stmt        ::= SayStmt | SetStmt | AddStmt | RepeatStmt | IfStmt | WhileStmt | CallStmt | ProcedureStmt | ReturnStmt
 
 SayStmt     ::= ("Say" | "Print") Expr "."
                 e.g. Say "Hello, world!".
@@ -68,6 +68,9 @@ ProcedureStmt ::= "Procedure" IDENT "takes" IDENT ("," IDENT)* ":" Stmt* "End" "
                 Procedure greet takes name:
                     Say name.
                 End procedure.
+
+ReturnStmt  ::= "Return" Expr "."
+                e.g. Return x plus 1.
 ```
 
 ## Expressions
@@ -93,10 +96,6 @@ Precedence, low to high: `or` → `and` → `not` → comparison → additive �
 
 ## Known gaps in v0 (deliberately out of scope for the scaffold)
 
-- No static type checking — type mismatches (e.g. `Add "x" to 5`) are
-  caught at runtime by `plainspeak_runtime.c`, not by a sema pass. A real
-  sema pass belongs in `src/sema/` per AGENTS.md's pipeline and should
-  move these checks to compile time.
 - String concatenation results are heap-allocated and never freed.
 
 Extend the grammar by following the 8-step checklist in AGENTS.md §5 —

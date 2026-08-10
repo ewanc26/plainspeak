@@ -1,0 +1,5 @@
+Procedure double takes x:
+    Return x times 2.
+End procedure.
+
+Call double with 5.

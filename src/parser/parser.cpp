@@ -64,9 +64,10 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "while") return parseWhile();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
+    if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, repeat, if, while, call, procedure (see docs/grammar.md)");
+          "say, set/let/make, add, repeat, if, while, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -80,9 +81,10 @@ Stmt *Parser::parseStmt() {
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
     if (t.text == "call") return parseCall();
+    if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, repeat, if, while, call (see docs/grammar.md)");
+          "say, set/let/make, add, repeat, if, while, call, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -160,6 +162,14 @@ Stmt *Parser::parseWhile() {
     expectColon();
     auto body = parseBlockUntil("end", "while");
     return arena_.makeStmt(WhileStmt{cond, std::move(body)}, line);
+}
+
+Stmt *Parser::parseReturn() {
+    int line = peek().line;
+    advance(); // return
+    Expr *expr = parseExpr();
+    expectDot();
+    return arena_.makeStmt(ReturnStmt{expr}, line);
 }
 
 Stmt *Parser::parseCall() {

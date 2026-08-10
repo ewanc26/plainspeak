@@ -96,12 +96,14 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, sourceLines);
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
-            out << indent << mangle(node.name) << "(";
+            out << indent << "(void)" << mangle(node.name) << "(";
             for (size_t i = 0; i < node.args.size(); ++i) {
                 if (i > 0) out << ", ";
                 out << emitExpr(node.args[i]);
             }
             out << ");\n";
+        } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+            out << indent << "return " << emitExpr(node.expr) << ";\n";
         }
     }, s->node);
 }
@@ -110,7 +112,7 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
 
 void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
                    const std::unordered_map<int, std::string> *sourceLines) {
-    out << "void " << mangle(proc.name) << "(";
+    out << "PsValue " << mangle(proc.name) << "(";
     for (size_t i = 0; i < proc.params.size(); ++i) {
         if (i > 0) out << ", ";
         out << "PsValue " << mangle(proc.params[i]);
@@ -125,6 +127,7 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
     int loopCounter = 0;
     for (Stmt *inner : proc.body) emitStmt(inner, out, "    ", loopCounter, sourceLines);
 
+    out << "    return ps_int(0L);\n";
     out << "}\n\n";
 }
 
