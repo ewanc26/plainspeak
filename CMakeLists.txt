@@ -14,6 +14,7 @@ add_compile_options(-Wall -Wextra)
 add_executable(plainspeak
     src/lexer/tokenizer.cpp
     src/parser/parser.cpp
+    src/codegen/mangling.cpp
     src/codegen/c_emitter.cpp
     src/cli/main.cpp
 )

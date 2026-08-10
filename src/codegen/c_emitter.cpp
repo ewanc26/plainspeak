@@ -1,10 +1,9 @@
 #include "c_emitter.h"
 #include <set>
 #include <sstream>
+#include "mangling.h"
 
 namespace {
-
-std::string mangle(const std::string &name) { return "ps_" + name; }
 
 void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
     for (Stmt *s : stmts) {
