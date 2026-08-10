@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "../lexer/alias_table.h"
 
 const Token &Parser::peek(int ahead) const {
     size_t idx = pos_ + static_cast<size_t>(ahead);
@@ -44,11 +45,6 @@ std::string Parser::expectIdentName() {
 void Parser::error(const std::string &msg) const {
     throw ParseError("line " + std::to_string(peek().line) + ": " + msg);
 }
-
-// alias resolution lives here, not in the lexer — see AGENTS.md §4.2:
-// each of these is a flat, exact word match, never fuzzy/partial.
-static bool isSetKeyword(const std::string &w) { return w == "set" || w == "let" || w == "make"; }
-static bool isSayKeyword(const std::string &w) { return w == "say" || w == "print"; }
 
 std::vector<Stmt *> Parser::parseProgram() {
     std::vector<Stmt *> stmts;

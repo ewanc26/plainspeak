@@ -13,6 +13,7 @@ add_compile_options(-Wall -Wextra)
 
 add_executable(plainspeak
     src/lexer/tokenizer.cpp
+    src/lexer/alias_table.cpp
     src/parser/parser.cpp
     src/sema/sema.cpp
     src/codegen/mangling.cpp
