@@ -1,0 +1,11 @@
+build/
+*.o
+*.a
+*.so
+*.dylib
+*.exe
+*.out
+*.gen.c
+.DS_Store
+.vscode/
+.idea/
