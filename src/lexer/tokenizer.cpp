@@ -20,6 +20,11 @@ std::vector<Token> Tokenizer::tokenize() {
     while (!atEnd()) {
         char c = peekChar();
 
+        if (c == '#') {
+            while (!atEnd() && peekChar() != '\n') advanceChar();
+            continue;
+        }
+
         if (std::isspace(static_cast<unsigned char>(c))) {
             advanceChar();
             continue;

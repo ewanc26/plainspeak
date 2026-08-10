@@ -12,6 +12,7 @@ has a corresponding golden test in `tests/golden/`.
   meaning yet).
 - Identifiers and keywords are case-insensitive.
 - Strings are double-quoted, with `\"`, `\\`, `\n` escapes.
+- `#` starts a single-line comment that runs to the end of the line.
 
 ## Synonyms (alias table)
 
