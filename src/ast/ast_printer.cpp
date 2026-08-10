@@ -28,6 +28,7 @@ std::string printExpr(const Expr *e) {
                           : node.op == BinOp::Sub ? "minus"
                           : node.op == BinOp::Mul ? "times"
                           : node.op == BinOp::Div ? "divided by"
+                          : node.op == BinOp::Mod ? "mod"
                           : node.op == BinOp::Gt  ? "is greater than"
                           : node.op == BinOp::Lt  ? "is less than"
                           : node.op == BinOp::Eq  ? "is equal to"

@@ -60,6 +60,15 @@ PsValue ps_div(PsValue a, PsValue b) {
     return ps_int(a.as.i / b.as.i);
 }
 
+PsValue ps_mod(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("mod", a, b);
+    if (b.as.i == 0) {
+        fprintf(stderr, "runtime error: modulo by zero\n");
+        exit(1);
+    }
+    return ps_int(a.as.i % b.as.i);
+}
+
 PsValue ps_and(PsValue a, PsValue b) {
     if (a.type != PS_INT || b.type != PS_INT) ps_type_error("and", a, b);
     return ps_int(ps_truthy(a) && ps_truthy(b));

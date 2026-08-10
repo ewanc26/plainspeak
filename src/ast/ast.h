@@ -16,7 +16,7 @@ struct BoolLit   { bool value; };
 struct StringLit { std::string value; };
 struct VarRef    { std::string name; };
 
-enum class BinOp { Add, Sub, Mul, Div, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
+enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
 enum class UnaryOp { Not };
 struct UnaryExpr { UnaryOp op; Expr *rhs; };
 struct LengthExpr  { Expr *operand; };

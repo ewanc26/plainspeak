@@ -93,7 +93,7 @@ Comparator     ::= "greater" "than" | "less" "than" | "equal" "to" | "not" "equa
 
 Additive       ::= Multiplicative ( ("plus" | "minus") Multiplicative )*
 
-Multiplicative ::= Primary ( ("times" | "divided by") Primary )*
+Multiplicative ::= Primary ( ("times" | "divided by" | "mod") Primary )*
 
 Primary        ::= NUMBER | STRING | IDENT | "true" | "false" | "Length" "of" Expr | "Call" IDENT "with" Expr ("," Expr)* "done"
 ```

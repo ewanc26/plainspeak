@@ -306,11 +306,11 @@ Expr *Parser::parseAdditive() {
 
 Expr *Parser::parseMultiplicative() {
     Expr *lhs = parsePrimary();
-    while (checkWord("times") || (checkWord("divided") && checkWordAt(1, "by"))) {
+    while (checkWord("times") || (checkWord("divided") && checkWordAt(1, "by")) || checkWord("mod")) {
         int line = peek().line;
-        BinOp op = checkWord("times") ? BinOp::Mul : BinOp::Div;
+        BinOp op = checkWord("times") ? BinOp::Mul : (checkWord("mod") ? BinOp::Mod : BinOp::Div);
         if (op == BinOp::Div) advance(); // divided
-        advance(); // times or by
+        advance(); // times, by, or mod
         Expr *rhs = parsePrimary();
         lhs = arena_.makeExpr(BinaryExpr{op, lhs, rhs}, line);
     }

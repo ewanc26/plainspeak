@@ -23,6 +23,7 @@ PsValue ps_add(PsValue a, PsValue b);
 PsValue ps_sub(PsValue a, PsValue b);
 PsValue ps_mul(PsValue a, PsValue b);
 PsValue ps_div(PsValue a, PsValue b);
+PsValue ps_mod(PsValue a, PsValue b);
 
 /* logical operators */
 PsValue ps_and(PsValue a, PsValue b);

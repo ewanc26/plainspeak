@@ -53,6 +53,7 @@ std::string emitExpr(const Expr *e) {
                             : node.op == BinOp::Sub ? "ps_sub"
                             : node.op == BinOp::Mul ? "ps_mul"
                             : node.op == BinOp::Div ? "ps_div"
+                            : node.op == BinOp::Mod ? "ps_mod"
                             : node.op == BinOp::Gt  ? "ps_gt"
                             : node.op == BinOp::Lt  ? "ps_lt"
                             : node.op == BinOp::Eq  ? "ps_eq"

@@ -56,7 +56,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                     diags.push_back({2, line, "I can't add a " + typeToString(lhs) + " to a " + typeToString(rhs) + ". Both sides of plus must be the same type."});
                 }
                 return lhs;
-            } else if (node.op == BinOp::Sub || node.op == BinOp::Mul || node.op == BinOp::Div) {
+            } else if (node.op == BinOp::Sub || node.op == BinOp::Mul || node.op == BinOp::Div || node.op == BinOp::Mod) {
                 if (lhs != Type::Int || rhs != Type::Int) {
                     diags.push_back({2, line, "I can't do arithmetic on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
                 }
