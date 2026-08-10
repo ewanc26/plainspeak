@@ -1,0 +1,4 @@
+Set x to "hello".
+If x is not equal to 3 then:
+    Say "not equal".
+End if.
