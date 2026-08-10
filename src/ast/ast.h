@@ -16,10 +16,12 @@ struct BoolLit   { bool value; };
 struct StringLit { std::string value; };
 struct VarRef    { std::string name; };
 
-enum class BinOp { Add, Sub, Mul, Div, Gt, Lt, Eq };
+enum class BinOp { Add, Sub, Mul, Div, Gt, Lt, Eq, And, Or };
+enum class UnaryOp { Not };
+struct UnaryExpr { UnaryOp op; Expr *rhs; };
 struct BinaryExpr { BinOp op; Expr *lhs; Expr *rhs; };
 
-using ExprNode = std::variant<IntLit, BoolLit, StringLit, VarRef, BinaryExpr>;
+using ExprNode = std::variant<IntLit, BoolLit, StringLit, VarRef, BinaryExpr, UnaryExpr>;
 struct Expr { ExprNode node; int line; };
 
 struct SayStmt   { Expr *expr; };

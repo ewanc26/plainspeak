@@ -21,8 +21,12 @@ std::string printExpr(const Expr *e) {
                           : node.op == BinOp::Div ? "divided by"
                           : node.op == BinOp::Gt  ? "is greater than"
                           : node.op == BinOp::Lt  ? "is less than"
-                                                  : "is equal to";
+                          : node.op == BinOp::Eq  ? "is equal to"
+                          : node.op == BinOp::And ? "and"
+                                                   : "or";
             return "(" + printExpr(node.lhs) + " " + std::string(op) + " " + printExpr(node.rhs) + ")";
+        } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            return std::string("(not ") + printExpr(node.rhs) + ")";
         }
         return "<unknown expr>";
     }, e->node);

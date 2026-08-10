@@ -60,6 +60,24 @@ PsValue ps_div(PsValue a, PsValue b) {
     return ps_int(a.as.i / b.as.i);
 }
 
+PsValue ps_and(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("and", a, b);
+    return ps_int(ps_truthy(a) && ps_truthy(b));
+}
+
+PsValue ps_or(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("or", a, b);
+    return ps_int(ps_truthy(a) || ps_truthy(b));
+}
+
+PsValue ps_not(PsValue v) {
+    if (v.type != PS_INT) {
+        fprintf(stderr, "runtime error: expected a number for not\n");
+        exit(1);
+    }
+    return ps_int(!ps_truthy(v));
+}
+
 PsValue ps_gt(PsValue a, PsValue b) {
     if (a.type != PS_INT || b.type != PS_INT) ps_type_error("compare", a, b);
     return ps_int(a.as.i > b.as.i);

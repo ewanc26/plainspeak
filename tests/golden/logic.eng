@@ -1,0 +1,11 @@
+Set x to 5.
+If x is greater than 3 and x is less than 10 then:
+    Say "in range".
+End if.
+
+Set y to false.
+If y or x is greater than 100 then:
+    Say "short circuit".
+End if.
+
+Say not x.

@@ -73,7 +73,12 @@ ProcedureStmt ::= "Procedure" IDENT "takes" IDENT ("," IDENT)* ":" Stmt* "End" "
 ## Expressions
 
 ```
-Expr           ::= Additive ( "is" Comparator Additive )?
+Expr           ::= OrExpr
+OrExpr         ::= AndExpr ( "or" AndExpr )*
+AndExpr        ::= NotExpr ( "and" NotExpr )*
+NotExpr        ::= "not" NotExpr | Comparison
+Comparison     ::= Additive ( "is" Comparator Additive )?
+
 Comparator     ::= "greater" "than" | "less" "than" | "equal" "to"
 
 Additive       ::= Multiplicative ( ("plus" | "minus") Multiplicative )*
@@ -83,9 +88,8 @@ Multiplicative ::= Primary ( ("times" | "divided by") Primary )*
 Primary        ::= NUMBER | STRING | IDENT | "true" | "false"
 ```
 
-Precedence, low to high: comparison → additive → multiplicative → primary.
-`times` and `divided by` bind tighter than `plus` and `minus`, so
-`2 plus 3 times 4` means `2 plus (3 times 4)`.
+Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative.
+`not` binds tighter than `and`, which binds tighter than `or`.
 
 ## Known gaps in v0 (deliberately out of scope for the scaffold)
 

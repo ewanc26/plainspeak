@@ -61,12 +61,23 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                     diags.push_back({2, line, "I can't do arithmetic on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
                 }
                 return Type::Int;
+            } else if (node.op == BinOp::And || node.op == BinOp::Or) {
+                if (lhs != Type::Int || rhs != Type::Int) {
+                    diags.push_back({2, line, "I can't do logical " + std::string(node.op == BinOp::And ? "and" : "or") + " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
+                }
+                return Type::Int;
             } else {
                 if (lhs != rhs) {
                     diags.push_back({4, line, "I can't compare a " + typeToString(lhs) + " with a " + typeToString(rhs) + ". Both sides must be the same type."});
                 }
                 return Type::Int;
             }
+        } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            Type rhs = inferExpr(node.rhs, line, diags);
+            if (rhs != Type::Int) {
+                diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
+            }
+            return Type::Int;
         }
         return Type::Int;
     }, e->node);

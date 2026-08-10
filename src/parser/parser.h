@@ -51,7 +51,11 @@ private:
     Stmt *parseProcedure();
     std::vector<Stmt *> parseBlockUntil(const std::string &w1, const std::string &w2);
 
-    Expr *parseExpr();        // comparison level (lowest precedence)
+    Expr *parseExpr();        // or (lowest precedence)
+    Expr *parseOr();
+    Expr *parseAnd();
+    Expr *parseNot();
+    Expr *parseComparison();  // is greater/less/equal
     Expr *parseAdditive();    // plus/minus
     Expr *parseMultiplicative(); // times/divided by
     Expr *parsePrimary();     // literal / identifier

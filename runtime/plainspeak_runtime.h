@@ -24,6 +24,11 @@ PsValue ps_sub(PsValue a, PsValue b);
 PsValue ps_mul(PsValue a, PsValue b);
 PsValue ps_div(PsValue a, PsValue b);
 
+/* logical operators */
+PsValue ps_and(PsValue a, PsValue b);
+PsValue ps_or(PsValue a, PsValue b);
+PsValue ps_not(PsValue v);
+
 /* comparisons: result is PS_INT holding 0 or 1 */
 PsValue ps_gt(PsValue a, PsValue b);
 PsValue ps_lt(PsValue a, PsValue b);

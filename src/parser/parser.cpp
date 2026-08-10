@@ -205,6 +205,42 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
 }
 
 Expr *Parser::parseExpr() {
+    return parseOr();
+}
+
+Expr *Parser::parseOr() {
+    Expr *lhs = parseAnd();
+    while (checkWord("or")) {
+        int line = peek().line;
+        advance();
+        Expr *rhs = parseAnd();
+        lhs = arena_.makeExpr(BinaryExpr{BinOp::Or, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parseAnd() {
+    Expr *lhs = parseNot();
+    while (checkWord("and")) {
+        int line = peek().line;
+        advance();
+        Expr *rhs = parseNot();
+        lhs = arena_.makeExpr(BinaryExpr{BinOp::And, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parseNot() {
+    if (checkWord("not")) {
+        int line = peek().line;
+        advance();
+        Expr *rhs = parseNot();
+        return arena_.makeExpr(UnaryExpr{UnaryOp::Not, rhs}, line);
+    }
+    return parseComparison();
+}
+
+Expr *Parser::parseComparison() {
     Expr *lhs = parseAdditive();
     if (checkWord("is")) {
         int line = peek().line;

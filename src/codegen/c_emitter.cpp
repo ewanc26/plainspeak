@@ -43,8 +43,12 @@ std::string emitExpr(const Expr *e) {
                             : node.op == BinOp::Div ? "ps_div"
                             : node.op == BinOp::Gt  ? "ps_gt"
                             : node.op == BinOp::Lt  ? "ps_lt"
-                                                      : "ps_eq";
+                            : node.op == BinOp::Eq  ? "ps_eq"
+                            : node.op == BinOp::And ? "ps_and"
+                                                     : "ps_or";
             return std::string(fn) + "(" + emitExpr(node.lhs) + ", " + emitExpr(node.rhs) + ")";
+        } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            return std::string("ps_not(") + emitExpr(node.rhs) + ")";
         }
     }, e->node);
 }
