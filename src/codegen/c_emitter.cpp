@@ -38,6 +38,8 @@ std::string emitExpr(const Expr *e) {
             return "ps_str(\"" + escaped + "\")";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             return mangle(node.name);
+        } else if constexpr (std::is_same_v<T, LengthExpr>) {
+            return "ps_int(ps_strlen(" + emitExpr(node.operand) + "))";
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             const char *fn = node.op == BinOp::Add ? "ps_add"
                             : node.op == BinOp::Sub ? "ps_sub"

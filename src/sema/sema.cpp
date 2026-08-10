@@ -78,6 +78,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
             }
             return Type::Int;
+        } else if constexpr (std::is_same_v<T, LengthExpr>) {
+            Type operand = inferExpr(node.operand, line, diags);
+            if (operand != Type::String) {
+                diags.push_back({2, line, "I can't get the length of a " + typeToString(operand) + ". It must be a string."});
+            }
+            return Type::Int;
         }
         return Type::Int;
     }, e->node);

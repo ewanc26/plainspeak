@@ -14,6 +14,8 @@ std::string printExpr(const Expr *e) {
             return "\"" + node.value + "\"";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             return node.name;
+        } else if constexpr (std::is_same_v<T, LengthExpr>) {
+            return "Length of " + printExpr(node.operand);
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             const char *op = node.op == BinOp::Add ? "plus"
                           : node.op == BinOp::Sub ? "minus"

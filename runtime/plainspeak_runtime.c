@@ -78,6 +78,14 @@ PsValue ps_not(PsValue v) {
     return ps_int(!ps_truthy(v));
 }
 
+long ps_strlen(PsValue v) {
+    if (v.type != PS_STRING) {
+        fprintf(stderr, "runtime error: expected a string for length\n");
+        exit(1);
+    }
+    return strlen(v.as.s);
+}
+
 PsValue ps_read(void) {
     long val;
     if (scanf("%ld", &val) != 1) {

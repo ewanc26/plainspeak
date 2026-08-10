@@ -29,6 +29,7 @@ PsValue ps_and(PsValue a, PsValue b);
 PsValue ps_or(PsValue a, PsValue b);
 PsValue ps_not(PsValue v);
 
+long ps_strlen(PsValue v);
 PsValue ps_read(void);
 
 /* comparisons: result is PS_INT holding 0 or 1 */

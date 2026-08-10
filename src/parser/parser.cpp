@@ -323,6 +323,12 @@ Expr *Parser::parsePrimary() {
     if (t.kind == TokKind::String) { advance(); return arena_.makeExpr(StringLit{t.text}, t.line); }
     if (checkWord("true"))  { advance(); return arena_.makeExpr(BoolLit{true}, t.line); }
     if (checkWord("false")) { advance(); return arena_.makeExpr(BoolLit{false}, t.line); }
+    if (checkWord("length") && checkWordAt(1, "of")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *operand = parsePrimary();
+        return arena_.makeExpr(LengthExpr{operand}, line);
+    }
     if (t.kind == TokKind::Ident)  { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a string, a name, true, or false here");
+    error("expected a number, a string, a name, true, false, or length of here");
 }

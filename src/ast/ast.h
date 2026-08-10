@@ -19,9 +19,10 @@ struct VarRef    { std::string name; };
 enum class BinOp { Add, Sub, Mul, Div, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
 enum class UnaryOp { Not };
 struct UnaryExpr { UnaryOp op; Expr *rhs; };
+struct LengthExpr  { Expr *operand; };
 struct BinaryExpr { BinOp op; Expr *lhs; Expr *rhs; };
 
-using ExprNode = std::variant<IntLit, BoolLit, StringLit, VarRef, BinaryExpr, UnaryExpr>;
+using ExprNode = std::variant<IntLit, BoolLit, StringLit, VarRef, LengthExpr, BinaryExpr, UnaryExpr>;
 struct Expr { ExprNode node; int line; };
 
 struct SayStmt   { Expr *expr; };
