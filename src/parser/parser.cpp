@@ -60,6 +60,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
+    if (t.text == "readfloat") return parseReadFloat();
     if (t.text == "read") return parseRead();
     if (t.text == "comment") return parseComment();
     if (t.text == "repeat") return parseRepeat();
@@ -81,6 +82,7 @@ Stmt *Parser::parseStmt() {
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
+    if (t.text == "readfloat") return parseReadFloat();
     if (t.text == "read") return parseRead();
     if (t.text == "comment") return parseComment();
     if (t.text == "repeat") return parseRepeat();
@@ -138,6 +140,14 @@ Stmt *Parser::parseRead() {
     std::string name = expectIdentName();
     expectDot();
     return arena_.makeStmt(ReadStmt{name}, line);
+}
+
+Stmt *Parser::parseReadFloat() {
+    int line = peek().line;
+    advance(); // readfloat
+    std::string name = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(ReadFloatStmt{name}, line);
 }
 
 Stmt *Parser::parseComment() {
@@ -214,10 +224,12 @@ Stmt *Parser::parseCall() {
     int line = peek().line;
     advance(); // call
     std::string name = expectIdentName();
-    expectWord("with");
     std::vector<Expr *> args;
-    while (!checkWord("done")) {
-        args.push_back(parseExpr());
+    if (checkWord("with")) {
+        advance(); // with
+        while (!checkWord("done")) {
+            args.push_back(parseExpr());
+        }
     }
     advance(); // done
     expectDot();
@@ -228,11 +240,13 @@ Stmt *Parser::parseProcedure() {
     int line = peek().line;
     advance(); // procedure
     std::string name = expectIdentName();
-    expectWord("takes");
     std::vector<std::string> params;
-    params.push_back(expectIdentName());
-    while (peek().kind == TokKind::Ident && peek().text != ":") {
+    if (checkWord("takes")) {
+        advance(); // takes
         params.push_back(expectIdentName());
+        while (peek().kind == TokKind::Ident && peek().text != ":") {
+            params.push_back(expectIdentName());
+        }
     }
     expectColon();
     auto body = parseBlockUntil("end", "procedure");
@@ -320,14 +334,25 @@ Expr *Parser::parseAdditive() {
 }
 
 Expr *Parser::parseMultiplicative() {
-    Expr *lhs = parsePrimary();
-    while (checkWord("times") || (checkWord("divided") && checkWordAt(1, "by")) || checkWord("mod")) {
+    Expr *lhs = parsePower();
+    while (checkWord("times") || (checkWord("divided") && checkWordAt(1, "by")) || checkWord("mod") || checkWord("modulo")) {
         int line = peek().line;
-        BinOp op = checkWord("times") ? BinOp::Mul : (checkWord("mod") ? BinOp::Mod : BinOp::Div);
+        BinOp op = checkWord("times") ? BinOp::Mul : (checkWord("mod") || checkWord("modulo") ? BinOp::Mod : BinOp::Div);
         if (op == BinOp::Div) advance(); // divided
         advance(); // times, by, or mod
-        Expr *rhs = parsePrimary();
+        Expr *rhs = parsePower();
         lhs = arena_.makeExpr(BinaryExpr{op, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parsePower() {
+    Expr *lhs = parsePrimary();
+    while (checkWord("to") && checkWordAt(1, "the") && checkWordAt(2, "power") && checkWordAt(3, "of")) {
+        int line = peek().line;
+        advance(); advance(); advance(); advance();
+        Expr *rhs = parsePrimary();
+        lhs = arena_.makeExpr(PowExpr{lhs, rhs}, line);
     }
     return lhs;
 }
@@ -335,27 +360,66 @@ Expr *Parser::parseMultiplicative() {
 Expr *Parser::parsePrimary() {
     const Token &t = peek();
     if (t.kind == TokKind::Number) { advance(); return arena_.makeExpr(IntLit{t.num}, t.line); }
+    if (t.kind == TokKind::Float) { advance(); return arena_.makeExpr(FloatLit{t.fval}, t.line); }
     if (t.kind == TokKind::String) { advance(); return arena_.makeExpr(StringLit{t.text}, t.line); }
     if (checkWord("true"))  { advance(); return arena_.makeExpr(BoolLit{true}, t.line); }
     if (checkWord("false")) { advance(); return arena_.makeExpr(BoolLit{false}, t.line); }
+    if (checkWord("minus")) {
+        int line = peek().line;
+        advance();
+        Expr *rhs = parsePrimary();
+        return arena_.makeExpr(UnaryExpr{UnaryOp::Neg, rhs}, line);
+    }
     if (checkWord("length") && checkWordAt(1, "of")) {
         int line = peek().line;
         advance(); advance();
         Expr *operand = parsePrimary();
         return arena_.makeExpr(LengthExpr{operand}, line);
     }
+    if (checkWord("square") && checkWordAt(1, "root") && checkWordAt(2, "of")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        Expr *operand = parsePrimary();
+        return arena_.makeExpr(MathCallExpr{"sqrt", operand}, line);
+    }
+    if (checkWord("absolute") && checkWordAt(1, "value") && checkWordAt(2, "of")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        Expr *operand = parsePrimary();
+        return arena_.makeExpr(MathCallExpr{"abs", operand}, line);
+    }
+    {
+        static const char *mathFns[] = {"sine", "cosine", "tangent", "sqrt", "log", "abs", "floor", "ceil"};
+        for (const char *fn : mathFns) {
+            if (checkWord(fn) && checkWordAt(1, "of")) {
+                int line = peek().line;
+                advance(); advance();
+                Expr *operand = parsePrimary();
+                return arena_.makeExpr(MathCallExpr{fn, operand}, line);
+            }
+        }
+    }
+    if (peek().kind == TokKind::LParen) {
+        advance();
+        Expr *inner = parseExpr();
+        if (peek().kind != TokKind::RParen) error("expected \")\"");
+        advance();
+        return inner;
+    }
     if (checkWord("call")) {
         int line = peek().line;
         advance(); // call
         std::string name = expectIdentName();
-        expectWord("with");
         std::vector<Expr *> args;
-        while (!checkWord("done")) {
-            args.push_back(parseExpr());
+        if (checkWord("with")) {
+            advance(); // with
+            while (!checkWord("done")) {
+                args.push_back(parseExpr());
+            }
         }
         advance(); // done
         return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
     }
     if (t.kind == TokKind::Ident)  { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a string, a name, true, false, or length of here");
+    error("expected a number, a decimal, a string, a name, true, false, minus, Length of, or a math function here");
 }

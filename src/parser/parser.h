@@ -45,6 +45,7 @@ private:
     Stmt *parseAdd();
     Stmt *parseSub();
     Stmt *parseRead();
+    Stmt *parseReadFloat();
     Stmt *parseComment();
     Stmt *parseRepeat();
     Stmt *parseIf();
@@ -62,5 +63,6 @@ private:
     Expr *parseComparison();  // is greater/less/equal
     Expr *parseAdditive();    // plus/minus
     Expr *parseMultiplicative(); // times/divided by
+    Expr *parsePower();       // to the power of
     Expr *parsePrimary();     // literal / identifier
 };
