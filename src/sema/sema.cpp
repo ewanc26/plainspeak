@@ -107,6 +107,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({3, s->line, "I can't subtract a " + typeToString(exprType) + " from \"" + node.varName + "\" which is a " + typeToString(varType) + "."});
                 }
             }
+        } else if constexpr (std::is_same_v<T, ReadStmt>) {
+            declareVar(node.varName, Type::Int, s->line, diags);
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             Type countType = inferExpr(node.count, s->line, diags);
             if (countType != Type::Int) {

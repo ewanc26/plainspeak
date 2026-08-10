@@ -23,10 +23,18 @@ for src in "$DIR"/tests/golden/*.eng; do
         continue
     fi
 
-    if ! "$out_bin" > "$TMP/$name.actual" 2>&1; then
-        echo "FAIL $name: program exited non-zero"
-        fail=1
-        continue
+    if [ -f "$DIR/tests/golden/$name.input" ]; then
+        if ! "$out_bin" < "$DIR/tests/golden/$name.input" > "$TMP/$name.actual" 2>&1; then
+            echo "FAIL $name: program exited non-zero"
+            fail=1
+            continue
+        fi
+    else
+        if ! "$out_bin" > "$TMP/$name.actual" 2>&1; then
+            echo "FAIL $name: program exited non-zero"
+            fail=1
+            continue
+        fi
     fi
 
     if diff -u "$expected" "$TMP/$name.actual" > "$TMP/$name.diff"; then

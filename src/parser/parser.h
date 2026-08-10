@@ -44,6 +44,7 @@ private:
     Stmt *parseSet();
     Stmt *parseAdd();
     Stmt *parseSub();
+    Stmt *parseRead();
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseWhile();

@@ -13,6 +13,7 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
             if constexpr (std::is_same_v<T, SetStmt>) out.insert(node.name);
             else if constexpr (std::is_same_v<T, AddStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, SubStmt>) out.insert(node.varName);
+            else if constexpr (std::is_same_v<T, ReadStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, out);
             else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, out); collectVars(node.elseBody, out); }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out);
@@ -74,6 +75,8 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
         } else if constexpr (std::is_same_v<T, SubStmt>) {
             out << indent << mangle(node.varName) << " = ps_sub(" << mangle(node.varName)
                 << ", " << emitExpr(node.expr) << ");\n";
+        } else if constexpr (std::is_same_v<T, ReadStmt>) {
+            out << indent << mangle(node.varName) << " = ps_read();\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             std::string i = "ps__i" + std::to_string(loopCounter);
             std::string n = "ps__n" + std::to_string(loopCounter);
@@ -143,6 +146,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             using T = std::decay_t<decltype(node)>;
             if constexpr (std::is_same_v<T, SetStmt>) vars.insert(node.name);
             else if constexpr (std::is_same_v<T, AddStmt>) vars.insert(node.varName);
+            else if constexpr (std::is_same_v<T, SubStmt>) vars.insert(node.varName);
+            else if constexpr (std::is_same_v<T, ReadStmt>) vars.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, vars);
             else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, vars); collectVars(node.elseBody, vars); }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, vars);

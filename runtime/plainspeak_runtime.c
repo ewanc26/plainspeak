@@ -78,6 +78,15 @@ PsValue ps_not(PsValue v) {
     return ps_int(!ps_truthy(v));
 }
 
+PsValue ps_read(void) {
+    long val;
+    if (scanf("%ld", &val) != 1) {
+        fprintf(stderr, "runtime error: failed to read a number\n");
+        exit(1);
+    }
+    return ps_int(val);
+}
+
 PsValue ps_gt(PsValue a, PsValue b) {
     if (a.type != PS_INT || b.type != PS_INT) ps_type_error("compare", a, b);
     return ps_int(a.as.i > b.as.i);

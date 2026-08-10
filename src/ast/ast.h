@@ -27,15 +27,16 @@ struct Expr { ExprNode node; int line; };
 struct SayStmt   { Expr *expr; };
 struct SetStmt   { std::string name; Expr *expr; };
 struct AddStmt   { Expr *expr; std::string varName; };
-struct SubStmt   { Expr *expr; std::string varName; };
-struct RepeatStmt{ Expr *count; std::vector<Stmt *> body; };
+struct SubStmt    { Expr *expr; std::string varName; };
+struct ReadStmt   { std::string varName; };
+struct RepeatStmt { Expr *count; std::vector<Stmt *> body; };
 struct IfStmt    { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
 struct WhileStmt { Expr *cond; std::vector<Stmt *> body; };
 struct CallStmt   { std::string name; std::vector<Expr *> args; };
 struct ProcedureStmt { std::string name; std::vector<std::string> params; std::vector<Stmt *> body; };
 struct ReturnStmt { Expr *expr; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, RepeatStmt, IfStmt, WhileStmt, CallStmt, ProcedureStmt, ReturnStmt>;
+using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt, RepeatStmt, IfStmt, WhileStmt, CallStmt, ProcedureStmt, ReturnStmt>;
 struct Stmt { StmtNode node; int line; };
 
 // Owns every Expr/Stmt produced while parsing one source file. deque

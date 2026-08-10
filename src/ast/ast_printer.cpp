@@ -44,6 +44,8 @@ std::string printStmt(const Stmt *s, int indent) {
             return pad + "Add " + printExpr(node.expr) + " to " + node.varName + ".\n";
         } else if constexpr (std::is_same_v<T, SubStmt>) {
             return pad + "Subtract " + printExpr(node.expr) + " from " + node.varName + ".\n";
+        } else if constexpr (std::is_same_v<T, ReadStmt>) {
+            return pad + "Read " + node.varName + ".\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             std::string out = pad + "Repeat " + printExpr(node.count) + " times:\n";
             for (Stmt *inner : node.body) out += printStmt(inner, indent + 1);

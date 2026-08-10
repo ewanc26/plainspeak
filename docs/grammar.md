@@ -42,6 +42,9 @@ AddStmt     ::= "Add" Expr "to" IDENT "."
 SubStmt     ::= "Subtract" Expr "from" IDENT "."
                 e.g. Subtract 1 from total.
 
+ReadStmt    ::= "Read" IDENT "."
+                e.g. Read x.
+
 RepeatStmt  ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
                 e.g.
                 Repeat 5:

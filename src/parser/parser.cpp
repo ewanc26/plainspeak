@@ -60,6 +60,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
+    if (t.text == "read") return parseRead();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
@@ -68,7 +69,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, repeat, if, while, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, read, repeat, if, while, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -79,14 +80,16 @@ Stmt *Parser::parseStmt() {
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
+    if (t.text == "read") return parseRead();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
     if (t.text == "call") return parseCall();
+    if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, repeat, if, while, call, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, read, repeat, if, while, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -125,6 +128,14 @@ Stmt *Parser::parseSub() {
     std::string name = expectIdentName();
     expectDot();
     return arena_.makeStmt(SubStmt{expr, name}, line);
+}
+
+Stmt *Parser::parseRead() {
+    int line = peek().line;
+    advance(); // read
+    std::string name = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(ReadStmt{name}, line);
 }
 
 Stmt *Parser::parseRepeat() {
