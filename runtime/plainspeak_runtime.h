@@ -3,12 +3,13 @@
  * generated C code calls into. Kept deliberately small — see
  * docs/runtime.md for the API contract generated code relies on. */
 
-typedef enum { PS_INT, PS_STRING } PsType;
+typedef enum { PS_INT, PS_DOUBLE, PS_STRING } PsType;
 
 typedef struct {
     PsType type;
     union {
         long i;
+        double d;
         const char *s; /* owned by the runtime for literals; leaked for
                            concatenation results in this scaffold — see
                            docs/runtime.md "Known limitations". */
@@ -16,6 +17,7 @@ typedef struct {
 } PsValue;
 
 PsValue ps_int(long v);
+PsValue ps_double(double v);
 PsValue ps_str(const char *v);
 
 /* "Add X to Y" / "X plus Y" */
@@ -29,9 +31,11 @@ PsValue ps_mod(PsValue a, PsValue b);
 PsValue ps_and(PsValue a, PsValue b);
 PsValue ps_or(PsValue a, PsValue b);
 PsValue ps_not(PsValue v);
+PsValue ps_neg(PsValue v);
 
 long ps_strlen(PsValue v);
 PsValue ps_read(void);
+PsValue ps_read_double(void);
 
 /* comparisons: result is PS_INT holding 0 or 1 */
 PsValue ps_gt(PsValue a, PsValue b);
@@ -45,3 +49,14 @@ long ps_as_int(PsValue v);
 int  ps_truthy(PsValue v);
 
 void ps_say(PsValue v);
+
+/* scientific functions */
+PsValue ps_sin(PsValue v);
+PsValue ps_cos(PsValue v);
+PsValue ps_tan(PsValue v);
+PsValue ps_sqrt(PsValue v);
+PsValue ps_log(PsValue v);
+PsValue ps_abs(PsValue v);
+PsValue ps_floor(PsValue v);
+PsValue ps_ceil(PsValue v);
+PsValue ps_pow(PsValue a, PsValue b);

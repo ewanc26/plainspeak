@@ -1,4 +1,5 @@
 #include "ast_printer.h"
+#include <cstdio>
 #include <sstream>
 
 namespace {
@@ -10,6 +11,10 @@ std::string printExpr(const Expr *e) {
             return std::to_string(node.value);
         } else if constexpr (std::is_same_v<T, BoolLit>) {
             return node.value ? "true" : "false";
+        } else if constexpr (std::is_same_v<T, FloatLit>) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%.17g", node.value);
+            return buf;
         } else if constexpr (std::is_same_v<T, StringLit>) {
             return "\"" + node.value + "\"";
         } else if constexpr (std::is_same_v<T, VarRef>) {
@@ -39,7 +44,12 @@ std::string printExpr(const Expr *e) {
                                                    : "or";
             return "(" + printExpr(node.lhs) + " " + std::string(op) + " " + printExpr(node.rhs) + ")";
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
-            return std::string("(not ") + printExpr(node.rhs) + ")";
+            const char *op = node.op == UnaryOp::Not ? "not" : "minus";
+            return std::string("(") + op + " " + printExpr(node.rhs) + ")";
+        } else if constexpr (std::is_same_v<T, MathCallExpr>) {
+            return node.func + " of " + printExpr(node.arg);
+        } else if constexpr (std::is_same_v<T, PowExpr>) {
+            return "(" + printExpr(node.base) + " to the power of " + printExpr(node.exp) + ")";
         }
         return "<unknown expr>";
     }, e->node);
@@ -59,6 +69,8 @@ std::string printStmt(const Stmt *s, int indent) {
             return pad + "Subtract " + printExpr(node.expr) + " from " + node.varName + ".\n";
         } else if constexpr (std::is_same_v<T, ReadStmt>) {
             return pad + "Read " + node.varName + ".\n";
+        } else if constexpr (std::is_same_v<T, ReadFloatStmt>) {
+            return pad + "ReadFloat " + node.varName + ".\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             std::string out = pad + "Repeat " + printExpr(node.count) + " times:\n";
             for (Stmt *inner : node.body) out += printStmt(inner, indent + 1);

@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-enum class TokKind { Ident, Number, String, Dot, Colon, Eof };
+enum class TokKind { Ident, Number, Float, String, Dot, Colon, LParen, RParen, Eof };
 
 struct Token {
     TokKind kind;
@@ -11,6 +11,7 @@ struct Token {
                        // since identifiers are case-insensitive in v0.
     long num = 0;      // valid when kind == Number
     int line = 1;
+    double fval = 0.0; // valid when kind == Float
 };
 
 // Word-level tokenizer with no keyword/alias resolution — the parser

@@ -38,14 +38,44 @@ std::vector<Token> Tokenizer::tokenize() {
         if (c == '.') {
             int line = line_;
             advanceChar();
-            tokens.push_back({TokKind::Dot, ".", 0, line});
+            Token t;
+            t.kind = TokKind::Dot;
+            t.text = ".";
+            t.line = line;
+            tokens.push_back(t);
+            continue;
+        }
+
+        if (c == '(') {
+            int line = line_;
+            advanceChar();
+            Token t;
+            t.kind = TokKind::LParen;
+            t.text = "(";
+            t.line = line;
+            tokens.push_back(t);
+            continue;
+        }
+
+        if (c == ')') {
+            int line = line_;
+            advanceChar();
+            Token t;
+            t.kind = TokKind::RParen;
+            t.text = ")";
+            t.line = line;
+            tokens.push_back(t);
             continue;
         }
 
         if (c == ':') {
             int line = line_;
             advanceChar();
-            tokens.push_back({TokKind::Colon, ":", 0, line});
+            Token t;
+            t.kind = TokKind::Colon;
+            t.text = ":";
+            t.line = line;
+            tokens.push_back(t);
             continue;
         }
 
@@ -67,7 +97,11 @@ std::vector<Token> Tokenizer::tokenize() {
                                           std::to_string(line));
             }
             advanceChar(); // closing quote
-            tokens.push_back({TokKind::String, value, 0, line});
+            Token t;
+            t.kind = TokKind::String;
+            t.text = value;
+            t.line = line;
+            tokens.push_back(t);
             continue;
         }
 
@@ -76,7 +110,25 @@ std::vector<Token> Tokenizer::tokenize() {
             std::string digits;
             while (!atEnd() && std::isdigit(static_cast<unsigned char>(peekChar())))
                 digits += advanceChar();
-            tokens.push_back({TokKind::Number, digits, std::stol(digits), line});
+            if (peekChar() == '.' && pos_ + 1 < src_.size() &&
+                std::isdigit(static_cast<unsigned char>(src_[pos_ + 1]))) {
+                digits += advanceChar(); // consume '.'
+                while (!atEnd() && std::isdigit(static_cast<unsigned char>(peekChar())))
+                    digits += advanceChar();
+                Token t;
+                t.kind = TokKind::Float;
+                t.text = digits;
+                t.line = line;
+                t.fval = std::stod(digits);
+                tokens.push_back(t);
+            } else {
+                Token t;
+                t.kind = TokKind::Number;
+                t.text = digits;
+                t.num = std::stol(digits);
+                t.line = line;
+                tokens.push_back(t);
+            }
             continue;
         }
 
@@ -88,7 +140,11 @@ std::vector<Token> Tokenizer::tokenize() {
                 word += advanceChar();
             std::string lowered;
             for (char ch : word) lowered += static_cast<char>(std::tolower(static_cast<unsigned char>(ch)));
-            tokens.push_back({TokKind::Ident, lowered, 0, line});
+            Token t;
+            t.kind = TokKind::Ident;
+            t.text = lowered;
+            t.line = line;
+            tokens.push_back(t);
             continue;
         }
 
