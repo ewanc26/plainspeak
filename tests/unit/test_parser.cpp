@@ -119,3 +119,27 @@ TEST_CASE("parser parses Return statement", "[parser]") {
     REQUIRE(program.size() == 1);
     CHECK(std::holds_alternative<ReturnStmt>(program[0]->node));
 }
+
+TEST_CASE("parser parses not equal comparison", "[parser]") {
+    Tokenizer t("If x is not equal to 3 then:\n    Say x.\nEnd if.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &ifstmt = std::get<IfStmt>(program[0]->node);
+    auto &cond = std::get<BinaryExpr>(ifstmt.cond->node);
+    CHECK(cond.op == BinOp::Ne);
+}
+
+TEST_CASE("parser parses greater than or equal to", "[parser]") {
+    Tokenizer t("If x is greater than or equal to 3 then:\n    Say x.\nEnd if.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &ifstmt = std::get<IfStmt>(program[0]->node);
+    auto &cond = std::get<BinaryExpr>(ifstmt.cond->node);
+    CHECK(cond.op == BinOp::Ge);
+}
