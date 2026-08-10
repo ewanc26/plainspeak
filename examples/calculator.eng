@@ -1,0 +1,217 @@
+Procedure show_menu:
+    Say "".
+    Say "Scientific Calculator".
+    Say "====================".
+    Say "1. Addition".
+    Say "2. Subtraction".
+    Say "3. Multiplication".
+    Say "4. Division".
+    Say "5. Modulo".
+    Say "6. Power".
+    Say "7. Square Root".
+    Say "8. Sine".
+    Say "9. Cosine".
+    Say "10. Tangent".
+    Say "11. Logarithm".
+    Say "12. Absolute Value".
+    Say "13. Floor".
+    Say "14. Ceiling".
+    Say "15. Exit".
+    Say "".
+    Say "Choose an operation (1-15):".
+End procedure.
+
+Procedure get_number takes prompt:
+    Say prompt.
+    ReadFloat x.
+    Return x.
+End procedure.
+
+Procedure add_numbers takes a, b:
+    Set result to a plus b.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure subtract_numbers takes a, b:
+    Set result to a minus b.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure multiply_numbers takes a, b:
+    Set result to a times b.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure divide_numbers takes a, b:
+    If b is equal to 0 then:
+        Say "Error: Division by zero.".
+        Return 0.
+    End if.
+    Set result to a divided by b.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure modulo_numbers takes a, b:
+    Set result to a mod b.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure power_numbers takes a, b:
+    Set result to a to the power of b.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure sqrt_number takes a:
+    If a is less than 0 then:
+        Say "Error: Cannot take square root of a negative number.".
+        Return 0.
+    End if.
+    Set result to square root of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure sine_number takes a:
+    Set result to sine of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure cosine_number takes a:
+    Set result to cosine of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure tangent_number takes a:
+    Set result to tangent of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure log_number takes a:
+    If a is less than or equal to 0 then:
+        Say "Error: Cannot take logarithm of a non-positive number.".
+        Return 0.
+    End if.
+    Set result to log of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure abs_number takes a:
+    Set result to absolute value of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure floor_number takes a:
+    Set result to floor of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Procedure ceil_number takes a:
+    Set result to ceil of a.
+    Say "Result: " plus result.
+    Return result.
+End procedure.
+
+Set running to 1.
+
+While running is equal to 1:
+    Call show_menu done.
+    Read choice.
+
+    If choice is equal to 1 then:
+        Set a to Call get_number with "Enter first number:" done.
+        Set b to Call get_number with "Enter second number:" done.
+        Call add_numbers with a, b done.
+    End if.
+
+    If choice is equal to 2 then:
+        Set a to Call get_number with "Enter first number:" done.
+        Set b to Call get_number with "Enter second number:" done.
+        Call subtract_numbers with a, b done.
+    End if.
+
+    If choice is equal to 3 then:
+        Set a to Call get_number with "Enter first number:" done.
+        Set b to Call get_number with "Enter second number:" done.
+        Call multiply_numbers with a, b done.
+    End if.
+
+    If choice is equal to 4 then:
+        Set a to Call get_number with "Enter first number:" done.
+        Set b to Call get_number with "Enter second number:" done.
+        Call divide_numbers with a, b done.
+    End if.
+
+    If choice is equal to 5 then:
+        Set a to Call get_number with "Enter first number:" done.
+        Set b to Call get_number with "Enter second number:" done.
+        Call modulo_numbers with a, b done.
+    End if.
+
+    If choice is equal to 6 then:
+        Set a to Call get_number with "Enter base:" done.
+        Set b to Call get_number with "Enter exponent:" done.
+        Call power_numbers with a, b done.
+    End if.
+
+    If choice is equal to 7 then:
+        Set a to Call get_number with "Enter number:" done.
+        Call sqrt_number with a done.
+    End if.
+
+    If choice is equal to 8 then:
+        Set a to Call get_number with "Enter angle in radians:" done.
+        Call sine_number with a done.
+    End if.
+
+    If choice is equal to 9 then:
+        Set a to Call get_number with "Enter angle in radians:" done.
+        Call cosine_number with a done.
+    End if.
+
+    If choice is equal to 10 then:
+        Set a to Call get_number with "Enter angle in radians:" done.
+        Call tangent_number with a done.
+    End if.
+
+    If choice is equal to 11 then:
+        Set a to Call get_number with "Enter number:" done.
+        Call log_number with a done.
+    End if.
+
+    If choice is equal to 12 then:
+        Set a to Call get_number with "Enter number:" done.
+        Call abs_number with a done.
+    End if.
+
+    If choice is equal to 13 then:
+        Set a to Call get_number with "Enter number:" done.
+        Call floor_number with a done.
+    End if.
+
+    If choice is equal to 14 then:
+        Set a to Call get_number with "Enter number:" done.
+        Call ceil_number with a done.
+    End if.
+
+    If choice is equal to 15 then:
+        Set running to 0.
+        Say "Goodbye!".
+    End if.
+
+    If choice is less than 1 or choice is greater than 15 then:
+        Say "Invalid choice. Please choose a number between 1 and 15.".
+    End if.
+
+End while.
