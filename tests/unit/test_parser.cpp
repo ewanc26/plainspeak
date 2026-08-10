@@ -99,3 +99,23 @@ TEST_CASE("parser handles not operator", "[parser]") {
     auto &notExpr = std::get<UnaryExpr>(say.expr->node);
     CHECK(notExpr.op == UnaryOp::Not);
 }
+
+TEST_CASE("parser parses Subtract statement", "[parser]") {
+    Tokenizer t("Subtract 1 from total.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    CHECK(std::holds_alternative<SubStmt>(program[0]->node));
+}
+
+TEST_CASE("parser parses Return statement", "[parser]") {
+    Tokenizer t("Return x plus 1.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    CHECK(std::holds_alternative<ReturnStmt>(program[0]->node));
+}
