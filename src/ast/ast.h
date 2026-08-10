@@ -30,7 +30,7 @@ struct AddStmt   { Expr *expr; std::string varName; };
 struct RepeatStmt{ Expr *count; std::vector<Stmt *> body; };
 struct IfStmt    { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
 struct WhileStmt { Expr *cond; std::vector<Stmt *> body; };
-struct CallStmt  { std::string name; std::vector<Expr *> args; };
+struct CallStmt   { std::string name; std::vector<Expr *> args; };
 struct ProcedureStmt { std::string name; std::vector<std::string> params; std::vector<Stmt *> body; };
 struct ReturnStmt { Expr *expr; };
 
