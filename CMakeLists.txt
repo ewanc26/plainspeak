@@ -17,6 +17,7 @@ add_executable(plainspeak
     src/sema/sema.cpp
     src/codegen/mangling.cpp
     src/codegen/c_emitter.cpp
+    src/ast/ast_printer.cpp
     src/cli/main.cpp
 )
 target_include_directories(plainspeak PRIVATE src)

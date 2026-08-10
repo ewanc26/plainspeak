@@ -6,6 +6,7 @@
 #include <unordered_map>
 
 #include "../ast/ast.h"
+#include "../ast/ast_printer.h"
 #include "../codegen/c_emitter.h"
 #include "../lexer/tokenizer.h"
 #include "../parser/parser.h"
@@ -30,10 +31,12 @@ int main(int argc, char **argv) {
     std::string srcPath = argv[1];
     std::string outPath = "a.out";
     bool emitCOnly = false;
+    bool printAstOnly = false;
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
         if (a == "-o" && i + 1 < argc) outPath = argv[++i];
         else if (a == "--emit-c") emitCOnly = true;
+        else if (a == "--print-ast") printAstOnly = true;
     }
 
     std::ifstream in(srcPath);
@@ -81,6 +84,11 @@ int main(int argc, char **argv) {
             std::cerr << "error[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
         }
         if (!diags.empty()) return 1;
+    }
+
+    if (printAstOnly) {
+        std::cout << printAST(program);
+        return 0;
     }
 
     std::string cSource = emitProgram(program, &sourceLines);
