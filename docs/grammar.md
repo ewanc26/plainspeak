@@ -38,6 +38,9 @@ SetStmt     ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
 AddStmt     ::= "Add" Expr "to" IDENT "."
                 e.g. Add 1 to total.
 
+SubStmt     ::= "Subtract" Expr "from" IDENT "."
+                e.g. Subtract 1 from total.
+
 RepeatStmt  ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
                 e.g.
                 Repeat 5:

@@ -43,6 +43,7 @@ private:
     Stmt *parseSay();
     Stmt *parseSet();
     Stmt *parseAdd();
+    Stmt *parseSub();
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseWhile();

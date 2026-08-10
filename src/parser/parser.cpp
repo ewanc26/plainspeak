@@ -59,6 +59,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "add") return parseAdd();
+    if (t.text == "subtract") return parseSub();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
@@ -67,7 +68,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, repeat, if, while, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, repeat, if, while, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -77,6 +78,7 @@ Stmt *Parser::parseStmt() {
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "add") return parseAdd();
+    if (t.text == "subtract") return parseSub();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
@@ -84,7 +86,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, repeat, if, while, call, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, repeat, if, while, call, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -113,6 +115,16 @@ Stmt *Parser::parseAdd() {
     std::string name = expectIdentName();
     expectDot();
     return arena_.makeStmt(AddStmt{expr, name}, line);
+}
+
+Stmt *Parser::parseSub() {
+    int line = peek().line;
+    advance(); // subtract
+    Expr *expr = parseExpr();
+    expectWord("from");
+    std::string name = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(SubStmt{expr, name}, line);
 }
 
 Stmt *Parser::parseRepeat() {

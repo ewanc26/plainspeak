@@ -12,6 +12,7 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
             using T = std::decay_t<decltype(node)>;
             if constexpr (std::is_same_v<T, SetStmt>) out.insert(node.name);
             else if constexpr (std::is_same_v<T, AddStmt>) out.insert(node.varName);
+            else if constexpr (std::is_same_v<T, SubStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, out);
             else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, out); collectVars(node.elseBody, out); }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out);
@@ -69,6 +70,9 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
             out << indent << mangle(node.name) << " = " << emitExpr(node.expr) << ";\n";
         } else if constexpr (std::is_same_v<T, AddStmt>) {
             out << indent << mangle(node.varName) << " = ps_add(" << mangle(node.varName)
+                << ", " << emitExpr(node.expr) << ");\n";
+        } else if constexpr (std::is_same_v<T, SubStmt>) {
+            out << indent << mangle(node.varName) << " = ps_sub(" << mangle(node.varName)
                 << ", " << emitExpr(node.expr) << ");\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             std::string i = "ps__i" + std::to_string(loopCounter);
