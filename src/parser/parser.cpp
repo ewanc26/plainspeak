@@ -65,9 +65,10 @@ Stmt *Parser::parseStmt() {
     if (t.text == "add") return parseAdd();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
+    if (t.text == "while") return parseWhile();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, repeat, if (see docs/grammar.md)");
+          "say, set/let/make, add, repeat, if, while (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -137,6 +138,15 @@ Stmt *Parser::parseIf() {
     advance(); // if
     expectDot();
     return arena_.makeStmt(IfStmt{cond, std::move(thenBody), std::move(elseBody)}, line);
+}
+
+Stmt *Parser::parseWhile() {
+    int line = peek().line;
+    advance(); // while
+    Expr *cond = parseExpr();
+    expectColon();
+    auto body = parseBlockUntil("end", "while");
+    return arena_.makeStmt(WhileStmt{cond, std::move(body)}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {

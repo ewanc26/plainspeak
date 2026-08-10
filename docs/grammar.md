@@ -26,7 +26,7 @@ case-insensitive exact match, never fuzzy (AGENTS.md §4.2):
 ## Statements
 
 ```
-Stmt        ::= SayStmt | SetStmt | AddStmt | RepeatStmt | IfStmt
+Stmt        ::= SayStmt | SetStmt | AddStmt | RepeatStmt | IfStmt | WhileStmt
 
 SayStmt     ::= ("Say" | "Print") Expr "."
                 e.g. Say "Hello, world!".
@@ -51,6 +51,13 @@ IfStmt      ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
                 Else:
                     Say "small".
                 End if.
+
+WhileStmt   ::= "While" Expr ":" Stmt* "End" "while" "."
+                e.g.
+                While x is less than 3:
+                    Say x.
+                    Set x to x plus 1.
+                End while.
 ```
 
 ## Expressions
@@ -70,7 +77,7 @@ second `is` has nothing valid on its left).
 
 ## Known gaps in v0 (deliberately out of scope for the scaffold)
 
-- No `while`, no user-defined procedures.
+- No user-defined procedures.
 - No static type checking — type mismatches (e.g. `Add "x" to 5`) are
   caught at runtime by `plainspeak_runtime.c`, not by a sema pass. A real
   sema pass belongs in `src/sema/` per AGENTS.md's pipeline and should
