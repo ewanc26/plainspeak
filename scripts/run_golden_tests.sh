@@ -38,4 +38,25 @@ for src in "$DIR"/tests/golden/*.eng; do
     fi
 done
 
+for src in "$DIR"/tests/golden/errors/*.eng; do
+    [ -e "$src" ] || break
+    name="$(basename "$src" .eng)"
+    expected="$DIR/tests/golden/errors/$name.expected"
+    [ -f "$expected" ] || { echo "SKIP $name (no .expected file)"; continue; }
+
+    if "$BIN" "$src" -o "$TMP/$name" > "$TMP/$name.actual" 2>&1; then
+        echo "FAIL $name: expected compile error but succeeded"
+        fail=1
+        continue
+    fi
+
+    if diff -u "$expected" "$TMP/$name.actual" > "$TMP/$name.diff"; then
+        echo "PASS $name"
+    else
+        echo "FAIL $name: error message mismatch"
+        cat "$TMP/$name.diff"
+        fail=1
+    fi
+done
+
 exit $fail
