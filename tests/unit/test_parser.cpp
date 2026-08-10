@@ -143,3 +143,37 @@ TEST_CASE("parser parses greater than or equal to", "[parser]") {
     auto &cond = std::get<BinaryExpr>(ifstmt.cond->node);
     CHECK(cond.op == BinOp::Ge);
 }
+
+TEST_CASE("parser handles mod operator", "[parser]") {
+    Tokenizer t("Say 7 mod 3.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    auto &expr = std::get<BinaryExpr>(say.expr->node);
+    CHECK(expr.op == BinOp::Mod);
+}
+
+TEST_CASE("parser handles Length of expression", "[parser]") {
+    Tokenizer t("Say Length of \"hello\".");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    CHECK(std::holds_alternative<LengthExpr>(say.expr->node));
+}
+
+TEST_CASE("parser handles Call as expression", "[parser]") {
+    Tokenizer t("Procedure double takes x:\n    Return x times 2.\nEnd procedure.\nSay Call double with 5 done.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 2);
+    auto &say = std::get<SayStmt>(program[1]->node);
+    CHECK(std::holds_alternative<CallExpr>(say.expr->node));
+}
