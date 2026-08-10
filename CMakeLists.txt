@@ -11,6 +11,16 @@ endif()
 
 add_compile_options(-Wall -Wextra)
 
+# Test framework (Catch2, test-only)
+include(FetchContent)
+FetchContent_Declare(
+    catch2
+    URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.5.0.tar.gz
+)
+FetchContent_MakeAvailable(catch2)
+
+enable_testing()
+
 add_executable(plainspeak
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
@@ -30,3 +40,17 @@ target_compile_definitions(plainspeak PRIVATE
     PLAINSPEAK_RUNTIME_C="${CMAKE_SOURCE_DIR}/runtime/plainspeak_runtime.c"
     PLAINSPEAK_RUNTIME_DIR="${CMAKE_SOURCE_DIR}/runtime"
 )
+
+add_executable(unit_tests
+    tests/unit/test_lexer.cpp
+    tests/unit/test_parser.cpp
+    tests/unit/test_sema.cpp
+    src/lexer/tokenizer.cpp
+    src/lexer/alias_table.cpp
+    src/parser/parser.cpp
+    src/sema/sema.cpp
+)
+target_include_directories(unit_tests PRIVATE src)
+target_link_libraries(unit_tests PRIVATE Catch2::Catch2WithMain)
+
+add_test(NAME unit_tests COMMAND unit_tests)
