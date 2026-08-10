@@ -47,7 +47,7 @@ TEST_CASE("parser parses While loop", "[parser]") {
 }
 
 TEST_CASE("parser parses Procedure and Call", "[parser]") {
-    Tokenizer t("Procedure greet takes name:\n    Say name.\nEnd procedure.\nCall greet with \"world\".");
+    Tokenizer t("Procedure greet takes name:\n    Say name.\nEnd procedure.\nCall greet with \"world\" done.");
     auto tokens = t.tokenize();
     Arena arena;
     Parser p(tokens, arena);
