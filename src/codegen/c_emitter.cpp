@@ -14,6 +14,7 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
             else if constexpr (std::is_same_v<T, AddStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, SubStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, ReadStmt>) out.insert(node.varName);
+            else if constexpr (std::is_same_v<T, ReadFloatStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, out);
             else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, out); collectVars(node.elseBody, out); }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out);
@@ -28,6 +29,10 @@ std::string emitExpr(const Expr *e) {
             return "ps_int(" + std::to_string(node.value) + "L)";
         } else if constexpr (std::is_same_v<T, BoolLit>) {
             return "ps_int(" + std::string(node.value ? "1" : "0") + "L)";
+        } else if constexpr (std::is_same_v<T, FloatLit>) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%.17g", node.value);
+            return "ps_double(" + std::string(buf) + ")";
         } else if constexpr (std::is_same_v<T, StringLit>) {
             std::string escaped;
             for (char c : node.value) {
@@ -40,7 +45,32 @@ std::string emitExpr(const Expr *e) {
             return mangle(node.name);
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             return "ps_int(ps_strlen(" + emitExpr(node.operand) + "))";
+        } else if constexpr (std::is_same_v<T, MathCallExpr>) {
+            static const std::unordered_map<std::string, std::string> mathFn = {
+                {"sine", "ps_sin"}, {"cosine", "ps_cos"}, {"tangent", "ps_tan"},
+                {"sqrt", "ps_sqrt"}, {"log", "ps_log"}, {"abs", "ps_abs"},
+                {"floor", "ps_floor"}, {"ceil", "ps_ceil"}
+            };
+            auto it = mathFn.find(node.func);
+            std::string fn = it != mathFn.end() ? it->second : "ps_" + node.func;
+            return fn + "(" + emitExpr(node.arg) + ")";
         } else if constexpr (std::is_same_v<T, CallExpr>) {
+            static const std::unordered_map<std::string, std::string> builtins = {
+                {"sin", "ps_sin"}, {"cos", "ps_cos"}, {"tan", "ps_tan"},
+                {"sqrt", "ps_sqrt"}, {"log", "ps_log"}, {"abs", "ps_abs"},
+                {"floor", "ps_floor"}, {"ceil", "ps_ceil"}, {"pow", "ps_pow"},
+                {"neg", "ps_neg"}
+            };
+            auto it = builtins.find(node.name);
+            if (it != builtins.end()) {
+                std::string result = it->second + "(";
+                for (size_t i = 0; i < node.args.size(); ++i) {
+                    if (i > 0) result += ", ";
+                    result += emitExpr(node.args[i]);
+                }
+                result += ")";
+                return result;
+            }
             std::string result = mangle(node.name) + "(";
             for (size_t i = 0; i < node.args.size(); ++i) {
                 if (i > 0) result += ", ";
@@ -48,6 +78,8 @@ std::string emitExpr(const Expr *e) {
             }
             result += ")";
             return result;
+        } else if constexpr (std::is_same_v<T, PowExpr>) {
+            return "ps_pow(" + emitExpr(node.base) + ", " + emitExpr(node.exp) + ")";
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             const char *fn = node.op == BinOp::Add ? "ps_add"
                             : node.op == BinOp::Sub ? "ps_sub"
@@ -64,6 +96,9 @@ std::string emitExpr(const Expr *e) {
                                                      : "ps_or";
             return std::string(fn) + "(" + emitExpr(node.lhs) + ", " + emitExpr(node.rhs) + ")";
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            if (node.op == UnaryOp::Neg) {
+                return std::string("ps_neg(") + emitExpr(node.rhs) + ")";
+            }
             return std::string("ps_not(") + emitExpr(node.rhs) + ")";
         }
     }, e->node);
@@ -92,6 +127,8 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
                 << ", " << emitExpr(node.expr) << ");\n";
         } else if constexpr (std::is_same_v<T, ReadStmt>) {
             out << indent << mangle(node.varName) << " = ps_read();\n";
+        } else if constexpr (std::is_same_v<T, ReadFloatStmt>) {
+            out << indent << mangle(node.varName) << " = ps_read_double();\n";
         } else if constexpr (std::is_same_v<T, CommentStmt>) {
             out << indent << "/* " << node.text << " */\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
@@ -165,6 +202,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             else if constexpr (std::is_same_v<T, AddStmt>) vars.insert(node.varName);
             else if constexpr (std::is_same_v<T, SubStmt>) vars.insert(node.varName);
             else if constexpr (std::is_same_v<T, ReadStmt>) vars.insert(node.varName);
+            else if constexpr (std::is_same_v<T, ReadFloatStmt>) vars.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, vars);
             else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, vars); collectVars(node.elseBody, vars); }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, vars);

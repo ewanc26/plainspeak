@@ -4,7 +4,7 @@
 #include <vector>
 #include "../ast/ast.h"
 
-enum class Type { Int, String };
+enum class Type { Int, Double, String };
 
 struct Diag {
     int code;
