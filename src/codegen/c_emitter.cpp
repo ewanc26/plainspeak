@@ -24,6 +24,8 @@ std::string emitExpr(const Expr *e) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, IntLit>) {
             return "ps_int(" + std::to_string(node.value) + "L)";
+        } else if constexpr (std::is_same_v<T, BoolLit>) {
+            return "ps_int(" + std::string(node.value ? "1" : "0") + "L)";
         } else if constexpr (std::is_same_v<T, StringLit>) {
             std::string escaped;
             for (char c : node.value) {

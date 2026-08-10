@@ -249,6 +249,8 @@ Expr *Parser::parsePrimary() {
     const Token &t = peek();
     if (t.kind == TokKind::Number) { advance(); return arena_.makeExpr(IntLit{t.num}, t.line); }
     if (t.kind == TokKind::String) { advance(); return arena_.makeExpr(StringLit{t.text}, t.line); }
+    if (checkWord("true"))  { advance(); return arena_.makeExpr(BoolLit{true}, t.line); }
+    if (checkWord("false")) { advance(); return arena_.makeExpr(BoolLit{false}, t.line); }
     if (t.kind == TokKind::Ident)  { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a string, or a name here");
+    error("expected a number, a string, a name, true, or false here");
 }

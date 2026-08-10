@@ -80,7 +80,7 @@ Additive       ::= Multiplicative ( ("plus" | "minus") Multiplicative )*
 
 Multiplicative ::= Primary ( ("times" | "divided by") Primary )*
 
-Primary        ::= NUMBER | STRING | IDENT
+Primary        ::= NUMBER | STRING | IDENT | "true" | "false"
 ```
 
 Precedence, low to high: comparison → additive → multiplicative → primary.

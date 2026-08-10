@@ -42,6 +42,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
     return std::visit([&](auto &&node) -> Type {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, IntLit>) return Type::Int;
+        else if constexpr (std::is_same_v<T, BoolLit>) return Type::Int;
         else if constexpr (std::is_same_v<T, StringLit>) return Type::String;
         else if constexpr (std::is_same_v<T, VarRef>) {
             auto [type, found] = lookupVar(node.name, line, diags);

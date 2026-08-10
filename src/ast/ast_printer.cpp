@@ -8,12 +8,17 @@ std::string printExpr(const Expr *e) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, IntLit>) {
             return std::to_string(node.value);
+        } else if constexpr (std::is_same_v<T, BoolLit>) {
+            return node.value ? "true" : "false";
         } else if constexpr (std::is_same_v<T, StringLit>) {
             return "\"" + node.value + "\"";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             return node.name;
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             const char *op = node.op == BinOp::Add ? "plus"
+                          : node.op == BinOp::Sub ? "minus"
+                          : node.op == BinOp::Mul ? "times"
+                          : node.op == BinOp::Div ? "divided by"
                           : node.op == BinOp::Gt  ? "is greater than"
                           : node.op == BinOp::Lt  ? "is less than"
                                                   : "is equal to";
