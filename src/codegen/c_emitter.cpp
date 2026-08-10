@@ -44,7 +44,14 @@ std::string emitExpr(const Expr *e) {
     }, e->node);
 }
 
-void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCounter) {
+void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCounter,
+              const std::unordered_map<int, std::string> *sourceLines) {
+    if (sourceLines) {
+        auto it = sourceLines->find(s->line);
+        if (it != sourceLines->end()) {
+            out << indent << "// from line " << s->line << ": \"" << it->second << "\"\n";
+        }
+    }
     std::visit([&](auto &&node) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, SayStmt>) {
@@ -61,23 +68,23 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
             out << indent << "{\n";
             out << indent << "    long " << n << " = ps_as_int(" << emitExpr(node.count) << ");\n";
             out << indent << "    for (long " << i << " = 0; " << i << " < " << n << "; " << i << "++) {\n";
-            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter);
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, sourceLines);
             out << indent << "    }\n";
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, IfStmt>) {
             out << indent << "if (ps_truthy(" << emitExpr(node.cond) << ")) {\n";
-            for (Stmt *inner : node.thenBody) emitStmt(inner, out, indent + "    ", loopCounter);
+            for (Stmt *inner : node.thenBody) emitStmt(inner, out, indent + "    ", loopCounter, sourceLines);
             out << indent << "}";
             if (!node.elseBody.empty()) {
                 out << " else {\n";
-                for (Stmt *inner : node.elseBody) emitStmt(inner, out, indent + "    ", loopCounter);
+                for (Stmt *inner : node.elseBody) emitStmt(inner, out, indent + "    ", loopCounter, sourceLines);
                 out << indent << "}\n";
             } else {
                 out << "\n";
             }
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             out << indent << "while (ps_truthy(" << emitExpr(node.cond) << ")) {\n";
-            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter);
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, sourceLines);
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             out << indent << mangle(node.name) << "(";
@@ -92,7 +99,8 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
 
 } // namespace
 
-void emitProcedure(const ProcedureStmt &proc, std::ostream &out) {
+void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
+                   const std::unordered_map<int, std::string> *sourceLines) {
     out << "void " << mangle(proc.name) << "(";
     for (size_t i = 0; i < proc.params.size(); ++i) {
         if (i > 0) out << ", ";
@@ -106,12 +114,13 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out) {
     if (!localVars.empty()) out << "\n";
 
     int loopCounter = 0;
-    for (Stmt *inner : proc.body) emitStmt(inner, out, "    ", loopCounter);
+    for (Stmt *inner : proc.body) emitStmt(inner, out, "    ", loopCounter, sourceLines);
 
     out << "}\n\n";
 }
 
-std::string emitProgram(const std::vector<Stmt *> &program) {
+std::string emitProgram(const std::vector<Stmt *> &program,
+                        const std::unordered_map<int, std::string> *sourceLines) {
     std::set<std::string> vars;
     for (Stmt *s : program) {
         std::visit([&](auto &&node) {
@@ -133,7 +142,7 @@ std::string emitProgram(const std::vector<Stmt *> &program) {
 
     for (Stmt *s : program) {
         if (auto *proc = std::get_if<ProcedureStmt>(&s->node)) {
-            emitProcedure(*proc, out);
+            emitProcedure(*proc, out, sourceLines);
         }
     }
 
@@ -141,7 +150,7 @@ std::string emitProgram(const std::vector<Stmt *> &program) {
     int loopCounter = 0;
     for (Stmt *s : program) {
         if (!std::holds_alternative<ProcedureStmt>(s->node)) {
-            emitStmt(s, out, "    ", loopCounter);
+            emitStmt(s, out, "    ", loopCounter, sourceLines);
         }
     }
     out << "    return 0;\n";

@@ -3,6 +3,7 @@
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <unordered_map>
 
 #include "../ast/ast.h"
 #include "../codegen/c_emitter.h"
@@ -44,6 +45,16 @@ int main(int argc, char **argv) {
     ss << in.rdbuf();
     std::string source = ss.str();
 
+    std::unordered_map<int, std::string> sourceLines;
+    {
+        std::istringstream lineStream(source);
+        std::string line;
+        int lineNum = 1;
+        while (std::getline(lineStream, line)) {
+            sourceLines[lineNum++] = line;
+        }
+    }
+
     std::vector<Token> tokens;
     try {
         Tokenizer tokenizer(source);
@@ -72,7 +83,7 @@ int main(int argc, char **argv) {
         if (!diags.empty()) return 1;
     }
 
-    std::string cSource = emitProgram(program);
+    std::string cSource = emitProgram(program, &sourceLines);
 
     if (emitCOnly) {
         std::cout << cSource;

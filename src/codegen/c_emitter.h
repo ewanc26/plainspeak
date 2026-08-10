@@ -1,9 +1,9 @@
 #pragma once
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "../ast/ast.h"
 
-// AST -> C99 source, textual. One pass, no separate "codegen IR" — see
-// AGENTS.md §7 for the mangling/runtime-call conventions this follows.
-std::string emitProgram(const std::vector<Stmt *> &program);
+std::string emitProgram(const std::vector<Stmt *> &program,
+                        const std::unordered_map<int, std::string> *sourceLines = nullptr);
