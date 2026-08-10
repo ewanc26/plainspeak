@@ -2,4 +2,4 @@ Procedure greet takes name:
     Say name.
 End procedure.
 
-Call greet with "hello" "world".
+Call greet with "hello" "world" done.

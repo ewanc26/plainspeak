@@ -201,10 +201,10 @@ Stmt *Parser::parseCall() {
     std::string name = expectIdentName();
     expectWord("with");
     std::vector<Expr *> args;
-    args.push_back(parseExpr());
-    while (peek().kind != TokKind::Dot) {
+    while (!checkWord("done")) {
         args.push_back(parseExpr());
     }
+    advance(); // done
     expectDot();
     return arena_.makeStmt(CallStmt{name, std::move(args)}, line);
 }

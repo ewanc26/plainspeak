@@ -66,9 +66,9 @@ WhileStmt   ::= "While" Expr ":" Stmt* "End" "while" "."
                     Set x to x plus 1.
                 End while.
 
-CallStmt    ::= "Call" IDENT "with" Expr ("," Expr)* "."
-                e.g. Call greet with "world".
-                e.g. Call add with 1, 2.
+CallStmt    ::= "Call" IDENT "with" Expr ("," Expr)* "done" "."
+                e.g. Call greet with "world" done.
+                e.g. Call add with 1, 2 done.
 
 ProcedureStmt ::= "Procedure" IDENT "takes" IDENT ("," IDENT)* ":" Stmt* "End" "procedure" "."
                 e.g.
