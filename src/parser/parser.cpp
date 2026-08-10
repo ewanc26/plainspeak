@@ -52,13 +52,13 @@ static bool isSayKeyword(const std::string &w) { return w == "say" || w == "prin
 
 std::vector<Stmt *> Parser::parseProgram() {
     std::vector<Stmt *> stmts;
-    while (peek().kind != TokKind::Eof) stmts.push_back(parseStmt());
+    while (peek().kind != TokKind::Eof) stmts.push_back(parseTopLevelStmt());
     return stmts;
 }
 
-Stmt *Parser::parseStmt() {
+Stmt *Parser::parseTopLevelStmt() {
     const Token &t = peek();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Repeat, If)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Repeat, If, While, Call, Procedure)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
@@ -66,9 +66,27 @@ Stmt *Parser::parseStmt() {
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
+    if (t.text == "call") return parseCall();
+    if (t.text == "procedure") return parseProcedure();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, repeat, if, while (see docs/grammar.md)");
+          "say, set/let/make, add, repeat, if, while, call, procedure (see docs/grammar.md)");
+}
+
+Stmt *Parser::parseStmt() {
+    const Token &t = peek();
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Repeat, If, While, Call)");
+
+    if (isSayKeyword(t.text)) return parseSay();
+    if (isSetKeyword(t.text)) return parseSet();
+    if (t.text == "add") return parseAdd();
+    if (t.text == "repeat") return parseRepeat();
+    if (t.text == "if") return parseIf();
+    if (t.text == "while") return parseWhile();
+    if (t.text == "call") return parseCall();
+
+    error("I don't know the verb \"" + t.text + "\" — expected one of: "
+          "say, set/let/make, add, repeat, if, while, call (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -147,6 +165,35 @@ Stmt *Parser::parseWhile() {
     expectColon();
     auto body = parseBlockUntil("end", "while");
     return arena_.makeStmt(WhileStmt{cond, std::move(body)}, line);
+}
+
+Stmt *Parser::parseCall() {
+    int line = peek().line;
+    advance(); // call
+    std::string name = expectIdentName();
+    expectWord("with");
+    std::vector<Expr *> args;
+    args.push_back(parseExpr());
+    while (peek().kind != TokKind::Dot) {
+        args.push_back(parseExpr());
+    }
+    expectDot();
+    return arena_.makeStmt(CallStmt{name, std::move(args)}, line);
+}
+
+Stmt *Parser::parseProcedure() {
+    int line = peek().line;
+    advance(); // procedure
+    std::string name = expectIdentName();
+    expectWord("takes");
+    std::vector<std::string> params;
+    params.push_back(expectIdentName());
+    while (peek().kind == TokKind::Ident && peek().text != ":") {
+        params.push_back(expectIdentName());
+    }
+    expectColon();
+    auto body = parseBlockUntil("end", "procedure");
+    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(body)}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {

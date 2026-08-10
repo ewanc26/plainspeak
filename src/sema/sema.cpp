@@ -108,6 +108,27 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             enterScope();
             for (Stmt *inner : node.body) checkStmt(inner, diags);
             leaveScope();
+        } else if constexpr (std::is_same_v<T, ProcedureStmt>) {
+            std::vector<Type> paramTypes(node.params.size(), Type::Int);
+            procTable_[node.name] = paramTypes;
+            enterScope();
+            for (size_t i = 0; i < node.params.size(); ++i) {
+                declareVar(node.params[i], paramTypes[i], s->line, diags);
+            }
+            for (Stmt *inner : node.body) checkStmt(inner, diags);
+            leaveScope();
+        } else if constexpr (std::is_same_v<T, CallStmt>) {
+            if (!procTable_.count(node.name)) {
+                diags.push_back({7, s->line, "I don't know what to do with \"" + node.name + "\" — it is used here but never defined. Use Procedure to create it first."});
+            } else {
+                const auto &expected = procTable_[node.name];
+                if (node.args.size() != expected.size()) {
+                    diags.push_back({8, s->line, "Call to \"" + node.name + "\" expects " + std::to_string(expected.size()) + " arguments but got " + std::to_string(node.args.size()) + "."});
+                }
+                for (size_t i = 0; i < node.args.size(); ++i) {
+                    inferExpr(node.args[i], s->line, diags);
+                }
+            }
         }
     }, s->node);
 }

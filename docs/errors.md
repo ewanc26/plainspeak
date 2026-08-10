@@ -14,6 +14,8 @@ state what was expected, what was found, and where.
 | E0004 | Type mismatch in comparison |
 | E0005 | Repeat/While count must be a number |
 | E0006 | Variable redeclaration in the same scope |
+| E0007 | Call to undefined procedure |
+| E0008 | Wrong number of arguments to procedure call |
 
 ## Parse-time errors
 

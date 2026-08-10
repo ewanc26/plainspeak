@@ -46,6 +46,9 @@ private:
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseWhile();
+    Stmt *parseCall();
+    Stmt *parseTopLevelStmt();
+    Stmt *parseProcedure();
     std::vector<Stmt *> parseBlockUntil(const std::string &w1, const std::string &w2);
 
     Expr *parseExpr();        // comparison level (lowest precedence)

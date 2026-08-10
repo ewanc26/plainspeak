@@ -1,0 +1,6 @@
+Procedure add takes a, b:
+    Say a plus b.
+End procedure.
+
+Call add with 2, 3.
+Call add with 10, 20.

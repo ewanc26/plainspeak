@@ -18,6 +18,7 @@ public:
 
 private:
     std::vector<std::unordered_map<std::string, Type>> scopes_;
+    std::unordered_map<std::string, std::vector<Type>> procTable_;
 
     void enterScope();
     void leaveScope();

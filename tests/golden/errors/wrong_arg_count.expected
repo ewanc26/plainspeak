@@ -1,0 +1,1 @@
+error[E0008]: Call to "greet" expects 1 arguments but got 2.
