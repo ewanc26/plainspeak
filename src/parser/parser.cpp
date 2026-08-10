@@ -61,6 +61,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
     if (t.text == "read") return parseRead();
+    if (t.text == "comment") return parseComment();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
@@ -69,7 +70,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, read, repeat, if, while, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, read, comment, repeat, if, while, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -81,6 +82,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
     if (t.text == "read") return parseRead();
+    if (t.text == "comment") return parseComment();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
@@ -89,7 +91,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, read, repeat, if, while, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, read, comment, repeat, if, while, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -136,6 +138,19 @@ Stmt *Parser::parseRead() {
     std::string name = expectIdentName();
     expectDot();
     return arena_.makeStmt(ReadStmt{name}, line);
+}
+
+Stmt *Parser::parseComment() {
+    int line = peek().line;
+    advance(); // comment
+    std::string text;
+    while (peek().kind != TokKind::Dot && peek().kind != TokKind::Eof) {
+        if (!text.empty()) text += " ";
+        text += peek().text;
+        advance();
+    }
+    expectDot();
+    return arena_.makeStmt(CommentStmt{text}, line);
 }
 
 Stmt *Parser::parseRepeat() {

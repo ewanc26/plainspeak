@@ -71,7 +71,8 @@ std::string emitExpr(const Expr *e) {
 
 void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCounter,
               const std::unordered_map<int, std::string> *sourceLines) {
-    if (sourceLines) {
+    bool isComment = std::holds_alternative<CommentStmt>(s->node);
+    if (sourceLines && !isComment) {
         auto it = sourceLines->find(s->line);
         if (it != sourceLines->end()) {
             out << indent << "/* comment: " << it->second << " */\n";
@@ -91,6 +92,8 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
                 << ", " << emitExpr(node.expr) << ");\n";
         } else if constexpr (std::is_same_v<T, ReadStmt>) {
             out << indent << mangle(node.varName) << " = ps_read();\n";
+        } else if constexpr (std::is_same_v<T, CommentStmt>) {
+            out << indent << "/* " << node.text << " */\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             std::string i = "ps__i" + std::to_string(loopCounter);
             std::string n = "ps__n" + std::to_string(loopCounter);

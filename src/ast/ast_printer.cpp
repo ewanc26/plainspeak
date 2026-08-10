@@ -87,6 +87,8 @@ std::string printStmt(const Stmt *s, int indent) {
             return pad + "Call " + node.name + " with " + args + ".\n";
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
             return pad + "Return " + printExpr(node.expr) + ".\n";
+        } else if constexpr (std::is_same_v<T, CommentStmt>) {
+            return pad + "Comment " + node.text + ".\n";
         } else if constexpr (std::is_same_v<T, ProcedureStmt>) {
             std::string params;
             for (size_t i = 0; i < node.params.size(); ++i) {

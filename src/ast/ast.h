@@ -37,8 +37,9 @@ struct WhileStmt { Expr *cond; std::vector<Stmt *> body; };
 struct CallStmt   { std::string name; std::vector<Expr *> args; };
 struct ProcedureStmt { std::string name; std::vector<std::string> params; std::vector<Stmt *> body; };
 struct ReturnStmt { Expr *expr; };
+struct CommentStmt { std::string text; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt, RepeatStmt, IfStmt, WhileStmt, CallStmt, ProcedureStmt, ReturnStmt>;
+using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt, RepeatStmt, IfStmt, WhileStmt, CallStmt, ProcedureStmt, ReturnStmt, CommentStmt>;
 struct Stmt { StmtNode node; int line; };
 
 // Owns every Expr/Stmt produced while parsing one source file. deque

@@ -120,6 +120,18 @@ TEST_CASE("parser parses Return statement", "[parser]") {
     CHECK(std::holds_alternative<ReturnStmt>(program[0]->node));
 }
 
+TEST_CASE("parser parses Comment statement", "[parser]") {
+    Tokenizer t("Comment this is a comment.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    CHECK(std::holds_alternative<CommentStmt>(program[0]->node));
+    auto &cs = std::get<CommentStmt>(program[0]->node);
+    CHECK(cs.text == "this is a comment");
+}
+
 TEST_CASE("parser parses not equal comparison", "[parser]") {
     Tokenizer t("If x is not equal to 3 then:\n    Say x.\nEnd if.");
     auto tokens = t.tokenize();

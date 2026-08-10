@@ -177,6 +177,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
             inferExpr(node.expr, s->line, diags);
+        } else if constexpr (std::is_same_v<T, CommentStmt>) {
         }
     }, s->node);
 }

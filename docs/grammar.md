@@ -27,7 +27,7 @@ case-insensitive exact match, never fuzzy (AGENTS.md §4.2):
 ## Statements
 
 ```
-Stmt        ::= SayStmt | SetStmt | AddStmt | RepeatStmt | IfStmt | WhileStmt | CallStmt | ProcedureStmt | ReturnStmt
+Stmt        ::= SayStmt | SetStmt | AddStmt | SubStmt | ReadStmt | CommentStmt | RepeatStmt | IfStmt | WhileStmt | CallStmt | ProcedureStmt | ReturnStmt
 
 SayStmt     ::= ("Say" | "Print") Expr "."
                 e.g. Say "Hello, world!".
@@ -44,6 +44,9 @@ SubStmt     ::= "Subtract" Expr "from" IDENT "."
 
 ReadStmt    ::= "Read" IDENT "."
                 e.g. Read x.
+
+CommentStmt ::= "comment" TEXT "."
+                e.g. comment This is a comment.
 
 RepeatStmt  ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
                 e.g.
