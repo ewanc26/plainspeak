@@ -56,3 +56,29 @@ TEST_CASE("sema reports type mismatch in logical and", "[sema]") {
     REQUIRE(diags.size() == 1);
     CHECK(diags[0].code == 2);
 }
+
+TEST_CASE("sema accepts double literal", "[sema]") {
+    std::vector<Stmt *> program;
+    Arena arena;
+    auto *set = arena.makeStmt(SetStmt{"x", arena.makeExpr(FloatLit{3.14}, 1)}, 1);
+    program.push_back(set);
+
+    Sema sema;
+    auto diags = sema.check(program);
+    CHECK(diags.empty());
+}
+
+TEST_CASE("sema accepts mixed arithmetic", "[sema]") {
+    std::vector<Stmt *> program;
+    Arena arena;
+    auto *set1 = arena.makeStmt(SetStmt{"x", arena.makeExpr(IntLit{5}, 1)}, 1);
+    auto *set2 = arena.makeStmt(SetStmt{"y", arena.makeExpr(FloatLit{2.5}, 2)}, 2);
+    auto *set3 = arena.makeStmt(SetStmt{"z", arena.makeExpr(BinaryExpr{BinOp::Add, arena.makeExpr(VarRef{"x"}, 3), arena.makeExpr(VarRef{"y"}, 3)}, 3)}, 3);
+    program.push_back(set1);
+    program.push_back(set2);
+    program.push_back(set3);
+
+    Sema sema;
+    auto diags = sema.check(program);
+    CHECK(diags.empty());
+}

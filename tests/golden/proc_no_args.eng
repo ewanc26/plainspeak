@@ -1,0 +1,6 @@
+Procedure greet:
+    Say "hello".
+End procedure.
+Call greet done.
+Set x to Call greet done.
+Say x.

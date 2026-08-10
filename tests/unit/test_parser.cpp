@@ -189,3 +189,80 @@ TEST_CASE("parser handles Call as expression", "[parser]") {
     auto &say = std::get<SayStmt>(program[1]->node);
     CHECK(std::holds_alternative<CallExpr>(say.expr->node));
 }
+
+TEST_CASE("parser handles float literal", "[parser]") {
+    Tokenizer t("Say 3.14.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    CHECK(std::holds_alternative<FloatLit>(say.expr->node));
+}
+
+TEST_CASE("parser handles unary minus", "[parser]") {
+    Tokenizer t("Say minus 5.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    CHECK(std::holds_alternative<UnaryExpr>(say.expr->node));
+    auto &unary = std::get<UnaryExpr>(say.expr->node);
+    CHECK(unary.op == UnaryOp::Neg);
+}
+
+TEST_CASE("parser handles parenthesized expression", "[parser]") {
+    Tokenizer t("Say (2 plus 3) times 4.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    CHECK(std::holds_alternative<BinaryExpr>(say.expr->node));
+    auto &mul = std::get<BinaryExpr>(say.expr->node);
+    CHECK(mul.op == BinOp::Mul);
+    CHECK(std::holds_alternative<BinaryExpr>(mul.lhs->node));
+    auto &add = std::get<BinaryExpr>(mul.lhs->node);
+    CHECK(add.op == BinOp::Add);
+}
+
+TEST_CASE("parser handles power operator", "[parser]") {
+    Tokenizer t("Say 2 to the power of 8.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    CHECK(std::holds_alternative<PowExpr>(say.expr->node));
+}
+
+TEST_CASE("parser handles math function call", "[parser]") {
+    Tokenizer t("Say square root of 16.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    CHECK(std::holds_alternative<MathCallExpr>(say.expr->node));
+    auto &math = std::get<MathCallExpr>(say.expr->node);
+    CHECK(math.func == "sqrt");
+}
+
+TEST_CASE("parser handles parameterless procedure", "[parser]") {
+    Tokenizer t("Procedure greet:\n    Say \"hi\".\nEnd procedure.\nCall greet done.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 2);
+    CHECK(std::holds_alternative<ProcedureStmt>(program[0]->node));
+    auto &proc = std::get<ProcedureStmt>(program[0]->node);
+    CHECK(proc.params.empty());
+    CHECK(std::holds_alternative<CallStmt>(program[1]->node));
+}

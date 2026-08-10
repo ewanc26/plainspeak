@@ -1,0 +1,24 @@
+Set x to 1.5 plus 2.5.
+Say x.
+Set y to 10.0 divided by 3.0.
+Say y.
+Set z to minus 4.2.
+Say z.
+Set a to 2 to the power of 10.
+Say a.
+Set b to square root of 2.
+Say b.
+Set c to sine of 1.5708.
+Say c.
+Set d to cosine of 0.
+Say d.
+Set e to tangent of 0.
+Say e.
+Set f to log of 2.71828.
+Say f.
+Set g to absolute value of minus 3.14.
+Say g.
+Set h to floor of 3.7.
+Say h.
+Set i to ceil of 3.2.
+Say i.
