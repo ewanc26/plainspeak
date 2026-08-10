@@ -121,7 +121,6 @@ Stmt *Parser::parseRepeat() {
     int line = peek().line;
     advance(); // repeat
     Expr *count = parseExpr();
-    expectWord("times");
     expectColon();
     auto body = parseBlockUntil("end", "repeat");
     return arena_.makeStmt(RepeatStmt{count, std::move(body)}, line);
@@ -226,12 +225,26 @@ Expr *Parser::parseExpr() {
 }
 
 Expr *Parser::parseAdditive() {
-    Expr *lhs = parsePrimary();
-    while (checkWord("plus")) {
+    Expr *lhs = parseMultiplicative();
+    while (checkWord("plus") || checkWord("minus")) {
         int line = peek().line;
+        BinOp op = checkWord("plus") ? BinOp::Add : BinOp::Sub;
         advance();
+        Expr *rhs = parseMultiplicative();
+        lhs = arena_.makeExpr(BinaryExpr{op, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parseMultiplicative() {
+    Expr *lhs = parsePrimary();
+    while (checkWord("times") || (checkWord("divided") && checkWordAt(1, "by"))) {
+        int line = peek().line;
+        BinOp op = checkWord("times") ? BinOp::Mul : BinOp::Div;
+        if (op == BinOp::Div) advance(); // divided
+        advance(); // times or by
         Expr *rhs = parsePrimary();
-        lhs = arena_.makeExpr(BinaryExpr{BinOp::Add, lhs, rhs}, line);
+        lhs = arena_.makeExpr(BinaryExpr{op, lhs, rhs}, line);
     }
     return lhs;
 }

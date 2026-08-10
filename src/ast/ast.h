@@ -15,7 +15,7 @@ struct IntLit    { long value; };
 struct StringLit { std::string value; };
 struct VarRef    { std::string name; };
 
-enum class BinOp { Add, Gt, Lt, Eq };
+enum class BinOp { Add, Sub, Mul, Div, Gt, Lt, Eq };
 struct BinaryExpr { BinOp op; Expr *lhs; Expr *rhs; };
 
 using ExprNode = std::variant<IntLit, StringLit, VarRef, BinaryExpr>;

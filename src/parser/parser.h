@@ -52,6 +52,7 @@ private:
     std::vector<Stmt *> parseBlockUntil(const std::string &w1, const std::string &w2);
 
     Expr *parseExpr();        // comparison level (lowest precedence)
-    Expr *parseAdditive();    // "plus"
+    Expr *parseAdditive();    // plus/minus
+    Expr *parseMultiplicative(); // times/divided by
     Expr *parsePrimary();     // literal / identifier
 };

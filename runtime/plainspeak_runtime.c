@@ -41,6 +41,25 @@ PsValue ps_add(PsValue a, PsValue b) {
     return ps_int(0); /* unreachable */
 }
 
+PsValue ps_sub(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("subtract", a, b);
+    return ps_int(a.as.i - b.as.i);
+}
+
+PsValue ps_mul(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("multiply", a, b);
+    return ps_int(a.as.i * b.as.i);
+}
+
+PsValue ps_div(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("divide", a, b);
+    if (b.as.i == 0) {
+        fprintf(stderr, "runtime error: division by zero\n");
+        exit(1);
+    }
+    return ps_int(a.as.i / b.as.i);
+}
+
 PsValue ps_gt(PsValue a, PsValue b) {
     if (a.type != PS_INT || b.type != PS_INT) ps_type_error("compare", a, b);
     return ps_int(a.as.i > b.as.i);

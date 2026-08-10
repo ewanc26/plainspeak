@@ -36,9 +36,12 @@ std::string emitExpr(const Expr *e) {
             return mangle(node.name);
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             const char *fn = node.op == BinOp::Add ? "ps_add"
+                            : node.op == BinOp::Sub ? "ps_sub"
+                            : node.op == BinOp::Mul ? "ps_mul"
+                            : node.op == BinOp::Div ? "ps_div"
                             : node.op == BinOp::Gt  ? "ps_gt"
                             : node.op == BinOp::Lt  ? "ps_lt"
-                                                     : "ps_eq";
+                                                      : "ps_eq";
             return std::string(fn) + "(" + emitExpr(node.lhs) + ", " + emitExpr(node.rhs) + ")";
         }
     }, e->node);

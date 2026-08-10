@@ -38,9 +38,9 @@ SetStmt     ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
 AddStmt     ::= "Add" Expr "to" IDENT "."
                 e.g. Add 1 to total.
 
-RepeatStmt  ::= "Repeat" Expr "times" ":" Stmt* "End" "repeat" "."
+RepeatStmt  ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
                 e.g.
-                Repeat 5 times:
+                Repeat 5:
                     Add 1 to total.
                 End repeat.
 
@@ -73,17 +73,19 @@ ProcedureStmt ::= "Procedure" IDENT "takes" IDENT ("," IDENT)* ":" Stmt* "End" "
 ## Expressions
 
 ```
-Expr        ::= Additive ( "is" Comparator Additive )?
-Comparator  ::= "greater" "than" | "less" "than" | "equal" "to"
+Expr           ::= Additive ( "is" Comparator Additive )?
+Comparator     ::= "greater" "than" | "less" "than" | "equal" "to"
 
-Additive    ::= Primary ( "plus" Primary )*
+Additive       ::= Multiplicative ( ("plus" | "minus") Multiplicative )*
 
-Primary     ::= NUMBER | STRING | IDENT
+Multiplicative ::= Primary ( ("times" | "divided by") Primary )*
+
+Primary        ::= NUMBER | STRING | IDENT
 ```
 
-Precedence, low to high: comparison → additive → primary. Comparisons do
-not chain (`a is greater than b is greater than c` is a parse error — the
-second `is` has nothing valid on its left).
+Precedence, low to high: comparison → additive → multiplicative → primary.
+`times` and `divided by` bind tighter than `plus` and `minus`, so
+`2 plus 3 times 4` means `2 plus (3 times 4)`.
 
 ## Known gaps in v0 (deliberately out of scope for the scaffold)
 

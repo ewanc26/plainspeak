@@ -20,6 +20,9 @@ PsValue ps_str(const char *v);
 
 /* "Add X to Y" / "X plus Y" */
 PsValue ps_add(PsValue a, PsValue b);
+PsValue ps_sub(PsValue a, PsValue b);
+PsValue ps_mul(PsValue a, PsValue b);
+PsValue ps_div(PsValue a, PsValue b);
 
 /* comparisons: result is PS_INT holding 0 or 1 */
 PsValue ps_gt(PsValue a, PsValue b);

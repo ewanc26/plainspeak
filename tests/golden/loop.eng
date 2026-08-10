@@ -1,5 +1,5 @@
 Set total to 0.
-Repeat 5 times:
+Repeat 5:
     Add 1 to total.
     Say total.
 End repeat.
