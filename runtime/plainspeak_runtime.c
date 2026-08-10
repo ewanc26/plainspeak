@@ -113,6 +113,16 @@ PsValue ps_ne(PsValue a, PsValue b) {
     return ps_int(0); /* unreachable */
 }
 
+PsValue ps_ge(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("compare", a, b);
+    return ps_int(a.as.i >= b.as.i);
+}
+
+PsValue ps_le(PsValue a, PsValue b) {
+    if (a.type != PS_INT || b.type != PS_INT) ps_type_error("compare", a, b);
+    return ps_int(a.as.i <= b.as.i);
+}
+
 long ps_as_int(PsValue v) {
     if (v.type != PS_INT) {
         fprintf(stderr, "runtime error: expected a number\n");

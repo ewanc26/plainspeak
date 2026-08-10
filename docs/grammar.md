@@ -89,7 +89,7 @@ AndExpr        ::= NotExpr ( "and" NotExpr )*
 NotExpr        ::= "not" NotExpr | Comparison
 Comparison     ::= Additive ( "is" Comparator Additive )?
 
-Comparator     ::= "greater" "than" | "less" "than" | "equal" "to" | "not" "equal" "to"
+Comparator     ::= "greater" "than" | "less" "than" | "equal" "to" | "not" "equal" "to" | "greater" "than" "or" "equal" "to" | "less" "than" "or" "equal" "to"
 
 Additive       ::= Multiplicative ( ("plus" | "minus") Multiplicative )*
 
