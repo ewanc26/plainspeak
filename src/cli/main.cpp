@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <sstream>
 
@@ -7,6 +8,7 @@
 #include "../codegen/c_emitter.h"
 #include "../lexer/tokenizer.h"
 #include "../parser/parser.h"
+#include "../sema/sema.h"
 
 // PLAINSPEAK_RUNTIME_C / PLAINSPEAK_RUNTIME_DIR are injected by CMake
 // (see CMakeLists.txt) so the compiled `plainspeak` binary can find the
@@ -59,6 +61,15 @@ int main(int argc, char **argv) {
     } catch (const ParseError &e) {
         std::cerr << "error: " << e.what() << "\n";
         return 1;
+    }
+
+    {
+        Sema sema;
+        auto diags = sema.check(program);
+        for (const auto &d : diags) {
+            std::cerr << "error[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
+        }
+        if (!diags.empty()) return 1;
     }
 
     std::string cSource = emitProgram(program);
