@@ -54,7 +54,7 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
     if (sourceLines) {
         auto it = sourceLines->find(s->line);
         if (it != sourceLines->end()) {
-            out << indent << "// from line " << s->line << ": \"" << it->second << "\"\n";
+            out << indent << "/* comment: " << it->second << " */\n";
         }
     }
     std::visit([&](auto &&node) {
