@@ -1,0 +1,7 @@
+Set total to 0.
+Repeat 5 times:
+    Add 1 to total.
+    Say total.
+End repeat.
+Say "final total is".
+Say total.

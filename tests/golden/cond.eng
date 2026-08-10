@@ -1,0 +1,10 @@
+Set x to 10.
+If x is greater than 5 then:
+    Say "x is big".
+End if.
+If x is less than 5 then:
+    Say "x is small".
+End if.
+Set greeting to "hello ".
+Set name to "world".
+Say greeting plus name.
