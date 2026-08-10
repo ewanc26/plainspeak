@@ -105,6 +105,14 @@ PsValue ps_eq(PsValue a, PsValue b) {
     return ps_int(0); /* unreachable */
 }
 
+PsValue ps_ne(PsValue a, PsValue b) {
+    if (a.type == PS_INT && b.type == PS_INT) return ps_int(a.as.i != b.as.i);
+    if (a.type == PS_STRING && b.type == PS_STRING)
+        return ps_int(strcmp(a.as.s, b.as.s) != 0);
+    ps_type_error("compare", a, b);
+    return ps_int(0); /* unreachable */
+}
+
 long ps_as_int(PsValue v) {
     if (v.type != PS_INT) {
         fprintf(stderr, "runtime error: expected a number\n");

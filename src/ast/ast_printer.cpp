@@ -22,6 +22,7 @@ std::string printExpr(const Expr *e) {
                           : node.op == BinOp::Gt  ? "is greater than"
                           : node.op == BinOp::Lt  ? "is less than"
                           : node.op == BinOp::Eq  ? "is equal to"
+                          : node.op == BinOp::Ne  ? "is not equal to"
                           : node.op == BinOp::And ? "and"
                                                    : "or";
             return "(" + printExpr(node.lhs) + " " + std::string(op) + " " + printExpr(node.rhs) + ")";

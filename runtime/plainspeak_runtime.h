@@ -35,6 +35,7 @@ PsValue ps_read(void);
 PsValue ps_gt(PsValue a, PsValue b);
 PsValue ps_lt(PsValue a, PsValue b);
 PsValue ps_eq(PsValue a, PsValue b);
+PsValue ps_ne(PsValue a, PsValue b);
 
 long ps_as_int(PsValue v);
 int  ps_truthy(PsValue v);

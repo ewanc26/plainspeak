@@ -282,7 +282,8 @@ Expr *Parser::parseComparison() {
         if (checkWord("greater") && checkWordAt(1, "than")) { op = BinOp::Gt; advance(); advance(); }
         else if (checkWord("less") && checkWordAt(1, "than")) { op = BinOp::Lt; advance(); advance(); }
         else if (checkWord("equal") && checkWordAt(1, "to")) { op = BinOp::Eq; advance(); advance(); }
-        else error("expected \"greater than\", \"less than\", or \"equal to\" after \"is\"");
+        else if (checkWord("not") && checkWordAt(1, "equal") && checkWordAt(2, "to")) { op = BinOp::Ne; advance(); advance(); advance(); }
+        else error("expected \"greater than\", \"less than\", \"equal to\", or \"not equal to\" after \"is\"");
         Expr *rhs = parseAdditive();
         return arena_.makeExpr(BinaryExpr{op, lhs, rhs}, line);
     }

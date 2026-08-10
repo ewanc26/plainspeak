@@ -46,6 +46,7 @@ std::string emitExpr(const Expr *e) {
                             : node.op == BinOp::Gt  ? "ps_gt"
                             : node.op == BinOp::Lt  ? "ps_lt"
                             : node.op == BinOp::Eq  ? "ps_eq"
+                            : node.op == BinOp::Ne  ? "ps_ne"
                             : node.op == BinOp::And ? "ps_and"
                                                      : "ps_or";
             return std::string(fn) + "(" + emitExpr(node.lhs) + ", " + emitExpr(node.rhs) + ")";
