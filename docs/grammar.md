@@ -12,13 +12,7 @@ Set total to 0. (Keep a running total.) Repeat 3: Add 2 to total. End repeat. Sa
 
 Physical newlines and indentation are ordinary whitespace only. They never open, close, or nest a block, so editors may wrap a paragraph without changing the program. `.` ends a sentence, `:` opens a compound sentence, and explicit `End <block>.` phrases close blocks.
 
-Standalone parentheticals are comments:
-
-```text
-Set total to 0. (This explanation is ignored by the program.) Add 1 to total.
-```
-
-A `(` encountered where a statement can begin starts a comment and preserves the text inside it. Parentheses encountered inside an expression remain expression grouping, so `Say (2 plus 3) times 4.` is not a comment. `#` comments and the old `Comment ... .` sentence form are not part of the grammar.
+Standalone parentheticals are comments. A `(` encountered where a statement can begin starts a comment and preserves the text inside it. Parentheses inside an expression remain expression grouping. `#` comments and the old `Comment ... .` sentence form are not part of the grammar.
 
 ## Lexical notes
 
@@ -41,13 +35,16 @@ Resolved by exact, case-insensitive lookup — never fuzzy matching:
 ## Statements
 
 ```text
-Stmt ::= SayStmt | SetStmt | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
+Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt
+       | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | RepeatStmt | IfStmt | WhileStmt | ForEachStmt
        | CallStmt | ProcedureStmt | ReturnStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
 SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
+DeclareStmt ::= "Declare" IDENT "as" CType ("with" "value" Expr)? "."
+StoreThroughStmt ::= ("Set" | "Let" | "Make") "value" "at" Expr "to" Expr "."
 AddStmt ::= "Add" Expr "to" IDENT "."
 SubStmt ::= "Subtract" Expr "from" IDENT "."
 ReadStmt ::= "Read" IDENT "."
@@ -65,53 +62,35 @@ ProcedureStmt ::= "Procedure" IDENT ("takes" IDENT ("," IDENT)*)? ":" Stmt* "End
 ReturnStmt ::= "Return" Expr "."
 ```
 
+`Set` has two related roles. If its name does not exist in the current visible scopes, it creates the existing inferred boxed PlainSpeak variable. If that name already denotes a variable, `Set` assigns a new value to it instead. Explicit C-compatible objects are introduced only with `Declare`.
+
 Examples are intentionally formatted as paragraphs:
 
 ```text
-Say "Hello, world!". Set total to 0. Add 1 to total. Subtract 1 from total.
+Say "Hello, world!". Set total to 0. Add 1 to total. Set total to 9. Say total.
 ```
 
 ```text
 If total is greater than 5 then: Say "big". Else: Say "small". End if. While total is less than 10: Add 1 to total. End while.
 ```
 
-```text
-Procedure greet takes name: Say name. End procedure. Call greet with "world" done.
-```
-
 ## Lists
 
-Lists are mutable, homogeneous collections of numbers, decimals, or strings. Nested lists are rejected by semantic analysis. Positions are **one-based**, matching how a person would normally say “the first item”.
-
-A non-empty list states its items in order:
+Lists are mutable, homogeneous collections of numbers, decimals, or strings. Nested lists and native pointers are not list element types in the current language. Positions are **one-based**.
 
 ```text
-Set primes to List with 2 followed by 3 followed by 5 done.
+Set primes to List with 2 followed by 3 followed by 5 done. Say Item at 2 in primes. Replace item at 2 in primes with 11. Remove item at 1 from primes. Append 7 to primes.
 ```
-
-An empty list states its element type so the compiler does not need to guess:
 
 ```text
-Set names to Empty list of strings. Append "Ada" to names.
+Set names to Empty list of strings. Append "Ada" to names. For each name in names: Say name. End for.
 ```
 
-Reading and mutation use prose operations:
+`For each` evaluates the list expression once and snapshots its current values when iteration begins. Mutating the original list inside the loop does not change which values remain to be visited. Lists are otherwise reference values at runtime.
 
-```text
-Say Item at 2 in primes. Replace item at 2 in primes with 11. Remove item at 1 from primes. Append 7 to primes.
-```
+## C type spellings
 
-Iteration is a block sentence and introduces a scoped item name:
-
-```text
-For each prime in primes: Say prime. End for.
-```
-
-`For each` evaluates the list expression once and snapshots its current values when iteration begins. Mutating the original list inside the loop does not change which values remain to be visited, although those mutations still affect the original list after the loop. Lists are otherwise reference values at runtime, so assigning one list variable to another aliases the same mutable collection.
-
-## C scalar type spellings and queries
-
-The first C-capability type surface exposes the ordinary scalar C types through deterministic prose spellings. These spellings are source-level type descriptions and are separate from the legacy inferred `number`/`decimal` value names.
+PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer types:
 
 ```text
 CScalarType ::= "void"
@@ -130,26 +109,65 @@ CScalarType ::= "void"
               | "float"
               | "decimal"
               | "long" "decimal"
+
+CType ::= CScalarType | "pointer" "to" CType
 ```
 
-They map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` deliberately remains distinct from both signed and unsigned character types because C defines plain `char` as a distinct type even though its range follows one of them on a target.
+The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` remains distinct from both signed and unsigned character types, matching C.
 
-Two type-query expressions are currently available:
+`pointer to` is recursive:
 
 ```text
-SizeOfTypeExpr ::= "Size" "of" "type" CScalarType
-AlignOfTypeExpr ::= "Alignment" "of" "type" CScalarType
+Declare p as pointer to integer. Declare pp as pointer to pointer to integer.
+```
+
+A `void` type may be the pointee of a pointer, but a standalone object cannot be declared as `void`.
+
+## Native objects and pointers
+
+`Declare` creates an object with actual C storage and layout rather than a boxed `PsValue`:
+
+```text
+Declare count as integer with value 41. Declare fraction as float with value 2.5.
+```
+
+A direct top-level declaration has translation-unit scope and static storage duration in the generated program. Its optional PlainSpeak initializer executes during program startup in source order, so it may use ordinary PlainSpeak expressions. A declaration inside a procedure or block is emitted as an automatic C object at that point. A top-level declaration without an initializer receives C's zero initialization; an automatic declaration without an initializer has C's ordinary indeterminate initial value and must not be read before a value is assigned.
+
+The address and indirection operations are prose equivalents of C `&` and unary `*`:
+
+```text
+Declare count as integer with value 41. Declare where as pointer to integer with value Address of count. Set value at where to 42. Say Value at where.
+```
+
+`Address of IDENT` is valid only for an explicit native object. It deliberately does not expose the address of a legacy boxed `PsValue`, because that box is an implementation detail rather than the C object represented by the PlainSpeak value.
+
+`Value at pointer` dereferences a non-void object pointer. `Set value at pointer to value.` stores through that pointer. Pointer-to-pointer indirection composes naturally:
+
+```text
+Declare x as integer with value 7. Declare p as pointer to integer with value Address of x. Declare pp as pointer to pointer to integer with value Address of p. Say Value at Value at pp.
+```
+
+Native arithmetic scalar declarations accept arithmetic initializers and assignments using C assignment conversion at the generated-C boundary. Compatible object pointers may be assigned directly; object-pointer/`void *` compatibility is recognised. Full integer promotions and the complete usual-arithmetic-conversion model remain separate conformance work.
+
+Pointer arithmetic, relational/equality pointer comparison, pointer truthiness, function pointers, pointer-valued legacy procedure parameters/returns, qualifiers, arrays, and allocation are **not** enabled by this tranche.
+
+## Size and alignment queries
+
+```text
+SizeOfTypeExpr ::= "Size" "of" "type" CType
+SizeOfExpr ::= "Size" "of" Primary
+AlignOfTypeExpr ::= "Alignment" "of" "type" CType
 ```
 
 Examples:
 
 ```text
-Say Size of type character. Say Size of type unsigned long long integer. Say Alignment of type long decimal.
+Say Size of type character. Say Size of type pointer to integer. Say Alignment of type long decimal. Declare x as integer with value 1. Say Size of x.
 ```
 
-`Size of type` has C `sizeof(type)` semantics for the supported complete scalar types. `Alignment of type` has C11 `_Alignof(type)` semantics. Both produce a current PlainSpeak whole `number`; a future native `size_t`-equivalent type is still required for complete C object-model parity. Asking either question about `void` is a semantic error because `void` is not an object type.
+`Size of type` lowers to C `sizeof(type)`. `Alignment of type` lowers to C11 `_Alignof(type)`. `Size of` an expression uses the semantic type of the operand and does not evaluate that operand, matching the unevaluated nature of ordinary non-VLA C `sizeof` for the currently supported native object types.
 
-The exact sizes and alignments of most C scalar types are target properties and are intentionally **not** fixed by PlainSpeak. For example, PlainSpeak does not promise that a `long integer` is eight bytes. The C guarantee that character types occupy one byte is preserved.
+Results are currently boxed back into PlainSpeak `number`, so native `size_t` is still pending. Exact scalar and pointer sizes/alignments remain target properties; PlainSpeak does not impose LP64 or another data model.
 
 ## Expressions
 
@@ -174,8 +192,11 @@ Power ::= Primary ("to" "the" "power" "of" Primary)*
 Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
           | "minus" Primary
           | "(" Expr ")"
+          | "Address" "of" IDENT
+          | "Value" "at" Primary
           | "Length" "of" Primary
           | SizeOfTypeExpr
+          | SizeOfExpr
           | AlignOfTypeExpr
           | ListExpr
           | EmptyListExpr
@@ -190,37 +211,28 @@ EmptyListExpr ::= "Empty" "list" "of" ("numbers" | "decimals" | "strings")
 ItemExpr ::= "Item" "at" Expr "in" Primary
 ```
 
-Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Unary `minus`, list access, length, C type queries, and function calls bind as primaries. Parentheses inside expressions override precedence.
+Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Addressing, indirection, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
 
-## Types
+## Types and representation boundary
 
-Legacy PlainSpeak scalar value types:
+Legacy PlainSpeak values remain:
 
-- `number` — integer (`long` in the current runtime)
-- `decimal` — floating-point (`double` in the current runtime)
-- `string` — text
+- `number` — boxed signed C `long`
+- `decimal` — boxed C `double`
+- `string` — runtime text
+- homogeneous mutable lists of those values
 
-Collection types:
+Explicit `Declare` objects instead use native C storage for the `CType` written in source. These two representations are intentionally distinct. Reading a native arithmetic object in a legacy expression boxes its current value; assigning a legacy numeric expression into a native arithmetic object converts it back to that object's C type.
 
-- `list of numbers`
-- `list of decimals`
-- `list of strings`
-
-The compiler's structural semantic type system additionally represents the C scalar family above plus pointers, arrays, function types, qualifiers, aggregates, enums, C23 bit-precise integers and null pointers as foundations for later syntax. Representation in the compiler is not the same as a user-visible implemented capability; `docs/c-compatibility.md` is authoritative about status.
-
-Every item in a list must have exactly the same scalar type. `List with 1 followed by 2.5 done` is therefore a type error rather than an implicit promotion. Empty lists use the explicit `Empty list of ...` form for the same reason.
-
-`Length of` accepts either a string or a list. `Item at` returns the list's element type. `Append` and `Replace item` require an element of that same type, and list positions must be whole numbers.
-
-Arithmetic between two `number` values produces a `number`; whole-number division truncates toward zero and whole-number modulo uses the corresponding integer remainder. Arithmetic between `number` and `decimal` promotes to `decimal`. `plus` also allows string concatenation with scalar numeric values. Arithmetic and comparison do not operate on whole lists.
+The compiler's structural semantic type system also represents arrays, functions, qualifiers, aggregates, enums, C23 bit-precise integers and null pointers as foundations for later syntax. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
 
 ## Known gaps
 
-- `Size of type` currently boxes the C `size_t` result into legacy PlainSpeak `number`; native unsigned size types are part of the typed-object tranche.
-- Explicit native typed object declarations are not available yet.
-- Heap storage used by string concatenation, list snapshots, and lists is released only when the native process exits.
-- Lists cannot contain other lists.
-- There are no user-defined record/structure declarations yet.
-- Procedure parameter and return type declarations are still implicit.
+- `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
+- Pointer arithmetic/comparison and pointer conditions are pending.
+- Arrays/VLAs, structs/unions/bit-fields, enums, qualifiers, atomics, function pointers, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Procedure parameter and return type declarations remain implicit and cannot transport native pointers yet.
+- Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
+- Lists cannot contain lists or native pointers.
 
-Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, parser, semantic analysis, code generation, runtime behaviour, and tests must land together.
+Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, parser, semantic analysis, code generation, runtime behaviour, documentation, and tests must land together.
