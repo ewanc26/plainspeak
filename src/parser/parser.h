@@ -46,10 +46,14 @@ private:
     Stmt *parseSub();
     Stmt *parseRead();
     Stmt *parseReadFloat();
+    Stmt *parseAppend();
+    Stmt *parseReplaceItem();
+    Stmt *parseRemoveItem();
     Stmt *parseComment();
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseWhile();
+    Stmt *parseForEach();
     Stmt *parseCall();
     Stmt *parseReturn();
     Stmt *parseTopLevelStmt();
@@ -64,5 +68,5 @@ private:
     Expr *parseAdditive();    // plus/minus
     Expr *parseMultiplicative(); // times/divided by
     Expr *parsePower();       // to the power of
-    Expr *parsePrimary();     // literal / identifier
+    Expr *parsePrimary();     // literal / identifier / list operations
 };
