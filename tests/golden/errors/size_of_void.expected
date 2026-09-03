@@ -1,0 +1,1 @@
+error[E0012]: I can't ask for the size of void because void is not an object type.
