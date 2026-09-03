@@ -1,5 +1,5 @@
-#include <catch2/catch_test_macros.hpp>
 #include <catch2/catch_approx.hpp>
+#include <catch2/catch_test_macros.hpp>
 #include "../src/lexer/tokenizer.h"
 
 using Catch::Approx;
@@ -31,14 +31,22 @@ TEST_CASE("tokenizer handles float literals", "[lexer]") {
     CHECK(tokens[0].fval == Approx(3.14));
 }
 
-TEST_CASE("tokenizer handles parentheses", "[lexer]") {
-    Tokenizer t("(1 plus 2)");
+TEST_CASE("tokenizer keeps expression parentheses", "[lexer]") {
+    Tokenizer t("Say (1 plus 2).");
     auto tokens = t.tokenize();
-    REQUIRE(tokens.size() == 6);
-    CHECK(tokens[0].kind == TokKind::LParen);
-    CHECK(tokens[1].kind == TokKind::Number);
-    CHECK(tokens[4].kind == TokKind::RParen);
-    CHECK(tokens[5].kind == TokKind::Eof);
+    CHECK(tokens[1].kind == TokKind::LParen);
+    CHECK(tokens[5].kind == TokKind::RParen);
+}
+
+TEST_CASE("tokenizer captures parenthetical comments at statement boundaries", "[lexer]") {
+    Tokenizer t("Set x to 1. (Keep x around — punctuation # stays raw!) Say x.");
+    auto tokens = t.tokenize();
+    REQUIRE(tokens.size() > 6);
+    auto it = std::find_if(tokens.begin(), tokens.end(), [](const Token &token) {
+        return token.kind == TokKind::Comment;
+    });
+    REQUIRE(it != tokens.end());
+    CHECK(it->text == "Keep x around — punctuation # stays raw!");
 }
 
 TEST_CASE("tokenizer handles strings with escapes", "[lexer]") {
@@ -55,4 +63,16 @@ TEST_CASE("tokenizer is case-insensitive", "[lexer]") {
     CHECK(tokens[0].text == "say");
     CHECK(tokens[1].text == "print");
     CHECK(tokens[2].text == "set");
+}
+
+TEST_CASE("newlines are ordinary whitespace", "[lexer]") {
+    Tokenizer paragraph("Set x to 1. Say x.");
+    Tokenizer wrapped("Set x to 1.\n\nSay x.");
+    auto a = paragraph.tokenize();
+    auto b = wrapped.tokenize();
+    REQUIRE(a.size() == b.size());
+    for (size_t i = 0; i < a.size(); ++i) {
+        CHECK(a[i].kind == b[i].kind);
+        CHECK(a[i].text == b[i].text);
+    }
 }
