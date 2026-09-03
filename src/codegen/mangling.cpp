@@ -18,11 +18,11 @@ const std::unordered_set<std::string> c_keywords = {
 
 const std::unordered_set<std::string> runtime_symbols = {
     "ps_int", "ps_str", "ps_add", "ps_gt", "ps_lt", "ps_eq", "ps_as_int",
-    "ps_truthy", "ps_say", "ps_sub", "ps_mul", "ps_div", "ps_mod",
-    "ps_and", "ps_or", "ps_not", "ps_neg", "ps_double", "ps_read",
-    "ps_read_double", "ps_sin", "ps_cos", "ps_tan", "ps_sqrt", "ps_log",
-    "ps_abs", "ps_floor", "ps_ceil", "ps_pow", "PsValue", "PS_INT",
-    "PS_DOUBLE", "PS_STRING"
+    "ps_as_double", "ps_truthy", "ps_say", "ps_sub", "ps_mul", "ps_div",
+    "ps_mod", "ps_and", "ps_or", "ps_not", "ps_neg", "ps_double",
+    "ps_read", "ps_read_double", "ps_sin", "ps_cos", "ps_tan", "ps_sqrt",
+    "ps_log", "ps_abs", "ps_floor", "ps_ceil", "ps_pow", "PsValue",
+    "PS_INT", "PS_DOUBLE", "PS_STRING"
 };
 
 }
