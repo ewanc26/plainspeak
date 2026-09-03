@@ -57,7 +57,9 @@ PsValue ps_ge(PsValue a, PsValue b);
 PsValue ps_le(PsValue a, PsValue b);
 
 long ps_as_int(PsValue v);
-double ps_as_double(PsValue v);
+static inline double ps_as_double(PsValue v) {
+    return v.type == PS_DOUBLE ? v.as.d : (double)ps_as_int(v);
+}
 int ps_truthy(PsValue v);
 
 void ps_say(PsValue v);
