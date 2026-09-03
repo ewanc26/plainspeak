@@ -5,22 +5,15 @@
 
 namespace {
 
-bool isNumeric(const Type &t) {
-    return t.isNumeric();
-}
-
-bool isList(const Type &t) {
-    return t.isList();
-}
+bool isNumeric(const Type &t) { return t.isNumeric(); }
+bool isList(const Type &t) { return t.isList(); }
 
 Type listElementType(const Type &t) {
     if (t.kind == TypeKind::List && t.elementType) return *t.elementType;
     return Type::number();
 }
 
-Type listTypeFor(Type t) {
-    return Type::listOf(std::move(t));
-}
+Type listTypeFor(Type t) { return Type::listOf(std::move(t)); }
 
 Type listTypeFor(ListElementKind kind) {
     if (kind == ListElementKind::Decimal) return Type::listOf(Type::decimal());
@@ -29,14 +22,20 @@ Type listTypeFor(ListElementKind kind) {
 }
 
 std::string integerName(const Type &t) {
+    if (t.integerRank == IntegerRank::Char) {
+        if (t.charSignedness == CharSignedness::Plain) return "character";
+        if (t.charSignedness == CharSignedness::Unsigned) return "unsigned character";
+        return "signed character";
+    }
+
     std::string name;
     if (t.isUnsigned) name += "unsigned ";
     switch (t.integerRank) {
-        case IntegerRank::Char: name += "char"; break;
-        case IntegerRank::Short: name += "short"; break;
-        case IntegerRank::Int: name += "int"; break;
+        case IntegerRank::Char: break;
+        case IntegerRank::Short: name += "short integer"; break;
+        case IntegerRank::Int: name += "integer"; break;
         case IntegerRank::Long: name += "number"; break;
-        case IntegerRank::LongLong: name += "long long"; break;
+        case IntegerRank::LongLong: name += "long long integer"; break;
     }
     return name;
 }
@@ -48,11 +47,10 @@ std::string typeToString(const Type &t) {
         case TypeKind::Integer: return integerName(t);
         case TypeKind::Floating:
             if (t.floatingRank == FloatingRank::Float) return "float";
-            if (t.floatingRank == FloatingRank::LongDouble) return "long double";
+            if (t.floatingRank == FloatingRank::LongDouble) return "long decimal";
             return "decimal";
         case TypeKind::String: return "string";
-        case TypeKind::List:
-            return "list of " + typeToString(listElementType(t)) + (listElementType(t).kind == TypeKind::String ? "s" : "s");
+        case TypeKind::List: return "list of " + typeToString(listElementType(t)) + "s";
         case TypeKind::Pointer:
             return "pointer to " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown"));
         case TypeKind::Array:
@@ -75,9 +73,7 @@ std::vector<Diag> Sema::check(const std::vector<Stmt *> &program) {
     scopes_.clear();
     procTable_.clear();
     scopes_.emplace_back();
-
     for (Stmt *s : program) checkStmt(s, diags);
-
     scopes_.pop_back();
     return diags;
 }
@@ -180,9 +176,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
             Type rhs = inferExpr(node.rhs, line, diags);
             if (node.op == UnaryOp::Neg) {
-                if (!isNumeric(rhs)) {
-                    diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
-                }
+                if (!isNumeric(rhs)) diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
                 return rhs;
             }
             if (rhs != Type::number()) {
@@ -206,11 +200,19 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({2, line, "I can't get the length of a " + typeToString(operand) + ". It must be a string or a list."});
             }
             return Type::number();
+        } else if constexpr (std::is_same_v<T, SizeOfTypeExpr>) {
+            if (node.type.kind == TypeSpecKind::Void) {
+                diags.push_back({12, line, "I can't ask for the size of void because void is not an object type."});
+            }
+            return Type::number();
+        } else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
+            if (node.type.kind == TypeSpecKind::Void) {
+                diags.push_back({12, line, "I can't ask for the alignment of void because void is not an object type."});
+            }
+            return Type::number();
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
-            if (!isNumeric(arg)) {
-                diags.push_back({2, line, "I can't apply " + node.func + " to a " + typeToString(arg) + "."});
-            }
+            if (!isNumeric(arg)) diags.push_back({2, line, "I can't apply " + node.func + " to a " + typeToString(arg) + "."});
             return Type::decimal();
         } else if constexpr (std::is_same_v<T, PowExpr>) {
             Type base = inferExpr(node.base, line, diags);
