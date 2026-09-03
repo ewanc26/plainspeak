@@ -17,21 +17,21 @@ An arbitrary-C escape hatch does **not** count as parity.
 
 | ID | Status | Scope |
 |---|---|---|
-| `types.integer-model` | foundation | Integer ranks and signedness; current `number` remains signed C `long`. |
+| `types.integer-model` | foundation | Structural integer ranks/signedness exist and explicit native declarations can use the ordinary C integer family; full promotions/conversions remain incomplete. |
 | `types.bitint` | foundation | C23 bit-precise integer type is structurally representable. |
-| `types.floating-model` | foundation | Float/double/long-double ranks are structurally representable. |
+| `types.floating-model` | foundation | Float/double/long-double ranks are structurally represented and native objects can use all three; the full C floating environment/model is still incomplete. |
 | `types.complex` | planned | Complex objects and arithmetic. |
-| `types.boolean` | foundation | Boolean type can be represented; legacy literal semantics remain numeric for now. |
-| `types.nullptr` | foundation | C23 null-pointer type can be represented. |
-| `types.object-representation` | planned | Object size, padding, representation and lifetime rules. |
-| `types.sizeof-alignof` | foundation | C scalar `sizeof(type)` and C11 `_Alignof(type)` queries are exposed as `Size of type ...` / `Alignment of type ...`; object-expression queries, requested alignment, native `size_t`, arrays and aggregate layouts remain pending. |
-| `types.qualifiers` | foundation | const/volatile/restrict/atomic qualification is represented structurally. |
-| `types.pointers` | foundation | Pointer types are represented; pointer expressions/lowering are next. |
-| `types.function-types` | foundation | Return/parameter/variadic function shapes are represented. |
-| `types.arrays` | foundation | Known-bound and incomplete array types are represented. |
+| `types.boolean` | foundation | Native `_Bool` objects are spellable; legacy true/false literals still preserve numeric compatibility. |
+| `types.nullptr` | foundation | C23 null-pointer type can be represented; source literal/conversions remain pending. |
+| `types.object-representation` | foundation | Explicit scalar and object-pointer declarations now use real C storage, address, size and alignment; arrays, aggregates, padding/effective-type rules and complete lifetime semantics remain pending. |
+| `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` work for current native scalar/pointer types; requested alignment, native `size_t`, arrays and aggregate layouts remain pending. |
+| `types.qualifiers` | foundation | const/volatile/restrict/atomic qualification is represented structurally but is not yet source-spellable. |
+| `types.pointers` | foundation | Recursive object-pointer types, address-of, dereference, store-through and compatible pointer assignment work; arithmetic/comparison, null pointers, function pointers and qualifiers remain pending. |
+| `types.function-types` | foundation | Return/parameter/variadic function shapes are represented; procedures still use legacy implicit number signatures. |
+| `types.arrays` | foundation | Known-bound and incomplete array types are represented; source syntax and lvalue/decay semantics remain pending. |
 | `types.vla` | planned | C99 variable-length and variably modified types. |
-| `types.structures` | foundation | Tagged structure identity is represented; members/layout pending. |
-| `types.unions` | foundation | Tagged union identity is represented; members/layout pending. |
+| `types.structures` | foundation | Tagged structure identity is represented; members/layout/bit-fields/flexible members pending. |
+| `types.unions` | foundation | Tagged union identity is represented; members/layout/access pending. |
 | `types.enumerations` | foundation | Enum identity is represented; enumerators/underlying rules pending. |
 | `types.aliases` | planned | typedef-equivalent aliases. |
 | `types.typeof` | planned | C23 `typeof` / `typeof_unqual` capability. |
@@ -43,13 +43,13 @@ An arbitrary-C escape hatch does **not** count as parity.
 | ID | Status |
 |---|---|
 | `expr.integer-promotions` | planned |
-| `expr.value-categories` | planned |
+| `expr.value-categories` | foundation |
 | `expr.arithmetic` | foundation |
 | `expr.bitwise` | planned |
 | `expr.shifts` | planned |
 | `expr.assignment` | foundation |
 | `expr.increment-decrement` | planned |
-| `expr.address-indirection` | planned |
+| `expr.address-indirection` | foundation |
 | `expr.subscript-member` | planned |
 | `expr.casts` | planned |
 | `expr.conditional` | planned |
@@ -59,19 +59,23 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.generic-selection` | planned |
 | `expr.nullptr-conversions` | planned |
 
+Explicit native objects are now modifiable lvalues, and pointer dereference produces a modifiable lvalue when its pointee is a concrete object type. `Set` can reassign an existing object, while `Set value at ... to ...` stores through a pointer. This is intentionally still **foundation** because array/function decay, qualifiers, complete pointer conversions, compound-assignment rules, sequencing and the full usual arithmetic conversions are not complete.
+
 ## Declarations, storage and linkage
 
 | ID | Status |
 |---|---|
-| `decl.explicit-declarations` | planned |
-| `decl.storage-duration` | planned |
+| `decl.explicit-declarations` | foundation |
+| `decl.storage-duration` | foundation |
 | `decl.linkage` | planned |
 | `decl.storage-specifiers` | planned |
-| `decl.initializers` | planned |
+| `decl.initializers` | foundation |
 | `decl.designated-initializers` | planned |
 | `decl.empty-initialization` | planned |
 | `decl.static-assert` | planned |
 | `decl.attributes` | planned |
+
+`Declare` now introduces native scalar/pointer objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer initializers exist and are type-checked. User-controlled linkage, `static`/`extern`/thread storage, allocated storage, aggregate/designated initialization and full constant-initializer rules remain missing.
 
 ## Statements and control flow
 
@@ -99,6 +103,8 @@ PlainSpeak's `Repeat` and `For each` remain useful language extensions, but they
 | `func.recursion` | foundation |
 | `func.inline` | planned |
 | `func.noreturn` | planned |
+
+Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer.
 
 ## Translation and preprocessing capability
 
@@ -177,6 +183,6 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 
 ## Implementation sequence
 
-The structural semantic type model removed the original six-value type-system ceiling. The next executable layer now exposes ordinary C scalar type spellings plus target-correct size/alignment queries, while deliberately leaving the matrix row at **foundation** because the result is still boxed into legacy PlainSpeak `number` and there are no addressable native typed objects yet.
+The compiler now has structural C-capable semantic types, scalar type/size/alignment queries, and the first real C object layer. Explicit native scalar/pointer declarations carry actual C storage; semantic analysis retains those types into codegen; object addresses, dereference/store-through, pointer-to-pointer composition and object-expression `sizeof` are first-class source capabilities.
 
-The next milestone is explicit native typed declarations and addressable storage. That unlocks true object-expression `sizeof`, pointers, fixed arrays and alignment requests without pretending a boxed `PsValue` has a C object's layout. Function signatures, aggregates/initializers and the remaining C99 expression/control-flow model follow on that base; C11/C17/C23 facilities build on it rather than being disconnected runtime tricks.
+The next milestones are fixed arrays plus subscript/decay/pointer arithmetic, then typed function signatures/function pointers, aggregates/initializers, qualifiers/storage/linkage and the remainder of the C99 expression/control-flow model. C11/C17/C23 facilities build on that object model rather than being disconnected runtime tricks.
