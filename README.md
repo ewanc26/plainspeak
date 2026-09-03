@@ -1,8 +1,10 @@
 # plainspeak
 
-A deterministic, non-ML esoteric programming language whose syntax is a constrained subset of English. PlainSpeak programs are written as prose paragraphs: punctuation and explicit phrases such as `End if.` carry the structure, while line breaks and indentation are just whitespace.
+A deterministic, non-ML **prose-syntax systems programming language**. PlainSpeak programs are written as paragraphs: punctuation and explicit phrases such as `End if.` carry structure, while line breaks and indentation are ordinary whitespace.
 
-The compiler frontend is C++20, emits readable portable C99, then hands that C to the system compiler for the native binary.
+PlainSpeak's capability target is the union of **C99, C11, C17 and C23**: the language is intended to grow to cover the C object/type model, pointer and array semantics, aggregates, linkage/storage duration, preprocessing/build-time capabilities, atomics/threads, and the hosted/freestanding standard-library surface while retaining PlainSpeak syntax. Arbitrary embedded C does not count as support.
+
+The compiler frontend is C++20. Current programs lower through readable portable C plus the PlainSpeak runtime and then use the system C compiler for the native binary. Backend lowering may use runtime helpers or a newer C dialect as C99-C23 facilities are implemented; the frontend semantics and conformance tests define the language, not accidental capabilities of the host compiler.
 
 ```text
 Set primes to List with 2 followed by 3 followed by 5 done. (Grow the list before reading it.) Append 7 to primes. For each prime in primes: Say prime. End for.
@@ -10,7 +12,12 @@ Set primes to List with 2 followed by 3 followed by 5 done. (Grow the list befor
 
 Parentheses at statement boundaries are comments. Parentheses inside expressions still group arithmetic, so `Say (2 plus 3) times 4.` behaves as expected.
 
-See `AGENTS.md` for architecture/conventions and `docs/grammar.md` for the full syntax reference.
+See:
+
+- `docs/grammar.md` for the accepted PlainSpeak syntax.
+- `docs/c-compatibility.md` for the C99-C23 capability matrix and conformance rules.
+- `tests/conformance/c99-c23.json` for the machine-readable implementation status.
+- `AGENTS.md` for compiler architecture and contribution invariants.
 
 ## Build
 
@@ -18,6 +25,7 @@ See `AGENTS.md` for architecture/conventions and `docs/grammar.md` for the full 
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
 ctest --test-dir build
+python3 scripts/check_c_conformance.py
 ./scripts/run_golden_tests.sh build/plainspeak
 ```
 
