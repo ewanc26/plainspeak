@@ -46,6 +46,7 @@ add_executable(unit_tests
     tests/unit/test_parser.cpp
     tests/unit/test_sema.cpp
     tests/unit/test_lists.cpp
+    tests/unit/test_types.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp
