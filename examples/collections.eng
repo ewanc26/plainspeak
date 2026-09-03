@@ -1,0 +1,1 @@
+Set guests to Empty list of strings. (Build a guest list as ordinary prose.) Append "Ada" to guests. Append "Grace" to guests. Append "Edsger" to guests. Say "There are " plus Length of guests plus " guests.". For each guest in guests: Say "Welcome, " plus guest plus "!". End for.
