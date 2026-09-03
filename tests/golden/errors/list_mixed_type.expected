@@ -1,1 +1,1 @@
-error[E0009]: Every item in a list must have the same type; this list starts with a number but also contains a string.
+error[E0009]: Every item in a list must have the same supported scalar type; this list starts with a number but also contains a string.
