@@ -1,49 +1,64 @@
 # Runtime API reference
 
-The generated C program links against `plainspeak_runtime.h` / `plainspeak_runtime.c`.
-All built-in verbs emit calls into this runtime; generated code never inlines
-logic for anything the runtime provides.
+Generated C99 links against `plainspeak_runtime.h` / `plainspeak_runtime.c`. Built-in language operations emit calls into this runtime rather than open-coding their behaviour.
 
 ## Value type
 
-```c
-typedef enum { PS_INT, PS_STRING } PsType;
+`PsValue` is a tagged scalar-or-list value:
 
-typedef struct {
+```c
+typedef enum { PS_INT, PS_DOUBLE, PS_STRING, PS_LIST } PsType;
+
+typedef struct PsValue PsValue;
+typedef struct PsList PsList;
+
+struct PsValue {
     PsType type;
-    union { long i; const char *s; } as;
-} PsValue;
+    union {
+        long i;
+        double d;
+        const char *s;
+        PsList *list;
+    } as;
+};
 ```
 
-## Functions
+Lists own a growable C array of `PsValue` entries. The compiler's semantic pass enforces homogeneous element types; the runtime supplies bounds checking and mutation. List variables are reference values, so copying a `PsValue` that contains a list aliases the same collection.
+
+## Core functions
+
+| Function | Description |
+|---|---|
+| `ps_int`, `ps_double`, `ps_str` | Wrap scalar literals. |
+| `ps_add`, `ps_sub`, `ps_mul`, `ps_div`, `ps_mod` | Scalar arithmetic and supported string concatenation. |
+| `ps_length` | Return the length of a string or list. |
+| `ps_as_int` | Coerce a numeric value to `long`. |
+| `ps_truthy` | Test scalar truthiness or whether a list is non-empty. |
+| `ps_say` | Print a scalar or list followed by a newline. |
+
+## List functions
 
 | Function | Signature | Description |
-|----------|-----------|-------------|
-| `ps_int` | `PsValue ps_int(long v)` | Wrap an integer literal. |
-| `ps_str` | `PsValue ps_str(const char *v)` | Wrap a string literal. |
-| `ps_add` | `PsValue ps_add(PsValue a, PsValue b)` | Integer add or string concatenation. |
-| `ps_gt` | `PsValue ps_gt(PsValue a, PsValue b)` | Greater-than comparison. |
-| `ps_lt` | `PsValue ps_lt(PsValue a, PsValue b)` | Less-than comparison. |
-| `ps_eq` | `PsValue ps_eq(PsValue a, PsValue b)` | Equality comparison. |
-| `ps_as_int` | `long ps_as_int(PsValue v)` | Coerce to integer (runtime error if string). |
-| `ps_truthy` | `int ps_truthy(PsValue v)` | Non-zero / non-empty is true. |
-| `ps_say` | `void ps_say(PsValue v)` | Print a value to stdout. |
+|---|---|---|
+| `ps_list_from` | `PsValue ps_list_from(const PsValue *items, size_t count)` | Allocate a mutable list and copy the supplied values. |
+| `ps_list_append` | `void ps_list_append(PsValue list, PsValue item)` | Append an item, growing capacity when needed. |
+| `ps_list_get` | `PsValue ps_list_get(PsValue list, PsValue index)` | Read a one-based position with bounds checking. |
+| `ps_list_set` | `void ps_list_set(PsValue list, PsValue index, PsValue item)` | Replace a one-based position. |
+| `ps_list_remove` | `void ps_list_remove(PsValue list, PsValue index)` | Remove a one-based position and compact the tail. |
+
+The runtime rejects non-list operands and out-of-range positions even though valid generated programs should have had their static type errors caught earlier.
 
 ## Name mangling
 
-User identifiers are mangled to C identifiers using the rule in
-`src/codegen/mangling.cpp`:
+User identifiers are mangled in `src/codegen/mangling.cpp`:
 
 - Default: `ps_<name>`
-- If that would collide with a C keyword or a runtime symbol,
-  the escaped form `_ps_<name>` is used instead.
+- If that would collide with a C keyword or runtime symbol, the escaped form `_ps_<name>` is used instead.
 
-The full C keyword set covered (C89/C90, C99, C11, C23) is checked in
-`mangling.cpp`, so no generated identifier can shadow a keyword or a
-runtime entry point.
+The C keyword set covered by `mangling.cpp` includes C89/C90, C99, C11, and C23 spellings.
 
-## Known limitations
+## Memory model and known limitations
 
-- String concatenation results are heap-allocated and never freed.
-- No static type checking: type mismatches are caught at runtime by
-  `ps_add` / `ps_as_int`.
+- String-concatenation buffers and list allocations live until process exit; v1 has no language-level ownership or garbage collection.
+- Lists cannot contain lists, as enforced by semantic analysis.
+- Runtime list storage is intentionally untyped; homogeneity is a compiler invariant rather than duplicated metadata in the C ABI.

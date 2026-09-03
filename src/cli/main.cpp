@@ -53,9 +53,7 @@ int main(int argc, char **argv) {
         std::istringstream lineStream(source);
         std::string line;
         int lineNum = 1;
-        while (std::getline(lineStream, line)) {
-            sourceLines[lineNum++] = line;
-        }
+        while (std::getline(lineStream, line)) sourceLines[lineNum++] = line;
     }
 
     std::vector<Token> tokens;
@@ -105,7 +103,7 @@ int main(int argc, char **argv) {
     }
 
     std::string cmd = "cc -std=c99 -O2 -I" PLAINSPEAK_RUNTIME_DIR
-                       " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -o \"" + outPath + "\"";
+                       " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm -o \"" + outPath + "\"";
     int rc = std::system(cmd.c_str());
     if (rc != 0) {
         std::cerr << "error: generated C failed to compile (this is a plainspeak bug, "

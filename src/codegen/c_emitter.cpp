@@ -1,4 +1,5 @@
 #include "c_emitter.h"
+#include <cstdio>
 #include <set>
 #include <sstream>
 #include <variant>
@@ -15,9 +16,13 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
             else if constexpr (std::is_same_v<T, SubStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, ReadStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, ReadFloatStmt>) out.insert(node.varName);
+            else if constexpr (std::is_same_v<T, AppendStmt>) out.insert(node.varName);
+            else if constexpr (std::is_same_v<T, ReplaceItemStmt>) out.insert(node.varName);
+            else if constexpr (std::is_same_v<T, RemoveItemStmt>) out.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, out);
             else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, out); collectVars(node.elseBody, out); }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out);
+            else if constexpr (std::is_same_v<T, ForEachStmt>) collectVars(node.body, out);
         }, s->node);
     }
 }
@@ -43,8 +48,20 @@ std::string emitExpr(const Expr *e) {
             return "ps_str(\"" + escaped + "\")";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             return mangle(node.name);
+        } else if constexpr (std::is_same_v<T, ListExpr>) {
+            std::string result = "ps_list_from((PsValue[]){";
+            for (size_t i = 0; i < node.items.size(); ++i) {
+                if (i > 0) result += ", ";
+                result += emitExpr(node.items[i]);
+            }
+            result += "}, " + std::to_string(node.items.size()) + ")";
+            return result;
+        } else if constexpr (std::is_same_v<T, EmptyListExpr>) {
+            return "ps_list_from(NULL, 0)";
+        } else if constexpr (std::is_same_v<T, ItemExpr>) {
+            return "ps_list_get(" + emitExpr(node.list) + ", " + emitExpr(node.index) + ")";
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
-            return "ps_int(ps_strlen(" + emitExpr(node.operand) + "))";
+            return "ps_int(ps_length(" + emitExpr(node.operand) + "))";
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             static const std::unordered_map<std::string, std::string> mathFn = {
                 {"sine", "ps_sin"}, {"cosine", "ps_cos"}, {"tangent", "ps_tan"},
@@ -101,6 +118,7 @@ std::string emitExpr(const Expr *e) {
             }
             return std::string("ps_not(") + emitExpr(node.rhs) + ")";
         }
+        return "ps_int(0L)";
     }, e->node);
 }
 
@@ -110,7 +128,7 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
     if (sourceLines && !isComment) {
         auto it = sourceLines->find(s->line);
         if (it != sourceLines->end()) {
-            out << indent << "/* comment: " << it->second << " */\n";
+            out << indent << "/* from source: " << it->second << " */\n";
         }
     }
     std::visit([&](auto &&node) {
@@ -129,12 +147,19 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
             out << indent << mangle(node.varName) << " = ps_read();\n";
         } else if constexpr (std::is_same_v<T, ReadFloatStmt>) {
             out << indent << mangle(node.varName) << " = ps_read_double();\n";
+        } else if constexpr (std::is_same_v<T, AppendStmt>) {
+            out << indent << "ps_list_append(" << mangle(node.varName) << ", " << emitExpr(node.expr) << ");\n";
+        } else if constexpr (std::is_same_v<T, ReplaceItemStmt>) {
+            out << indent << "ps_list_set(" << mangle(node.varName) << ", " << emitExpr(node.index)
+                << ", " << emitExpr(node.expr) << ");\n";
+        } else if constexpr (std::is_same_v<T, RemoveItemStmt>) {
+            out << indent << "ps_list_remove(" << mangle(node.varName) << ", " << emitExpr(node.index) << ");\n";
         } else if constexpr (std::is_same_v<T, CommentStmt>) {
             out << indent << "/* " << node.text << " */\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
-            std::string i = "ps__i" + std::to_string(loopCounter);
-            std::string n = "ps__n" + std::to_string(loopCounter);
-            loopCounter++;
+            int id = loopCounter++;
+            std::string i = "ps__i" + std::to_string(id);
+            std::string n = "ps__n" + std::to_string(id);
             out << indent << "{\n";
             out << indent << "    long " << n << " = ps_as_int(" << emitExpr(node.count) << ");\n";
             out << indent << "    for (long " << i << " = 0; " << i << " < " << n << "; " << i << "++) {\n";
@@ -155,6 +180,19 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             out << indent << "while (ps_truthy(" << emitExpr(node.cond) << ")) {\n";
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, sourceLines);
+            out << indent << "}\n";
+        } else if constexpr (std::is_same_v<T, ForEachStmt>) {
+            int id = loopCounter++;
+            std::string list = "ps__list" + std::to_string(id);
+            std::string i = "ps__i" + std::to_string(id);
+            std::string n = "ps__n" + std::to_string(id);
+            out << indent << "{\n";
+            out << indent << "    PsValue " << list << " = " << emitExpr(node.list) << ";\n";
+            out << indent << "    long " << n << " = ps_length(" << list << ");\n";
+            out << indent << "    for (long " << i << " = 1; " << i << " <= " << n << "; " << i << "++) {\n";
+            out << indent << "        PsValue " << mangle(node.itemName) << " = ps_list_get(" << list << ", ps_int(" << i << "));\n";
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, sourceLines);
+            out << indent << "    }\n";
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             out << indent << "(void)" << mangle(node.name) << "(";
@@ -203,9 +241,13 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             else if constexpr (std::is_same_v<T, SubStmt>) vars.insert(node.varName);
             else if constexpr (std::is_same_v<T, ReadStmt>) vars.insert(node.varName);
             else if constexpr (std::is_same_v<T, ReadFloatStmt>) vars.insert(node.varName);
+            else if constexpr (std::is_same_v<T, AppendStmt>) vars.insert(node.varName);
+            else if constexpr (std::is_same_v<T, ReplaceItemStmt>) vars.insert(node.varName);
+            else if constexpr (std::is_same_v<T, RemoveItemStmt>) vars.insert(node.varName);
             else if constexpr (std::is_same_v<T, RepeatStmt>) collectVars(node.body, vars);
             else if constexpr (std::is_same_v<T, IfStmt>) { collectVars(node.thenBody, vars); collectVars(node.elseBody, vars); }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, vars);
+            else if constexpr (std::is_same_v<T, ForEachStmt>) collectVars(node.body, vars);
         }, s->node);
     }
 

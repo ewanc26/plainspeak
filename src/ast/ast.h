@@ -17,33 +17,41 @@ struct FloatLit  { double value; };
 struct StringLit { std::string value; };
 struct VarRef    { std::string name; };
 
+enum class ListElementKind { Number, Decimal, String };
 enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
 enum class UnaryOp { Not, Neg };
-struct UnaryExpr    { UnaryOp op; Expr *rhs; };
-struct LengthExpr   { Expr *operand; };
-struct MathCallExpr { std::string func; Expr *arg; };
-struct CallExpr     { std::string name; std::vector<Expr *> args; };
-struct PowExpr      { Expr *base; Expr *exp; };
-struct BinaryExpr   { BinOp op; Expr *lhs; Expr *rhs; };
+struct UnaryExpr     { UnaryOp op; Expr *rhs; };
+struct LengthExpr    { Expr *operand; };
+struct MathCallExpr  { std::string func; Expr *arg; };
+struct CallExpr      { std::string name; std::vector<Expr *> args; };
+struct PowExpr       { Expr *base; Expr *exp; };
+struct BinaryExpr    { BinOp op; Expr *lhs; Expr *rhs; };
+struct ListExpr      { std::vector<Expr *> items; };
+struct EmptyListExpr { ListElementKind elementKind; };
+struct ItemExpr      { Expr *index; Expr *list; };
 
-using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef, LengthExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr, UnaryExpr>;
+using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef, LengthExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr, UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
-struct SayStmt      { Expr *expr; };
-struct SetStmt      { std::string name; Expr *expr; };
-struct AddStmt      { Expr *expr; std::string varName; };
-struct SubStmt      { Expr *expr; std::string varName; };
-struct ReadStmt     { std::string varName; };
+struct SayStmt       { Expr *expr; };
+struct SetStmt       { std::string name; Expr *expr; };
+struct AddStmt       { Expr *expr; std::string varName; };
+struct SubStmt       { Expr *expr; std::string varName; };
+struct ReadStmt      { std::string varName; };
 struct ReadFloatStmt { std::string varName; };
-struct RepeatStmt   { Expr *count; std::vector<Stmt *> body; };
-struct IfStmt       { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
-struct WhileStmt    { Expr *cond; std::vector<Stmt *> body; };
-struct CallStmt     { std::string name; std::vector<Expr *> args; };
+struct AppendStmt    { Expr *expr; std::string varName; };
+struct ReplaceItemStmt { Expr *index; std::string varName; Expr *expr; };
+struct RemoveItemStmt  { Expr *index; std::string varName; };
+struct RepeatStmt    { Expr *count; std::vector<Stmt *> body; };
+struct IfStmt        { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
+struct WhileStmt     { Expr *cond; std::vector<Stmt *> body; };
+struct ForEachStmt   { std::string itemName; Expr *list; std::vector<Stmt *> body; };
+struct CallStmt      { std::string name; std::vector<Expr *> args; };
 struct ProcedureStmt { std::string name; std::vector<std::string> params; std::vector<Stmt *> body; };
-struct ReturnStmt   { Expr *expr; };
-struct CommentStmt  { std::string text; };
+struct ReturnStmt    { Expr *expr; };
+struct CommentStmt   { std::string text; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt, ReadFloatStmt, RepeatStmt, IfStmt, WhileStmt, CallStmt, ProcedureStmt, ReturnStmt, CommentStmt>;
+using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt, ReadFloatStmt, AppendStmt, ReplaceItemStmt, RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt, ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt, CommentStmt>;
 struct Stmt { StmtNode node; int line; };
 
 // Owns every Expr/Stmt produced while parsing one source file. deque

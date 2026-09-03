@@ -34,7 +34,7 @@ add_executable(plainspeak
 target_include_directories(plainspeak PRIVATE src)
 
 # The compiled plainspeak binary shells out to the system C compiler at
-# *run time* to build user programs, and needs to find the runtime source
+# run time to build user programs, and needs to find the runtime source
 # and header regardless of the working directory it's invoked from.
 target_compile_definitions(plainspeak PRIVATE
     PLAINSPEAK_RUNTIME_C="${CMAKE_SOURCE_DIR}/runtime/plainspeak_runtime.c"
@@ -45,6 +45,7 @@ add_executable(unit_tests
     tests/unit/test_lexer.cpp
     tests/unit/test_parser.cpp
     tests/unit/test_sema.cpp
+    tests/unit/test_lists.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp
@@ -52,5 +53,12 @@ add_executable(unit_tests
 )
 target_include_directories(unit_tests PRIVATE src)
 target_link_libraries(unit_tests PRIVATE Catch2::Catch2WithMain)
-
 add_test(NAME unit_tests COMMAND unit_tests)
+
+add_executable(runtime_tests
+    tests/unit/test_runtime.c
+    runtime/plainspeak_runtime.c
+)
+target_include_directories(runtime_tests PRIVATE runtime)
+target_link_libraries(runtime_tests PRIVATE m)
+add_test(NAME runtime_tests COMMAND runtime_tests)
