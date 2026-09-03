@@ -20,9 +20,9 @@ struct AnalysisResult {
     std::unordered_map<const Stmt *, Type> declarationTypes;
     std::unordered_set<const Expr *> nativeObjectRefs;
 
-    // Set/Add/Sub statements targeting explicitly declared C objects. The
-    // target type is retained so codegen performs the conversion sema checked.
-    std::unordered_map<const Stmt *, Type> nativeMutationTypes;
+    // Existing Set/Add/Sub statements whose target is an explicitly declared
+    // C object. C itself performs the already-checked assignment conversion.
+    std::unordered_set<const Stmt *> nativeMutationTargets;
 };
 
 class Sema {
