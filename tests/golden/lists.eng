@@ -1,0 +1,1 @@
+Set primes to List with 2 followed by 3 followed by 5 done. (Mutate the list before walking it.) Append 7 to primes. Replace item at 2 in primes with 11. Remove item at 1 from primes. Say primes. Say Length of primes. Say Item at 1 in primes. For each prime in primes: Say prime. End for.
