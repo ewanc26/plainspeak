@@ -5,39 +5,67 @@
 
 namespace {
 
-bool isNumeric(Type t) {
-    return t == Type::Int || t == Type::Double;
+bool isNumeric(const Type &t) {
+    return t.isNumeric();
 }
 
-bool isList(Type t) {
-    return t == Type::ListInt || t == Type::ListDouble || t == Type::ListString;
+bool isList(const Type &t) {
+    return t.isList();
 }
 
-Type listElementType(Type t) {
-    if (t == Type::ListDouble) return Type::Double;
-    if (t == Type::ListString) return Type::String;
-    return Type::Int;
+Type listElementType(const Type &t) {
+    if (t.kind == TypeKind::List && t.elementType) return *t.elementType;
+    return Type::number();
 }
 
 Type listTypeFor(Type t) {
-    if (t == Type::Double) return Type::ListDouble;
-    if (t == Type::String) return Type::ListString;
-    return Type::ListInt;
+    return Type::listOf(std::move(t));
 }
 
 Type listTypeFor(ListElementKind kind) {
-    if (kind == ListElementKind::Decimal) return Type::ListDouble;
-    if (kind == ListElementKind::String) return Type::ListString;
-    return Type::ListInt;
+    if (kind == ListElementKind::Decimal) return Type::listOf(Type::decimal());
+    if (kind == ListElementKind::String) return Type::listOf(Type::string());
+    return Type::listOf(Type::number());
 }
 
-std::string typeToString(Type t) {
-    if (t == Type::Int) return "number";
-    if (t == Type::Double) return "decimal";
-    if (t == Type::String) return "string";
-    if (t == Type::ListInt) return "list of numbers";
-    if (t == Type::ListDouble) return "list of decimals";
-    return "list of strings";
+std::string integerName(const Type &t) {
+    std::string name;
+    if (t.isUnsigned) name += "unsigned ";
+    switch (t.integerRank) {
+        case IntegerRank::Char: name += "char"; break;
+        case IntegerRank::Short: name += "short"; break;
+        case IntegerRank::Int: name += "int"; break;
+        case IntegerRank::Long: name += "number"; break;
+        case IntegerRank::LongLong: name += "long long"; break;
+    }
+    return name;
+}
+
+std::string typeToString(const Type &t) {
+    switch (t.kind) {
+        case TypeKind::Void: return "void";
+        case TypeKind::Boolean: return "boolean";
+        case TypeKind::Integer: return integerName(t);
+        case TypeKind::Floating:
+            if (t.floatingRank == FloatingRank::Float) return "float";
+            if (t.floatingRank == FloatingRank::LongDouble) return "long double";
+            return "decimal";
+        case TypeKind::String: return "string";
+        case TypeKind::List:
+            return "list of " + typeToString(listElementType(t)) + (listElementType(t).kind == TypeKind::String ? "s" : "s");
+        case TypeKind::Pointer:
+            return "pointer to " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown"));
+        case TypeKind::Array:
+            return "array of " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown"));
+        case TypeKind::Function: return "function";
+        case TypeKind::Structure: return "structure " + t.tag;
+        case TypeKind::Union: return "union " + t.tag;
+        case TypeKind::Enumeration: return "enumeration " + t.tag;
+        case TypeKind::BitInt:
+            return std::string(t.isUnsigned ? "unsigned " : "") + "bit integer of width " + std::to_string(t.bitWidth);
+        case TypeKind::Nullptr: return "null pointer";
+    }
+    return "unknown type";
 }
 
 } // namespace
@@ -62,7 +90,7 @@ std::pair<Type, bool> Sema::lookupVar(const std::string &name, int line, std::ve
         if (it->count(name)) return {(*it)[name], true};
     }
     diags.push_back({1, line, "I don't know what to do with \"" + name + "\" — it is used here but never declared. Use Set to create it first."});
-    return {Type::Int, false};
+    return {Type::number(), false};
 }
 
 bool Sema::declareVar(const std::string &name, Type type, int line, std::vector<Diag> &diags) {
@@ -71,17 +99,17 @@ bool Sema::declareVar(const std::string &name, Type type, int line, std::vector<
         diags.push_back({6, line, "variable \"" + name + "\" is already declared in this scope"});
         return false;
     }
-    current[name] = type;
+    current[name] = std::move(type);
     return true;
 }
 
 Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
     return std::visit([&](auto &&node) -> Type {
         using T = std::decay_t<decltype(node)>;
-        if constexpr (std::is_same_v<T, IntLit>) return Type::Int;
-        else if constexpr (std::is_same_v<T, BoolLit>) return Type::Int;
-        else if constexpr (std::is_same_v<T, FloatLit>) return Type::Double;
-        else if constexpr (std::is_same_v<T, StringLit>) return Type::String;
+        if constexpr (std::is_same_v<T, IntLit>) return Type::number();
+        else if constexpr (std::is_same_v<T, BoolLit>) return Type::number();
+        else if constexpr (std::is_same_v<T, FloatLit>) return Type::decimal();
+        else if constexpr (std::is_same_v<T, StringLit>) return Type::string();
         else if constexpr (std::is_same_v<T, VarRef>) {
             auto [type, found] = lookupVar(node.name, line, diags);
             (void)found;
@@ -91,7 +119,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             Type first = inferExpr(node.items.front(), line, diags);
             if (isList(first)) {
                 diags.push_back({9, line, "Lists can't contain other lists. Use numbers, decimals, or strings as list items."});
-                first = Type::Int;
+                first = Type::number();
             }
             for (size_t i = 1; i < node.items.size(); ++i) {
                 Type item = inferExpr(node.items[i], line, diags);
@@ -107,13 +135,13 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, ItemExpr>) {
             Type index = inferExpr(node.index, line, diags);
-            if (index != Type::Int) {
+            if (index != Type::number()) {
                 diags.push_back({11, line, "A list position must be a whole number, not a " + typeToString(index) + "."});
             }
             Type list = inferExpr(node.list, line, diags);
             if (!isList(list)) {
                 diags.push_back({10, line, "I can only take an item from a list, not a " + typeToString(list) + "."});
-                return Type::Int;
+                return Type::number();
             }
             return listElementType(list);
         }
@@ -121,33 +149,33 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             Type lhs = inferExpr(node.lhs, line, diags);
             Type rhs = inferExpr(node.rhs, line, diags);
             if (node.op == BinOp::Add) {
-                bool lhsStr = lhs == Type::String;
-                bool rhsStr = rhs == Type::String;
+                bool lhsStr = lhs.kind == TypeKind::String;
+                bool rhsStr = rhs.kind == TypeKind::String;
                 bool lhsNum = isNumeric(lhs);
                 bool rhsNum = isNumeric(rhs);
                 if (!((lhsStr && rhsStr) || (lhsNum && rhsNum) || (lhsStr && rhsNum) || (lhsNum && rhsStr))) {
                     diags.push_back({2, line, "I can't add a " + typeToString(lhs) + " to a " + typeToString(rhs) + "."});
                 }
-                if (lhsStr || rhsStr) return Type::String;
-                if (lhs == Type::Double || rhs == Type::Double) return Type::Double;
-                return Type::Int;
+                if (lhsStr || rhsStr) return Type::string();
+                if (lhs.isFloating() || rhs.isFloating()) return Type::decimal();
+                return Type::number();
             } else if (node.op == BinOp::Sub || node.op == BinOp::Mul || node.op == BinOp::Div || node.op == BinOp::Mod) {
                 if (!isNumeric(lhs) || !isNumeric(rhs)) {
                     diags.push_back({2, line, "I can't do arithmetic on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
                 }
-                if (lhs == Type::Double || rhs == Type::Double) return Type::Double;
-                return Type::Int;
+                if (lhs.isFloating() || rhs.isFloating()) return Type::decimal();
+                return Type::number();
             } else if (node.op == BinOp::And || node.op == BinOp::Or) {
-                if (lhs != Type::Int || rhs != Type::Int) {
+                if (lhs != Type::number() || rhs != Type::number()) {
                     diags.push_back({2, line, "I can't do logical " + std::string(node.op == BinOp::And ? "and" : "or") + " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
                 }
-                return Type::Int;
+                return Type::number();
             } else {
                 if (isList(lhs) || isList(rhs) ||
                     (lhs != rhs && !(isNumeric(lhs) && isNumeric(rhs)))) {
                     diags.push_back({4, line, "I can't compare a " + typeToString(lhs) + " with a " + typeToString(rhs) + ". Both sides must be comparable scalar values."});
                 }
-                return Type::Int;
+                return Type::number();
             }
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
             Type rhs = inferExpr(node.rhs, line, diags);
@@ -157,10 +185,10 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 }
                 return rhs;
             }
-            if (rhs != Type::Int) {
+            if (rhs != Type::number()) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
             }
-            return Type::Int;
+            return Type::number();
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             if (!procTable_.count(node.name)) {
                 diags.push_back({7, line, "I don't know what to do with \"" + node.name + "\" — it is used here but never defined. Use Procedure to create it first."});
@@ -171,28 +199,28 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 }
                 for (Expr *arg : node.args) inferExpr(arg, line, diags);
             }
-            return Type::Int;
+            return Type::number();
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             Type operand = inferExpr(node.operand, line, diags);
-            if (operand != Type::String && !isList(operand)) {
+            if (operand != Type::string() && !isList(operand)) {
                 diags.push_back({2, line, "I can't get the length of a " + typeToString(operand) + ". It must be a string or a list."});
             }
-            return Type::Int;
+            return Type::number();
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
             if (!isNumeric(arg)) {
                 diags.push_back({2, line, "I can't apply " + node.func + " to a " + typeToString(arg) + "."});
             }
-            return Type::Double;
+            return Type::decimal();
         } else if constexpr (std::is_same_v<T, PowExpr>) {
             Type base = inferExpr(node.base, line, diags);
             Type exp = inferExpr(node.exp, line, diags);
             if (!isNumeric(base) || !isNumeric(exp)) {
                 diags.push_back({2, line, "I can't raise a " + typeToString(base) + " to the power of a " + typeToString(exp) + "."});
             }
-            return Type::Double;
+            return Type::decimal();
         }
-        return Type::Int;
+        return Type::number();
     }, e->node);
 }
 
@@ -217,9 +245,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({3, s->line, "I can't subtract a " + typeToString(exprType) + " from \"" + node.varName + "\" which is a " + typeToString(varType) + "."});
             }
         } else if constexpr (std::is_same_v<T, ReadStmt>) {
-            declareVar(node.varName, Type::Int, s->line, diags);
+            declareVar(node.varName, Type::number(), s->line, diags);
         } else if constexpr (std::is_same_v<T, ReadFloatStmt>) {
-            declareVar(node.varName, Type::Double, s->line, diags);
+            declareVar(node.varName, Type::decimal(), s->line, diags);
         } else if constexpr (std::is_same_v<T, AppendStmt>) {
             auto [listType, found] = lookupVar(node.varName, s->line, diags);
             Type itemType = inferExpr(node.expr, s->line, diags);
@@ -230,7 +258,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
         } else if constexpr (std::is_same_v<T, ReplaceItemStmt>) {
             Type indexType = inferExpr(node.index, s->line, diags);
-            if (indexType != Type::Int) {
+            if (indexType != Type::number()) {
                 diags.push_back({11, s->line, "A list position must be a whole number, not a " + typeToString(indexType) + "."});
             }
             auto [listType, found] = lookupVar(node.varName, s->line, diags);
@@ -242,7 +270,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
         } else if constexpr (std::is_same_v<T, RemoveItemStmt>) {
             Type indexType = inferExpr(node.index, s->line, diags);
-            if (indexType != Type::Int) {
+            if (indexType != Type::number()) {
                 diags.push_back({11, s->line, "A list position must be a whole number, not a " + typeToString(indexType) + "."});
             }
             auto [listType, found] = lookupVar(node.varName, s->line, diags);
@@ -251,7 +279,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             Type countType = inferExpr(node.count, s->line, diags);
-            if (countType != Type::Int) {
+            if (countType != Type::number()) {
                 diags.push_back({5, s->line, "Repeat needs a whole number of times, not a " + typeToString(countType) + "."});
             }
             enterScope();
@@ -277,7 +305,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             leaveScope();
         } else if constexpr (std::is_same_v<T, ForEachStmt>) {
             Type listType = inferExpr(node.list, s->line, diags);
-            Type itemType = Type::Int;
+            Type itemType = Type::number();
             if (!isList(listType)) {
                 diags.push_back({10, s->line, "For each needs a list to walk through, not a " + typeToString(listType) + "."});
             } else {
@@ -288,7 +316,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             for (Stmt *inner : node.body) checkStmt(inner, diags);
             leaveScope();
         } else if constexpr (std::is_same_v<T, ProcedureStmt>) {
-            std::vector<Type> paramTypes(node.params.size(), Type::Int);
+            std::vector<Type> paramTypes(node.params.size(), Type::number());
             procTable_[node.name] = paramTypes;
             enterScope();
             for (size_t i = 0; i < node.params.size(); ++i) {
