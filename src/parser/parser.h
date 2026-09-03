@@ -6,14 +6,10 @@
 #include "../ast/ast.h"
 #include "../lexer/tokenizer.h"
 
-// Thrown on any sentence that doesn't match a known pattern. main.cpp
-// catches this and prints it as the user-facing diagnostic.
 struct ParseError : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-// Recursive-descent parser, one function per grammar rule in
-// docs/grammar.md — keep that file and this one in sync.
 class Parser {
 public:
     Parser(std::vector<Token> tokens, Arena &arena)
@@ -28,7 +24,7 @@ private:
 
     const Token &peek(int ahead = 0) const;
     const Token &advance();
-    bool checkWord(const std::string &word) const; // case-insensitive Ident match
+    bool checkWord(const std::string &word) const;
     bool checkWordAt(int ahead, const std::string &word) const;
     void expectWord(const std::string &word);
     void expectDot();
@@ -39,6 +35,7 @@ private:
     Stmt *parseStmt();
     Stmt *parseSay();
     Stmt *parseSet();
+    Stmt *parseDeclare();
     Stmt *parseAdd();
     Stmt *parseSub();
     Stmt *parseRead();
@@ -59,13 +56,13 @@ private:
 
     TypeSpec parseTypeSpec();
 
-    Expr *parseExpr();        // or (lowest precedence)
+    Expr *parseExpr();
     Expr *parseOr();
     Expr *parseAnd();
     Expr *parseNot();
-    Expr *parseComparison();  // is greater/less/equal
-    Expr *parseAdditive();    // plus/minus
-    Expr *parseMultiplicative(); // times/divided by
-    Expr *parsePower();       // to the power of
-    Expr *parsePrimary();     // literal / identifier / list / type operations
+    Expr *parseComparison();
+    Expr *parseAdditive();
+    Expr *parseMultiplicative();
+    Expr *parsePower();
+    Expr *parsePrimary();
 };
