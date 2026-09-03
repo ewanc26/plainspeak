@@ -1,0 +1,1 @@
+Declare x as integer with value 41. Declare p as pointer to integer with value Address of x. Set value at p to 42. Say x. Say Value at p. Set x to 50. Say Value at p. Declare pp as pointer to pointer to integer with value Address of p. Say Value at Value at pp. Declare f as float with value 2.5. Say f. Say Size of x is greater than 0. Say Size of Address of x is greater than 0.
