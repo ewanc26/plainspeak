@@ -4,6 +4,28 @@
 
 namespace {
 
+std::string printTypeSpec(TypeSpec type) {
+    switch (type.kind) {
+        case TypeSpecKind::Void: return "void";
+        case TypeSpecKind::Boolean: return "boolean";
+        case TypeSpecKind::Character: return "character";
+        case TypeSpecKind::SignedCharacter: return "signed character";
+        case TypeSpecKind::UnsignedCharacter: return "unsigned character";
+        case TypeSpecKind::ShortInteger: return "short integer";
+        case TypeSpecKind::UnsignedShortInteger: return "unsigned short integer";
+        case TypeSpecKind::Integer: return "integer";
+        case TypeSpecKind::UnsignedInteger: return "unsigned integer";
+        case TypeSpecKind::LongInteger: return "long integer";
+        case TypeSpecKind::UnsignedLongInteger: return "unsigned long integer";
+        case TypeSpecKind::LongLongInteger: return "long long integer";
+        case TypeSpecKind::UnsignedLongLongInteger: return "unsigned long long integer";
+        case TypeSpecKind::Float: return "float";
+        case TypeSpecKind::Decimal: return "decimal";
+        case TypeSpecKind::LongDecimal: return "long decimal";
+    }
+    return "<unknown type>";
+}
+
 std::string printExpr(const Expr *e) {
     return std::visit([&](auto &&node) -> std::string {
         using T = std::decay_t<decltype(node)>;
@@ -31,6 +53,10 @@ std::string printExpr(const Expr *e) {
             return "Item at " + printExpr(node.index) + " in " + printExpr(node.list);
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             return "Length of " + printExpr(node.operand);
+        } else if constexpr (std::is_same_v<T, SizeOfTypeExpr>) {
+            return "Size of type " + printTypeSpec(node.type);
+        } else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
+            return "Alignment of type " + printTypeSpec(node.type);
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             std::string out = "Call " + node.name;
             if (!node.args.empty()) {
