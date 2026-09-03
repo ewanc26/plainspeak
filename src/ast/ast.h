@@ -18,19 +18,49 @@ struct StringLit { std::string value; };
 struct VarRef    { std::string name; };
 
 enum class ListElementKind { Number, Decimal, String };
+
+// AST-level type spellings are deliberately independent from semantic Type.
+// Sema resolves these source spellings into the structural C-capable model in
+// src/sema/type.h.
+enum class TypeSpecKind {
+    Void,
+    Boolean,
+    Character,
+    SignedCharacter,
+    UnsignedCharacter,
+    ShortInteger,
+    UnsignedShortInteger,
+    Integer,
+    UnsignedInteger,
+    LongInteger,
+    UnsignedLongInteger,
+    LongLongInteger,
+    UnsignedLongLongInteger,
+    Float,
+    Decimal,
+    LongDecimal
+};
+
+struct TypeSpec { TypeSpecKind kind; };
+
 enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
 enum class UnaryOp { Not, Neg };
-struct UnaryExpr     { UnaryOp op; Expr *rhs; };
-struct LengthExpr    { Expr *operand; };
-struct MathCallExpr  { std::string func; Expr *arg; };
-struct CallExpr      { std::string name; std::vector<Expr *> args; };
-struct PowExpr       { Expr *base; Expr *exp; };
-struct BinaryExpr    { BinOp op; Expr *lhs; Expr *rhs; };
-struct ListExpr      { std::vector<Expr *> items; };
-struct EmptyListExpr { ListElementKind elementKind; };
-struct ItemExpr      { Expr *index; Expr *list; };
+struct UnaryExpr       { UnaryOp op; Expr *rhs; };
+struct LengthExpr      { Expr *operand; };
+struct SizeOfTypeExpr  { TypeSpec type; };
+struct AlignOfTypeExpr { TypeSpec type; };
+struct MathCallExpr    { std::string func; Expr *arg; };
+struct CallExpr        { std::string name; std::vector<Expr *> args; };
+struct PowExpr         { Expr *base; Expr *exp; };
+struct BinaryExpr      { BinOp op; Expr *lhs; Expr *rhs; };
+struct ListExpr        { std::vector<Expr *> items; };
+struct EmptyListExpr   { ListElementKind elementKind; };
+struct ItemExpr        { Expr *index; Expr *list; };
 
-using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef, LengthExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr, UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
+using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef,
+                              LengthExpr, SizeOfTypeExpr, AlignOfTypeExpr,
+                              MathCallExpr, CallExpr, PowExpr, BinaryExpr,
+                              UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
 struct SayStmt       { Expr *expr; };
@@ -51,7 +81,11 @@ struct ProcedureStmt { std::string name; std::vector<std::string> params; std::v
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt, ReadFloatStmt, AppendStmt, ReplaceItemStmt, RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt, ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt, CommentStmt>;
+using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt,
+                              ReadFloatStmt, AppendStmt, ReplaceItemStmt,
+                              RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt,
+                              ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt,
+                              CommentStmt>;
 struct Stmt { StmtNode node; int line; };
 
 // Owns every Expr/Stmt produced while parsing one source file. deque
