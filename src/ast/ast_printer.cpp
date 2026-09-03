@@ -4,7 +4,7 @@
 
 namespace {
 
-std::string printTypeSpec(TypeSpec type) {
+std::string printTypeSpec(const TypeSpec &type) {
     switch (type.kind) {
         case TypeSpecKind::Void: return "void";
         case TypeSpecKind::Boolean: return "boolean";
@@ -22,6 +22,8 @@ std::string printTypeSpec(TypeSpec type) {
         case TypeSpecKind::Float: return "float";
         case TypeSpecKind::Decimal: return "decimal";
         case TypeSpecKind::LongDecimal: return "long decimal";
+        case TypeSpecKind::Pointer:
+            return std::string("pointer to ") + (type.pointee ? printTypeSpec(*type.pointee) : "void");
     }
     return "<unknown type>";
 }
@@ -37,6 +39,8 @@ std::string printExpr(const Expr *e) {
             return buf;
         } else if constexpr (std::is_same_v<T, StringLit>) return "\"" + node.value + "\"";
         else if constexpr (std::is_same_v<T, VarRef>) return node.name;
+        else if constexpr (std::is_same_v<T, AddressOfExpr>) return "Address of " + node.name;
+        else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);
         else if constexpr (std::is_same_v<T, ListExpr>) {
             std::string out = "List with ";
             for (size_t i = 0; i < node.items.size(); ++i) {
@@ -55,6 +59,8 @@ std::string printExpr(const Expr *e) {
             return "Length of " + printExpr(node.operand);
         } else if constexpr (std::is_same_v<T, SizeOfTypeExpr>) {
             return "Size of type " + printTypeSpec(node.type);
+        } else if constexpr (std::is_same_v<T, SizeOfExpr>) {
+            return "Size of " + printExpr(node.operand);
         } else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
             return "Alignment of type " + printTypeSpec(node.type);
         } else if constexpr (std::is_same_v<T, CallExpr>) {
@@ -97,7 +103,13 @@ std::string printStmt(const Stmt *s) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, SayStmt>) return "Say " + printExpr(node.expr) + ". ";
         else if constexpr (std::is_same_v<T, SetStmt>) return "Set " + node.name + " to " + printExpr(node.expr) + ". ";
-        else if constexpr (std::is_same_v<T, AddStmt>) return "Add " + printExpr(node.expr) + " to " + node.varName + ". ";
+        else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
+            std::string out = "Declare " + node.name + " as " + printTypeSpec(node.type);
+            if (node.initializer) out += " with value " + printExpr(node.initializer);
+            return out + ". ";
+        } else if constexpr (std::is_same_v<T, StoreThroughStmt>) {
+            return "Set value at " + printExpr(node.pointer) + " to " + printExpr(node.expr) + ". ";
+        } else if constexpr (std::is_same_v<T, AddStmt>) return "Add " + printExpr(node.expr) + " to " + node.varName + ". ";
         else if constexpr (std::is_same_v<T, SubStmt>) return "Subtract " + printExpr(node.expr) + " from " + node.varName + ". ";
         else if constexpr (std::is_same_v<T, ReadStmt>) return "Read " + node.varName + ". ";
         else if constexpr (std::is_same_v<T, ReadFloatStmt>) return "ReadFloat " + node.varName + ". ";
