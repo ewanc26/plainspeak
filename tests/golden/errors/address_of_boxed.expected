@@ -1,0 +1,1 @@
+error[E0014]: I can only take Address of an explicitly declared native object; "x" is a boxed PlainSpeak value.
