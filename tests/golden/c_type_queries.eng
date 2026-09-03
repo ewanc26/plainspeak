@@ -1,0 +1,1 @@
+Say Size of type character. Say Size of type signed character. Say Size of type unsigned character. Say Alignment of type character. If Size of type integer is greater than 0 then: Say "integer-sized". End if. If Alignment of type long decimal is greater than 0 then: Say "aligned". End if.

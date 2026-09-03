@@ -11,7 +11,6 @@ endif()
 
 add_compile_options(-Wall -Wextra)
 
-# Test framework (Catch2, test-only)
 include(FetchContent)
 FetchContent_Declare(
     catch2
@@ -33,9 +32,6 @@ add_executable(plainspeak
 )
 target_include_directories(plainspeak PRIVATE src)
 
-# The compiled plainspeak binary shells out to the system C compiler at
-# run time to build user programs, and needs to find the runtime source
-# and header regardless of the working directory it's invoked from.
 target_compile_definitions(plainspeak PRIVATE
     PLAINSPEAK_RUNTIME_C="${CMAKE_SOURCE_DIR}/runtime/plainspeak_runtime.c"
     PLAINSPEAK_RUNTIME_DIR="${CMAKE_SOURCE_DIR}/runtime"
@@ -47,6 +43,7 @@ add_executable(unit_tests
     tests/unit/test_sema.cpp
     tests/unit/test_lists.cpp
     tests/unit/test_types.cpp
+    tests/unit/test_c_type_queries.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp

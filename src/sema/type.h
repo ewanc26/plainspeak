@@ -30,6 +30,7 @@ enum class TypeKind {
 };
 
 enum class IntegerRank { Char, Short, Int, Long, LongLong };
+enum class CharSignedness { Plain, Signed, Unsigned };
 enum class FloatingRank { Float, Double, LongDouble };
 
 struct TypeQualifiers {
@@ -47,6 +48,7 @@ struct Type {
 
     // Scalar metadata. Unused fields remain at their defaults for other kinds.
     IntegerRank integerRank = IntegerRank::Long;
+    CharSignedness charSignedness = CharSignedness::Plain;
     FloatingRank floatingRank = FloatingRank::Double;
     bool isUnsigned = false;
     std::size_t bitWidth = 0;
@@ -77,6 +79,20 @@ struct Type {
         t.kind = TypeKind::Integer;
         t.integerRank = rank;
         t.isUnsigned = unsignedValue;
+        if (rank == IntegerRank::Char) {
+            t.charSignedness = unsignedValue ? CharSignedness::Unsigned : CharSignedness::Signed;
+        }
+        return t;
+    }
+
+    // In C, plain char is a distinct type from both signed char and unsigned
+    // char even though its range matches one of them on a given target.
+    static Type character() {
+        Type t;
+        t.kind = TypeKind::Integer;
+        t.integerRank = IntegerRank::Char;
+        t.charSignedness = CharSignedness::Plain;
+        t.isUnsigned = false;
         return t;
     }
 
@@ -183,9 +199,10 @@ struct Type {
 
     bool operator==(const Type &other) const {
         if (kind != other.kind || qualifiers != other.qualifiers ||
-            integerRank != other.integerRank || floatingRank != other.floatingRank ||
-            isUnsigned != other.isUnsigned || bitWidth != other.bitWidth ||
-            arrayBound != other.arrayBound || variadic != other.variadic || tag != other.tag ||
+            integerRank != other.integerRank || charSignedness != other.charSignedness ||
+            floatingRank != other.floatingRank || isUnsigned != other.isUnsigned ||
+            bitWidth != other.bitWidth || arrayBound != other.arrayBound ||
+            variadic != other.variadic || tag != other.tag ||
             parameterTypes != other.parameterTypes) {
             return false;
         }

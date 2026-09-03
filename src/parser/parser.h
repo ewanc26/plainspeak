@@ -7,16 +7,13 @@
 #include "../lexer/tokenizer.h"
 
 // Thrown on any sentence that doesn't match a known pattern. main.cpp
-// catches this and prints it as the user-facing diagnostic — see
-// AGENTS.md §9 for the target error style (v0 keeps this plain; upgrading
-// to the "literal-minded listener" format with source spans is tracked in
-// docs/errors.md).
+// catches this and prints it as the user-facing diagnostic.
 struct ParseError : std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
 // Recursive-descent parser, one function per grammar rule in
-// docs/grammar.md — keep that file and this one in sync (AGENTS.md §5).
+// docs/grammar.md — keep that file and this one in sync.
 class Parser {
 public:
     Parser(std::vector<Token> tokens, Arena &arena)
@@ -60,6 +57,8 @@ private:
     Stmt *parseProcedure();
     std::vector<Stmt *> parseBlockUntil(const std::string &w1, const std::string &w2);
 
+    TypeSpec parseTypeSpec();
+
     Expr *parseExpr();        // or (lowest precedence)
     Expr *parseOr();
     Expr *parseAnd();
@@ -68,5 +67,5 @@ private:
     Expr *parseAdditive();    // plus/minus
     Expr *parseMultiplicative(); // times/divided by
     Expr *parsePower();       // to the power of
-    Expr *parsePrimary();     // literal / identifier / list operations
+    Expr *parsePrimary();     // literal / identifier / list / type operations
 };

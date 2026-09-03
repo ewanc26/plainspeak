@@ -7,6 +7,28 @@
 
 namespace {
 
+const char *emitCType(TypeSpec type) {
+    switch (type.kind) {
+        case TypeSpecKind::Void: return "void";
+        case TypeSpecKind::Boolean: return "_Bool";
+        case TypeSpecKind::Character: return "char";
+        case TypeSpecKind::SignedCharacter: return "signed char";
+        case TypeSpecKind::UnsignedCharacter: return "unsigned char";
+        case TypeSpecKind::ShortInteger: return "short";
+        case TypeSpecKind::UnsignedShortInteger: return "unsigned short";
+        case TypeSpecKind::Integer: return "int";
+        case TypeSpecKind::UnsignedInteger: return "unsigned int";
+        case TypeSpecKind::LongInteger: return "long";
+        case TypeSpecKind::UnsignedLongInteger: return "unsigned long";
+        case TypeSpecKind::LongLongInteger: return "long long";
+        case TypeSpecKind::UnsignedLongLongInteger: return "unsigned long long";
+        case TypeSpecKind::Float: return "float";
+        case TypeSpecKind::Decimal: return "double";
+        case TypeSpecKind::LongDecimal: return "long double";
+    }
+    return "void";
+}
+
 void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
     for (Stmt *s : stmts) {
         std::visit([&](auto &&node) {
@@ -62,6 +84,10 @@ std::string emitExpr(const Expr *e) {
             return "ps_list_get(" + emitExpr(node.list) + ", " + emitExpr(node.index) + ")";
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             return "ps_int(ps_length(" + emitExpr(node.operand) + "))";
+        } else if constexpr (std::is_same_v<T, SizeOfTypeExpr>) {
+            return std::string("ps_int((long)sizeof(") + emitCType(node.type) + "))";
+        } else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
+            return std::string("ps_int((long)_Alignof(") + emitCType(node.type) + "))";
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             static const std::unordered_map<std::string, std::string> mathFn = {
                 {"sine", "ps_sin"}, {"cosine", "ps_cos"}, {"tangent", "ps_tan"},
@@ -113,9 +139,7 @@ std::string emitExpr(const Expr *e) {
                                                      : "ps_or";
             return std::string(fn) + "(" + emitExpr(node.lhs) + ", " + emitExpr(node.rhs) + ")";
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
-            if (node.op == UnaryOp::Neg) {
-                return std::string("ps_neg(") + emitExpr(node.rhs) + ")";
-            }
+            if (node.op == UnaryOp::Neg) return std::string("ps_neg(") + emitExpr(node.rhs) + ")";
             return std::string("ps_not(") + emitExpr(node.rhs) + ")";
         }
         return "ps_int(0L)";
@@ -127,9 +151,7 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
     bool isComment = std::holds_alternative<CommentStmt>(s->node);
     if (sourceLines && !isComment) {
         auto it = sourceLines->find(s->line);
-        if (it != sourceLines->end()) {
-            out << indent << "/* from source: " << it->second << " */\n";
-        }
+        if (it != sourceLines->end()) out << indent << "/* from source: " << it->second << " */\n";
     }
     std::visit([&](auto &&node) {
         using T = std::decay_t<decltype(node)>;
@@ -259,17 +281,13 @@ std::string emitProgram(const std::vector<Stmt *> &program,
     if (!vars.empty()) out << "\n";
 
     for (Stmt *s : program) {
-        if (auto *proc = std::get_if<ProcedureStmt>(&s->node)) {
-            emitProcedure(*proc, out, sourceLines);
-        }
+        if (auto *proc = std::get_if<ProcedureStmt>(&s->node)) emitProcedure(*proc, out, sourceLines);
     }
 
     out << "int main(void) {\n";
     int loopCounter = 0;
     for (Stmt *s : program) {
-        if (!std::holds_alternative<ProcedureStmt>(s->node)) {
-            emitStmt(s, out, "    ", loopCounter, sourceLines);
-        }
+        if (!std::holds_alternative<ProcedureStmt>(s->node)) emitStmt(s, out, "    ", loopCounter, sourceLines);
     }
     out << "    return 0;\n";
     out << "}\n";

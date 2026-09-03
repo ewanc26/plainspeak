@@ -12,9 +12,6 @@
 #include "../parser/parser.h"
 #include "../sema/sema.h"
 
-// PLAINSPEAK_RUNTIME_C / PLAINSPEAK_RUNTIME_DIR are injected by CMake
-// (see CMakeLists.txt) so the compiled `plainspeak` binary can find the
-// runtime regardless of the current working directory it's invoked from.
 #ifndef PLAINSPEAK_RUNTIME_C
 #error "PLAINSPEAK_RUNTIME_C must be defined by the build system"
 #endif
@@ -102,7 +99,10 @@ int main(int argc, char **argv) {
         out << cSource;
     }
 
-    std::string cmd = "cc -std=c99 -O2 -I" PLAINSPEAK_RUNTIME_DIR
+    // C11 is the first backend dialect needed beyond the C99 baseline: it
+    // supplies the standard _Alignof operator used by PlainSpeak's alignment
+    // query. C99 programs remain valid C11 programs.
+    std::string cmd = "cc -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR
                        " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm -o \"" + outPath + "\"";
     int rc = std::system(cmd.c_str());
     if (rc != 0) {

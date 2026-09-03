@@ -1,6 +1,6 @@
 # Diagnostic codes
 
-Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messages read like the literal-minded listener the language is: state what was expected, what was found, and where.
+Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messages read like the literal-minded listener the language is: state what was expected, what it found, and where.
 
 ## Compile-time errors (sema pass)
 
@@ -17,6 +17,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0009 | List element type mismatch or nested list |
 | E0010 | List operation applied to a non-list value |
 | E0011 | List position is not a whole number |
+| E0012 | Size/alignment query applied to a non-object type such as `void` |
 
 ## Parse-time errors
 

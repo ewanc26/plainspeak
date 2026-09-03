@@ -109,6 +109,48 @@ For each prime in primes: Say prime. End for.
 
 `For each` evaluates the list expression once and snapshots its current values when iteration begins. Mutating the original list inside the loop does not change which values remain to be visited, although those mutations still affect the original list after the loop. Lists are otherwise reference values at runtime, so assigning one list variable to another aliases the same mutable collection.
 
+## C scalar type spellings and queries
+
+The first C-capability type surface exposes the ordinary scalar C types through deterministic prose spellings. These spellings are source-level type descriptions and are separate from the legacy inferred `number`/`decimal` value names.
+
+```text
+CScalarType ::= "void"
+              | "boolean"
+              | "character"
+              | "signed" "character"
+              | "unsigned" "character"
+              | "short" "integer"
+              | "unsigned" "short" "integer"
+              | "integer"
+              | "unsigned" "integer"
+              | "long" "integer"
+              | "unsigned" "long" "integer"
+              | "long" "long" "integer"
+              | "unsigned" "long" "long" "integer"
+              | "float"
+              | "decimal"
+              | "long" "decimal"
+```
+
+They map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` deliberately remains distinct from both signed and unsigned character types because C defines plain `char` as a distinct type even though its range follows one of them on a target.
+
+Two type-query expressions are currently available:
+
+```text
+SizeOfTypeExpr ::= "Size" "of" "type" CScalarType
+AlignOfTypeExpr ::= "Alignment" "of" "type" CScalarType
+```
+
+Examples:
+
+```text
+Say Size of type character. Say Size of type unsigned long long integer. Say Alignment of type long decimal.
+```
+
+`Size of type` has C `sizeof(type)` semantics for the supported complete scalar types. `Alignment of type` has C11 `_Alignof(type)` semantics. Both produce a current PlainSpeak whole `number`; a future native `size_t`-equivalent type is still required for complete C object-model parity. Asking either question about `void` is a semantic error because `void` is not an object type.
+
+The exact sizes and alignments of most C scalar types are target properties and are intentionally **not** fixed by PlainSpeak. For example, PlainSpeak does not promise that a `long integer` is eight bytes. The C guarantee that character types occupy one byte is preserved.
+
 ## Expressions
 
 ```text
@@ -133,6 +175,8 @@ Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
           | "minus" Primary
           | "(" Expr ")"
           | "Length" "of" Primary
+          | SizeOfTypeExpr
+          | AlignOfTypeExpr
           | ListExpr
           | EmptyListExpr
           | ItemExpr
@@ -146,14 +190,14 @@ EmptyListExpr ::= "Empty" "list" "of" ("numbers" | "decimals" | "strings")
 ItemExpr ::= "Item" "at" Expr "in" Primary
 ```
 
-Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Unary `minus`, list access, length, and function calls bind as primaries. Parentheses inside expressions override precedence.
+Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Unary `minus`, list access, length, C type queries, and function calls bind as primaries. Parentheses inside expressions override precedence.
 
 ## Types
 
-Scalar types:
+Legacy PlainSpeak scalar value types:
 
-- `number` — integer (`long` in generated C)
-- `decimal` — floating-point (`double` in generated C)
+- `number` — integer (`long` in the current runtime)
+- `decimal` — floating-point (`double` in the current runtime)
 - `string` — text
 
 Collection types:
@@ -161,6 +205,8 @@ Collection types:
 - `list of numbers`
 - `list of decimals`
 - `list of strings`
+
+The compiler's structural semantic type system additionally represents the C scalar family above plus pointers, arrays, function types, qualifiers, aggregates, enums, C23 bit-precise integers and null pointers as foundations for later syntax. Representation in the compiler is not the same as a user-visible implemented capability; `docs/c-compatibility.md` is authoritative about status.
 
 Every item in a list must have exactly the same scalar type. `List with 1 followed by 2.5 done` is therefore a type error rather than an implicit promotion. Empty lists use the explicit `Empty list of ...` form for the same reason.
 
@@ -170,9 +216,11 @@ Arithmetic between two `number` values produces a `number`; whole-number divisio
 
 ## Known gaps
 
+- `Size of type` currently boxes the C `size_t` result into legacy PlainSpeak `number`; native unsigned size types are part of the typed-object tranche.
+- Explicit native typed object declarations are not available yet.
 - Heap storage used by string concatenation, list snapshots, and lists is released only when the native process exits.
 - Lists cannot contain other lists.
-- There are no user-defined record/structure types.
+- There are no user-defined record/structure declarations yet.
 - Procedure parameter and return type declarations are still implicit.
 
 Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, parser, semantic analysis, code generation, runtime behaviour, and tests must land together.

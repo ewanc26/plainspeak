@@ -18,6 +18,19 @@ TEST_CASE("integer rank and signedness are part of type identity", "[types][c99]
     CHECK(Type::integer(IntegerRank::LongLong, false).isInteger());
 }
 
+TEST_CASE("plain char is distinct from signed and unsigned char", "[types][c99]") {
+    Type plain = Type::character();
+    Type signedChar = Type::integer(IntegerRank::Char, false);
+    Type unsignedChar = Type::integer(IntegerRank::Char, true);
+
+    CHECK(plain.charSignedness == CharSignedness::Plain);
+    CHECK(signedChar.charSignedness == CharSignedness::Signed);
+    CHECK(unsignedChar.charSignedness == CharSignedness::Unsigned);
+    CHECK(plain != signedChar);
+    CHECK(plain != unsignedChar);
+    CHECK(signedChar != unsignedChar);
+}
+
 TEST_CASE("qualifiers are represented structurally", "[types][c99][c11]") {
     TypeQualifiers q;
     q.isConst = true;

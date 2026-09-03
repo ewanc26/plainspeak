@@ -24,7 +24,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.boolean` | foundation | Boolean type can be represented; legacy literal semantics remain numeric for now. |
 | `types.nullptr` | foundation | C23 null-pointer type can be represented. |
 | `types.object-representation` | planned | Object size, padding, representation and lifetime rules. |
-| `types.sizeof-alignof` | planned | Size/alignment queries and alignment requests. |
+| `types.sizeof-alignof` | foundation | C scalar `sizeof(type)` and C11 `_Alignof(type)` queries are exposed as `Size of type ...` / `Alignment of type ...`; object-expression queries, requested alignment, native `size_t`, arrays and aggregate layouts remain pending. |
 | `types.qualifiers` | foundation | const/volatile/restrict/atomic qualification is represented structurally. |
 | `types.pointers` | foundation | Pointer types are represented; pointer expressions/lowering are next. |
 | `types.function-types` | foundation | Return/parameter/variadic function shapes are represented. |
@@ -177,6 +177,6 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 
 ## Implementation sequence
 
-The first blocker is the semantic type/object model. The old compiler represented every program type with six enum values; it could not grow cleanly into pointers, arrays, functions, aggregates, qualifiers, atomics or C23 bit-precise integers. The structural model introduced alongside this document is therefore tranche zero. It intentionally preserves current language behaviour while making those future types representable.
+The structural semantic type model removed the original six-value type-system ceiling. The next executable layer now exposes ordinary C scalar type spellings plus target-correct size/alignment queries, while deliberately leaving the matrix row at **foundation** because the result is still boxed into legacy PlainSpeak `number` and there are no addressable native typed objects yet.
 
-Next milestones are addressable objects + pointers/arrays + `sizeof`/alignment, then explicit typed declarations/function signatures, then aggregates/initializers and the remaining C99 expression/control-flow model. C11/C17/C23 facilities build on that base rather than being implemented as disconnected runtime tricks.
+The next milestone is explicit native typed declarations and addressable storage. That unlocks true object-expression `sizeof`, pointers, fixed arrays and alignment requests without pretending a boxed `PsValue` has a C object's layout. Function signatures, aggregates/initializers and the remaining C99 expression/control-flow model follow on that base; C11/C17/C23 facilities build on it rather than being disconnected runtime tricks.
