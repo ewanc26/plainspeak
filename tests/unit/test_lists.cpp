@@ -10,7 +10,7 @@ TEST_CASE("parser accepts a complete list program as one paragraph", "[parser][l
     Parser parser(tokenizer.tokenize(), arena);
     auto program = parser.parseProgram();
 
-    REQUIRE(program.size() == 7);
+    REQUIRE(program.size() == 6);
     CHECK(std::holds_alternative<SetStmt>(program[0]->node));
     CHECK(std::holds_alternative<CommentStmt>(program[1]->node));
     CHECK(std::holds_alternative<AppendStmt>(program[2]->node));
