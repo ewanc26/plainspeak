@@ -15,22 +15,14 @@ struct Diag {
 
 struct AnalysisResult {
     std::vector<Diag> diagnostics;
-
-    // Resolved semantic type for every expression that sema visited.
     std::unordered_map<const Expr *, Type> exprTypes;
-
-    // Resolved operand type for type/object queries such as sizeof/_Alignof.
     std::unordered_map<const Expr *, Type> typeOperands;
-
-    // Resolved native C type for each explicit Declare statement.
     std::unordered_map<const Stmt *, Type> declarationTypes;
-
-    // VarRef nodes that bind to an explicit native C object rather than a
-    // legacy boxed PsValue variable.
     std::unordered_set<const Expr *> nativeObjectRefs;
 
-    // Existing Set/Add/Sub statements whose target is a native C object.
-    std::unordered_set<const Stmt *> nativeMutationTargets;
+    // Set/Add/Sub statements targeting explicitly declared C objects. The
+    // target type is retained so codegen performs the conversion sema checked.
+    std::unordered_map<const Stmt *, Type> nativeMutationTypes;
 };
 
 class Sema {
