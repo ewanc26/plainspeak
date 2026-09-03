@@ -1,277 +1,213 @@
 # AGENTS.md
 
-Guidance for AI coding agents (and humans) working on this project. Read this
-in full before touching source. If something here conflicts with a comment
-in code, this file wins unless the code comment is newer and more specific —
-flag the conflict instead of silently picking one.
-
-> **Working name:** `plainspeak` (rename freely — replace this token
-> everywhere: CLI binary name, CMake project name, header guards).
+Guidance for AI coding agents and humans working on PlainSpeak. Read this before changing the compiler. If code comments conflict with this file, flag the conflict instead of silently choosing one.
 
 ---
 
-## 1. What this is
+## 1. What PlainSpeak is
 
-A deterministic, non-ML esoteric programming language whose surface syntax
-is a constrained subset of English. Sentences, not symbols, are the unit of
-syntax. There is **no LLM, no statistical model, no fuzzy matching** anywhere
-in the toolchain — every valid program is accepted by a fixed grammar, and
-every rejection is a precise parse error. "Sounds like English" is a UX
-property of the grammar design, not a runtime behavior.
+PlainSpeak is a deterministic, non-ML **prose-syntax systems programming language**. Its syntax is constrained English: sentences and paragraphs are the source form, but every accepted program is defined by a fixed grammar. There is no LLM, fuzzy matching, statistical parser, or semantic guessing in the toolchain.
 
-**Pipeline:** `plainspeak` compiles `.eng` source → generated C99 → native
-binary, via a compiler frontend written in C++20. C++ is an implementation
-detail of the compiler; the *emitted* artifact is portable C, compiled by
-whatever system C compiler is available (`cc`/`gcc`/`clang`).
+The language's capability target is the union of the programming facilities in **C99, C11, C17 and C23**. That target includes the C object/type model, expressions and conversions, storage duration/linkage, translation-unit capability, preprocessing-equivalent compile-time facilities, atomics/threads, and the hosted/freestanding standard-library surface. PlainSpeak does not need to copy C token syntax, but it must be able to express equivalent program behaviour through first-class PlainSpeak syntax or typed standard bindings.
 
-```
+An arbitrary embedded-C escape hatch does **not** count as implementing a C capability.
+
+Current pipeline:
+
+```text
 source.eng
-   │  Lexer (word/punctuation tokens, alias resolution)
+   │
    ▼
-Sentence Splitter (split on . ; and newlines, respecting quoted strings)
+Tokenizer (case-insensitive words, punctuation, exact aliases, parenthetical comments)
+   │
    ▼
-Parser (recursive-descent statements, Pratt-parsed expressions) → AST
+Recursive-descent parser → arena-owned variant AST
+   │
    ▼
-Semantic Analysis (name resolution, type inference, arity checks)
+Semantic analysis (name resolution, structural types, diagnostics)
+   │
    ▼
-C Code Generator (AST → C99 source, textual)
+C backend + PlainSpeak runtime
+   │
    ▼
-system cc invocation → native binary
+system C compiler → native binary
 ```
 
-Nothing after "Semantic Analysis" is allowed to fail on grammar grounds —
-if codegen can't handle a node, that's a compiler bug, not a user error.
+Physical newlines and indentation in `.eng` source are ordinary whitespace. Punctuation and explicit phrases such as `End if.` carry structure.
+
+Nothing after semantic analysis may reject a program on grammar/type grounds. If a semantically valid AST cannot be lowered, that is a compiler bug or an explicitly unsupported conformance item, not an opportunity for codegen to guess.
 
 ---
 
-## 2. Directory layout
+## 2. Source-of-truth documents
 
-```
-/src
-  /lexer        tokenizer.cpp/.h, alias_table.cpp/.h
-  /parser       sentence_splitter.*, parser.*, expr_parser.* (Pratt)
-  /ast          ast.h (node defs), ast_printer.* (debug dump)
-  /sema         resolver.*, type_check.*
-  /codegen      c_emitter.*, mangling.*, runtime_calls.*
-  /diagnostics  diagnostic.*, source_span.h   (shared error-reporting types)
-  /cli          main.cpp
-/runtime         plainspeak_runtime.h/.c   — shipped C runtime, statically linked
-/tests
-  /golden       *.eng + *.expected (stdout) pairs, run end-to-end
-  /unit         lexer/parser/sema unit tests (Catch2 or GoogleTest)
-/examples         hand-written .eng programs demonstrating features
-/docs
-  grammar.md      canonical EBNF-ish grammar — SOURCE OF TRUTH for syntax
-  runtime.md       C runtime API reference
-  errors.md        catalogue of diagnostic messages and codes
-CMakeLists.txt
-AGENTS.md
-```
+- `docs/grammar.md` — canonical accepted PlainSpeak syntax.
+- `docs/c-compatibility.md` — human C99-C23 capability matrix and rules.
+- `tests/conformance/c99-c23.json` — machine-readable capability status.
+- `docs/runtime.md` — generated-code/runtime ABI contract.
+- `docs/errors.md` — stable diagnostic catalogue.
 
-**Rule:** grammar changes always touch `docs/grammar.md` in the same commit
-as the parser change. A parser accepting something `grammar.md` doesn't
-describe is a bug, not a feature.
+The umbrella C parity work is tracked in the repository issue titled `epic: reach C99–C23 language and library capability parity`.
+
+A parser accepting syntax not described by `docs/grammar.md` is a bug. A capability marked `foundation` or `implemented` in the conformance manifest without a real regression-test path is also a bug; CI enforces this.
 
 ---
 
-## 3. Build & commands
+## 3. Build and validation
 
 ```sh
 cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
 cmake --build build -j
-ctest --test-dir build                # unit tests
-./scripts/run_golden_tests.sh build/plainspeak   # golden/e2e tests
-./build/plainspeak examples/hello.eng -o hello    # compile a program
-./hello
+ctest --test-dir build --output-on-failure
+python3 scripts/check_c_conformance.py
+./scripts/run_golden_tests.sh build/plainspeak
 ```
 
-- C++ standard: **C++20** (use `<variant>`, `<span>`, `std::string_view`
-  freely; no coroutines, no modules — keep this buildable with plain g++/clang
-  and no exotic toolchain requirements).
-- Emitted C standard: **C99** (portability > cleverness; no VLAs, no
-  compiler-specific extensions in generated output).
-- No external dependencies beyond the C++ standard library for the compiler
-  itself. Test framework dependency (Catch2/GoogleTest) is fine, fetched via
-  CMake `FetchContent`, test-only.
-- Single build system (CMake). Do not introduce a second one (Make, Bazel,
-  etc.) alongside it.
+Compiler implementation:
+
+- C++20.
+- CMake is the single build system.
+- No compiler runtime dependency beyond the C/C++ standard environments and explicitly documented platform/toolchain facilities.
+- Catch2 is test-only through CMake `FetchContent`.
+
+Generated-code policy:
+
+- Portable C99 is the **baseline lowering dialect**, not the language's semantic ceiling.
+- Prefer lowering newer semantics through portable runtime helpers when that preserves the required behaviour.
+- A feature may elevate generated code to a newer C dialect or use a target capability when C99 cannot faithfully provide the required semantics/ABI. Such changes need feature detection, documentation, and conformance coverage.
+- Do not use compiler extensions merely for convenience. Implementation-defined target bindings are acceptable only when the C standard itself makes the behaviour implementation-defined and PlainSpeak exposes that fact deliberately.
+- Current generated native programs link the PlainSpeak runtime and `libm` where required.
 
 ---
 
-## 4. Language design invariants (do not violate silently)
+## 4. Language-design invariants
 
-1. **Determinism.** The same source text always produces the same AST and
-   the same emitted C, byte-for-byte. No wall-clock, no randomness, no
-   locale-dependent parsing.
-2. **No semantic guessing.** Synonym support (`"set" | "let" | "make"`) is a
-   flat alias table resolved at the lexer stage into one canonical token.
-   It is a dictionary lookup, never a heuristic, never partial-match, never
-   edit-distance/fuzzy matching. If a word isn't in the alias table, it is
-   not a keyword — full stop.
-3. **Grammar over vocabulary.** Prefer growing the grammar (new sentence
-   patterns) over growing ambiguity within existing patterns. When two
-   candidate patterns could match the same sentence, that's a grammar
-   defect — fix it before merging, don't rely on parser ordering to
-   "usually" pick right.
-4. **Fail loud, fail local.** A sentence that matches no pattern is a parse
-   error naming the offending clause/word and its source location — never a
-   silent no-op, never a best-effort partial execution.
-5. **No LLM/ML dependency, ever**, including as an optional feature, dev
-   tool, or fuzzer oracle checked into this repo. If a future agent is asked
-   to add one, treat that as a request needing explicit human confirmation,
-   not a natural extension of "sounds like English."
+1. **Determinism.** Same source and selected target configuration → same AST and generated source. No wall-clock/random/locale-dependent parsing.
+2. **No semantic guessing.** Synonyms are exact dictionary aliases resolved by the lexer. No fuzzy matching or probabilistic interpretation.
+3. **Grammar over vocabulary.** Prefer a new unambiguous sentence pattern over stuffing more meanings into an existing one.
+4. **Fail loud and local.** Invalid source produces a stable diagnostic at the offending construct; never silently ignore it.
+5. **Prose is syntax, not formatting.** Newlines/indentation never define nesting. Sentences end with punctuation and compound statements use explicit closing phrases.
+6. **C capability parity is measurable.** Missing facilities stay `planned`; partial representations stay `foundation`; only tested usable facilities become `implemented`.
+7. **No arbitrary-C cheat.** Interop with C is required, but embedding untyped C snippets does not satisfy a conformance row.
+8. **No LLM/ML dependency.** This applies to the shipped compiler and grammar behaviour.
 
 ---
 
-## 5. Grammar conventions
+## 5. C99-C23 conformance workflow
 
-- Statements are terminated by `.`; `;` separates clauses within a compound
-  statement; commas separate list items and appositive clauses.
-- Canonical keyword tokens (after alias resolution) are UPPER_SNAKE in the
-  lexer's token enum (`SET`, `IF`, `REPEAT`, `SAY`) — this keeps grammar.md
-  and the lexer trivially diffable against each other.
-- Every sentence pattern in `docs/grammar.md` must have:
-  - its EBNF rule,
-  - at least one example sentence,
-  - the AST node it produces,
-  - a golden test under `/tests/golden`.
-- Expression grammar (arithmetic/comparison/boolean) is Pratt-parsed with an
-  explicit precedence table in `expr_parser.cpp` — keep that table adjacent
-  to the corresponding section of `grammar.md`, not just in code comments.
+For a C capability change:
 
-**Adding a new sentence pattern — required steps, in order:**
-1. Write the EBNF rule + examples in `docs/grammar.md`.
-2. Add any new keyword aliases to `alias_table.cpp`.
-3. Add the AST node in `ast.h`.
-4. Add the parser rule (recursive-descent function, one per pattern).
-5. Add the sema check (name/type resolution) if applicable.
-6. Add the C codegen case in `c_emitter.cpp`.
-7. Add a golden test (`.eng` + `.expected`).
-8. Add a negative test if the pattern is easily confused with an existing
-   one (prove the parser disambiguates correctly).
+1. Identify or add the feature ID in `tests/conformance/c99-c23.json`.
+2. Add/adjust the structural semantic representation first if the feature introduces a type, object property, storage rule or value category.
+3. Design deterministic PlainSpeak syntax or a typed standard-library binding.
+4. Update `docs/grammar.md` for syntax changes.
+5. Update AST/parser/sema/codegen/runtime together as required.
+6. Add positive end-to-end coverage and focused unit coverage.
+7. Add negative diagnostics for invalid C-semantic cases.
+8. Move manifest status only as far as the tests justify (`planned` → `foundation` → `implemented`).
+9. Update `docs/c-compatibility.md` in the same change.
+10. Run the entire validation stack above.
 
-Skipping any step is an incomplete PR, not a "follow-up."
+Never mark a header-level standard-library row implemented because a single function exists. Split rows into per-facility entries as implementation grows.
+
+C17 is primarily a defect-fix revision, so its work usually appears as semantic/diagnostic corrections to C11 facilities rather than flashy new syntax. Still track those corrections explicitly where behaviour changes.
 
 ---
 
-## 6. C++ compiler codebase conventions
+## 6. AST and semantic types
 
-- **AST nodes:** `std::variant`-based sum type (`using Stmt = std::variant<
-  SetStmt, IfStmt, RepeatStmt, SayStmt, ...>`), visited with
-  `std::visit` + overload pattern. Avoid a classic virtual-dispatch class
-  hierarchy — variants keep exhaustiveness checked by the compiler when a
-  new node is added (`-Wswitch` on the visitor's inner switch, or
-  `std::visit` with an `overloaded` struct that has no default case).
-- **Ownership:** AST is arena-allocated per compilation unit
-  (`std::vector<std::unique_ptr<Node>>` owned by a `CompilationContext`, or a
-  bump arena) — nodes reference each other via raw pointer/index, never
-  shared_ptr. One compilation = one arena = freed in one shot.
-- **Errors inside the compiler:** no C++ exceptions across pass boundaries.
-  Each pass returns a `Result<T, Diagnostic>`-style type (or accumulates into
-  a `DiagnosticEngine` and returns a bool "did this pass succeed"). Exceptions
-  are fine for truly unrecoverable internal invariant violations
-  (`assert`/`std::terminate`-style bugs), never for user-facing errors.
-- **Naming:** `snake_case` for functions/variables, `PascalCase` for types,
-  `UPPER_SNAKE` for lexer token kinds and constants.
-- **Headers:** `#pragma once`. Keep AST/token definitions dependency-free of
-  the parser so `ast.h` can be included by codegen without pulling in
-  parsing machinery.
-- **No global mutable state.** Everything threads through an explicit
-  context object, including diagnostics — this keeps the compiler safely
-  reusable (e.g., a future language-server or REPL) and testable in
-  isolation per pass.
+AST rules:
+
+- AST nodes are plain structs collected in `std::variant` sum types.
+- Nodes are arena-owned per compilation unit and referenced by stable raw pointers.
+- Do not introduce a second AST hierarchy or virtual-dispatch tree.
+
+Semantic type rules:
+
+- `src/sema/type.h` is the structural type representation used for the C parity project.
+- Do not add a new flat enum variant every time a C type arrives. C types are compositional: pointer-to-array-of-function/etc. must be representable structurally.
+- Type identity must include all properties that affect C compatibility: integer rank/signedness, floating rank, qualifiers, bit-precise width, referenced element type, array bounds, function parameter/return/variadic shape, and aggregate/enum identity.
+- Existing PlainSpeak `number` currently maps to signed C `long`; `decimal` currently maps to C `double`. Preserve existing program behaviour while the explicit typed-declaration surface is introduced.
+- Lists are a PlainSpeak extension and remain homogeneous mutable reference values. They are not a substitute for C arrays/pointers.
 
 ---
 
-## 7. C code generation conventions
+## 7. Grammar conventions
 
-- Emitted C is intentionally readable, not minimal — this is a debugging
-  aid for both humans and agents. Preserve source line info as `// from
-  line N: "<original sentence>"` comments above the statements they produced.
-- **Name mangling:** user identifiers become `ps_<name>` (collision-avoid
-  against C keywords/runtime symbols); document the exact scheme in
-  `docs/runtime.md` and keep `mangling.cpp` as the single place that
-  implements it — never mangle inline in `c_emitter.cpp`.
-- **Runtime calls:** all built-in verbs (`Say`, `Add ... to ...`, etc.) emit
-  calls into `plainspeak_runtime.h`, never inline C logic for anything the
-  runtime already provides. This keeps codegen thin and the runtime unit
-  testable independently in plain C.
-- Generated files are always self-contained: `#include "plainspeak_runtime.h"`
-  plus standard headers only — no generated file may require flags beyond
-  `-std=c99 -lplainspeak_runtime`.
-- The compiler shells out to the system C compiler for the final step; that
-  invocation (flags, discovered compiler, temp file handling) lives in one
-  place (`cli/main.cpp` or a small `toolchain.cpp`), not scattered.
+- `.` terminates an ordinary sentence.
+- `:` opens a compound sentence/block.
+- Explicit `End <block>.` phrases close blocks.
+- Commas are optional prose punctuation where the grammar declares them insignificant.
+- Standalone parentheticals at statement boundaries are comments.
+- Parentheses inside expressions group expressions.
+- Newlines are whitespace only.
 
----
+Every new sentence pattern needs:
 
-## 8. Testing strategy
+1. EBNF-ish rule and example in `docs/grammar.md`.
+2. Lexer aliases/tokens if needed.
+3. AST node.
+4. Parser rule.
+5. Semantic checks.
+6. Codegen/runtime lowering.
+7. Golden test.
+8. Negative test when ambiguity or invalid typing is plausible.
+9. Conformance-manifest mapping when the feature implements C capability.
 
-- **Golden/e2e tests** are the primary safety net: `.eng` source → compile →
-  run → diff stdout against `.expected`. These are what catch grammar
-  regressions and are the tests to add for *any* new language feature.
-- **Unit tests** target lexer/parser/sema in isolation (token streams, AST
-  shapes, diagnostic codes) — use these for edge cases and error-path
-  coverage that's awkward to assert on via stdout diffing.
-- **Negative tests** (`/tests/golden/errors/*.eng` + expected diagnostic
-  code) are required whenever a grammar ambiguity was resolved — encode the
-  disambiguation as a test, not just a comment.
-- Every new runtime function in `plainspeak_runtime.c` gets a small C unit
-  test in addition to whatever golden test exercises it end-to-end.
-- Run the full suite (`ctest` + golden script) before considering any change
-  complete. A change that only "builds" is not done.
+Skipping required layers makes the change incomplete.
 
 ---
 
-## 9. Diagnostics style
+## 8. C++ compiler conventions
 
-Errors should read like the literal-minded listener the language is:
-state what was expected, what was found, and where — no jargon a first-time
-reader wouldn't recognize from the grammar docs.
-
-```
-error[E0031]: I don't know what to do with "frobnicate" here.
-  --> examples/broken.eng:3:12
-  |
-3 | Frobnicate the total and say hello.
-  |             ^^^^^^^^^^^^^^^^^^^^^ expected a verb I recognize (Set, Add,
-  |             Say, Repeat, If, ...) — see docs/grammar.md
-```
-
-Every diagnostic has a stable code (`E00xx`) catalogued in `docs/errors.md`
-with the message template and a rationale — don't invent one-off messages
-inline without registering the code.
+- C++20 standard library is available; keep dependencies modest and portable.
+- `snake_case` for functions/variables, `PascalCase` for types, canonical token spelling as established by the lexer.
+- `#pragma once` headers.
+- No global mutable compiler state.
+- No exceptions for ordinary user-facing compiler errors across pass boundaries; return/accumulate diagnostics.
+- Keep semantic decisions out of codegen. Codegen lowers already-validated AST/types.
+- Preserve deterministic output ordering.
 
 ---
 
-## 10. Things an agent must NOT do without explicit human sign-off
+## 9. Code generation and runtime
 
-- Add any network call, model API call, or "fuzzy"/similarity-based token
-  matching anywhere in lexer/parser/sema (violates §4.2 and §4.5).
-- Change the meaning of an existing accepted sentence pattern (breaking
-  change to every program written so far) without a version note and a
-  migration entry in `docs/grammar.md`.
-- Introduce a second build system, a second test framework, or a second
-  AST representation "for convenience."
-- Have the compiler write files outside the requested output path / build
-  directory.
-- Weaken `-Wall -Wextra -Werror` (or add blanket suppressions) to make a
-  change compile — fix the warning instead.
-- Change the emitted C standard or add non-portable extensions to generated
-  output.
+- Generated C should remain readable and source-correlated.
+- User identifiers are mangled only through `src/codegen/mangling.cpp`.
+- Built-in runtime operations go through `plainspeak_runtime.h/.c` instead of duplicating runtime logic in emitted statements.
+- Runtime helpers added for C capability work need plain-C unit tests plus a language-level test when exposed to PlainSpeak.
+- C standard-library bindings should prefer the platform's conforming implementation where observable semantics/ABI matter, with a PlainSpeak type-safe wrapper rather than reimplementing libc casually.
+- Pointer/atomic/concurrency work must be tested under sanitizers where practical once those features become executable.
+- Separate translation-unit and C ABI interop tests are required before claiming function/object interoperability.
 
 ---
 
-## 11. Quick reference for a first "hello world" pass
+## 10. Testing strategy
 
-1. `docs/grammar.md`: add `SayStmt ::= "Say" Expr "."` with example
-   `Say "Hello, world!".`
-2. Lexer: no new keywords needed beyond `SAY` (alias: `say` | `tell me` |
-   `print`).
-3. Parser: `parse_say_stmt()` → `SayStmt{ expr }`.
-4. Sema: type-check `expr` is printable (string/number/bool).
-5. Codegen: emit `ps_say(<expr>);` calling into
-   `void ps_say(PsValue v);` in the runtime.
-6. Golden test: `tests/golden/hello.eng` + `tests/golden/hello.expected`
-   containing `Hello, world!\n`.
-7. `cmake --build build && ctest --test-dir build && ./scripts/run_golden_tests.sh build/plainspeak`.
+- **Golden/e2e:** `.eng` → compile → run → expected output; primary language regression net.
+- **Unit:** lexer/parser/sema/type/runtime edge cases.
+- **Negative:** invalid programs and stable diagnostic codes.
+- **Conformance manifest:** machine-checkable map of what is missing, foundational or implemented.
+- **Cross-toolchain:** Linux and macOS CI remain required. C ABI/memory work should grow explicit GCC+Clang coverage rather than relying on only whichever `cc` happens to be default.
+- **Sanitizers:** add ASan/UBSan/TSan coverage when addressable memory/concurrency reaches executable status.
+
+A change that only compiles is not finished.
+
+---
+
+## 11. Diagnostics
+
+Diagnostics should read like a literal-minded listener: say what PlainSpeak expected, what it found, and where. Keep stable error codes catalogued in `docs/errors.md`. Do not leak backend C diagnostics as the primary explanation for a frontend-invalid program.
+
+---
+
+## 12. Do not do these without explicit human sign-off
+
+- Add network/model/fuzzy language behaviour to the compiler.
+- Change the meaning of already accepted PlainSpeak syntax without a compatibility/migration note.
+- Introduce a second build system, second test framework, or second AST representation for convenience.
+- Weaken compiler warnings or blanket-suppress them to make a patch pass.
+- Claim C parity by inserting arbitrary user C into generated output.
+- Delete or downgrade conformance rows to make the percentage look better.
+
+The user has explicitly signed off on evolving the backend beyond a C99-only ceiling **when necessary to achieve C99-C23 capability parity**. That permission does not waive portability, feature-detection, testing, or documentation requirements.
