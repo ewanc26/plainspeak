@@ -46,7 +46,7 @@ enum class TypeSpecKind {
 
 struct TypeSpec {
     TypeSpecKind kind;
-    std::shared_ptr<TypeSpec> pointee;
+    std::shared_ptr<TypeSpec> pointee{};
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
