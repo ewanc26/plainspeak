@@ -63,6 +63,11 @@ PsValue ps_list_from(const PsValue *items, size_t count) {
     return result;
 }
 
+PsValue ps_list_copy(PsValue list) {
+    PsList *l = as_list(list);
+    return ps_list_from(l->items, l->length);
+}
+
 void ps_list_append(PsValue list, PsValue item) {
     PsList *l = as_list(list);
     if (l->length == l->capacity) {
@@ -120,18 +125,24 @@ PsValue ps_add(PsValue a, PsValue b) {
 }
 
 PsValue ps_sub(PsValue a, PsValue b) {
+    if (a.type == PS_INT && b.type == PS_INT) return ps_int(a.as.i - b.as.i);
     if ((a.type == PS_INT || a.type == PS_DOUBLE) && (b.type == PS_INT || b.type == PS_DOUBLE))
         return ps_double(as_double(a) - as_double(b));
     type_error("subtract", a, b); return ps_int(0);
 }
 
 PsValue ps_mul(PsValue a, PsValue b) {
+    if (a.type == PS_INT && b.type == PS_INT) return ps_int(a.as.i * b.as.i);
     if ((a.type == PS_INT || a.type == PS_DOUBLE) && (b.type == PS_INT || b.type == PS_DOUBLE))
         return ps_double(as_double(a) * as_double(b));
     type_error("multiply", a, b); return ps_int(0);
 }
 
 PsValue ps_div(PsValue a, PsValue b) {
+    if (a.type == PS_INT && b.type == PS_INT) {
+        if (b.as.i == 0) die("division by zero");
+        return ps_int(a.as.i / b.as.i);
+    }
     if ((a.type == PS_INT || a.type == PS_DOUBLE) && (b.type == PS_INT || b.type == PS_DOUBLE)) {
         double d = as_double(b);
         if (d == 0.0) die("division by zero");
@@ -141,6 +152,10 @@ PsValue ps_div(PsValue a, PsValue b) {
 }
 
 PsValue ps_mod(PsValue a, PsValue b) {
+    if (a.type == PS_INT && b.type == PS_INT) {
+        if (b.as.i == 0) die("modulo by zero");
+        return ps_int(a.as.i % b.as.i);
+    }
     if ((a.type == PS_INT || a.type == PS_DOUBLE) && (b.type == PS_INT || b.type == PS_DOUBLE)) {
         double d = as_double(b);
         if (d == 0.0) die("modulo by zero");
