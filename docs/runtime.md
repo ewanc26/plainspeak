@@ -23,30 +23,33 @@ struct PsValue {
 };
 ```
 
-Lists own a growable C array of `PsValue` entries. The compiler's semantic pass enforces homogeneous element types; the runtime supplies bounds checking and mutation. List variables are reference values, so copying a `PsValue` that contains a list aliases the same collection.
+Lists own a growable C array of `PsValue` entries. The compiler's semantic pass enforces homogeneous element types; the runtime supplies bounds checking and mutation. List variables are reference values, so copying a `PsValue` that contains a list aliases the same collection. `ps_list_copy` is the deliberate exception used by generated `For each` loops: it allocates a new list containing the current values so iteration is stable even when the source collection is mutated.
 
 ## Core functions
 
 | Function | Description |
 |---|---|
 | `ps_int`, `ps_double`, `ps_str` | Wrap scalar literals. |
-| `ps_add`, `ps_sub`, `ps_mul`, `ps_div`, `ps_mod` | Scalar arithmetic and supported string concatenation. |
+| `ps_add`, `ps_sub`, `ps_mul`, `ps_div`, `ps_mod` | Scalar arithmetic and supported string concatenation. Whole-number inputs preserve `PS_INT`; mixed numeric inputs promote to `PS_DOUBLE`. |
 | `ps_length` | Return the length of a string or list. |
 | `ps_as_int` | Coerce a numeric value to `long`. |
 | `ps_truthy` | Test scalar truthiness or whether a list is non-empty. |
 | `ps_say` | Print a scalar or list followed by a newline. |
+
+Whole-number division uses C99 integer division, truncating toward zero, and whole-number modulo uses the corresponding integer remainder. Decimal or mixed numeric operands continue to use floating-point division and `fmod`.
 
 ## List functions
 
 | Function | Signature | Description |
 |---|---|---|
 | `ps_list_from` | `PsValue ps_list_from(const PsValue *items, size_t count)` | Allocate a mutable list and copy the supplied values. |
+| `ps_list_copy` | `PsValue ps_list_copy(PsValue list)` | Allocate an independent shallow snapshot of the list's current values. |
 | `ps_list_append` | `void ps_list_append(PsValue list, PsValue item)` | Append an item, growing capacity when needed. |
 | `ps_list_get` | `PsValue ps_list_get(PsValue list, PsValue index)` | Read a one-based position with bounds checking. |
 | `ps_list_set` | `void ps_list_set(PsValue list, PsValue index, PsValue item)` | Replace a one-based position. |
 | `ps_list_remove` | `void ps_list_remove(PsValue list, PsValue index)` | Remove a one-based position and compact the tail. |
 
-The runtime rejects non-list operands and out-of-range positions even though valid generated programs should have had their static type errors caught earlier.
+The snapshot is shallow because nested lists are rejected by semantic analysis and scalar values are copied directly. The runtime rejects non-list operands and out-of-range positions even though valid generated programs should have had their static type errors caught earlier.
 
 ## Name mangling
 
@@ -59,6 +62,6 @@ The C keyword set covered by `mangling.cpp` includes C89/C90, C99, C11, and C23 
 
 ## Memory model and known limitations
 
-- String-concatenation buffers and list allocations live until process exit; v1 has no language-level ownership or garbage collection.
+- String-concatenation buffers, list allocations, and iteration snapshots live until process exit; v1 has no language-level ownership or garbage collection.
 - Lists cannot contain lists, as enforced by semantic analysis.
 - Runtime list storage is intentionally untyped; homogeneity is a compiler invariant rather than duplicated metadata in the C ABI.
