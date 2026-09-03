@@ -107,7 +107,7 @@ Iteration is a block sentence and introduces a scoped item name:
 For each prime in primes: Say prime. End for.
 ```
 
-`For each` evaluates the list expression once and remembers its length when iteration begins. The loop then reads the current value at each one-based position. Lists are reference values at runtime, so assigning one list variable to another aliases the same mutable collection.
+`For each` evaluates the list expression once and snapshots its current values when iteration begins. Mutating the original list inside the loop does not change which values remain to be visited, although those mutations still affect the original list after the loop. Lists are otherwise reference values at runtime, so assigning one list variable to another aliases the same mutable collection.
 
 ## Expressions
 
@@ -166,11 +166,11 @@ Every item in a list must have exactly the same scalar type. `List with 1 follow
 
 `Length of` accepts either a string or a list. `Item at` returns the list's element type. `Append` and `Replace item` require an element of that same type, and list positions must be whole numbers.
 
-Arithmetic between `number` and `decimal` promotes to `decimal`. `plus` also allows string concatenation with scalar numeric values. Arithmetic and comparison do not operate on whole lists.
+Arithmetic between two `number` values produces a `number`; whole-number division truncates toward zero and whole-number modulo uses the corresponding integer remainder. Arithmetic between `number` and `decimal` promotes to `decimal`. `plus` also allows string concatenation with scalar numeric values. Arithmetic and comparison do not operate on whole lists.
 
 ## Known gaps
 
-- Heap storage used by string concatenation and lists is released only when the native process exits.
+- Heap storage used by string concatenation, list snapshots, and lists is released only when the native process exits.
 - Lists cannot contain other lists.
 - There are no user-defined record/structure types.
 - Procedure parameter and return type declarations are still implicit.
