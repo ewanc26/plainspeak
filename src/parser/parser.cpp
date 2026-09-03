@@ -54,7 +54,8 @@ std::vector<Stmt *> Parser::parseProgram() {
 
 Stmt *Parser::parseTopLevelStmt() {
     const Token &t = peek();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Repeat, If, While, Call, Procedure)");
+    if (t.kind == TokKind::Comment) return parseComment();
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Append, Repeat, If, While, For, Call, Procedure)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
@@ -62,21 +63,25 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "subtract") return parseSub();
     if (t.text == "readfloat") return parseReadFloat();
     if (t.text == "read") return parseRead();
-    if (t.text == "comment") return parseComment();
+    if (t.text == "append") return parseAppend();
+    if (t.text == "replace") return parseReplaceItem();
+    if (t.text == "remove") return parseRemoveItem();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
+    if (t.text == "for") return parseForEach();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, read, comment, repeat, if, while, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
     const Token &t = peek();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Repeat, If, While, Call)");
+    if (t.kind == TokKind::Comment) return parseComment();
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Append, Repeat, If, While, For, Call)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
@@ -84,16 +89,19 @@ Stmt *Parser::parseStmt() {
     if (t.text == "subtract") return parseSub();
     if (t.text == "readfloat") return parseReadFloat();
     if (t.text == "read") return parseRead();
-    if (t.text == "comment") return parseComment();
+    if (t.text == "append") return parseAppend();
+    if (t.text == "replace") return parseReplaceItem();
+    if (t.text == "remove") return parseRemoveItem();
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
+    if (t.text == "for") return parseForEach();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, read, comment, repeat, if, while, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -150,17 +158,46 @@ Stmt *Parser::parseReadFloat() {
     return arena_.makeStmt(ReadFloatStmt{name}, line);
 }
 
+Stmt *Parser::parseAppend() {
+    int line = peek().line;
+    advance(); // append
+    Expr *expr = parseExpr();
+    expectWord("to");
+    std::string name = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(AppendStmt{expr, name}, line);
+}
+
+Stmt *Parser::parseReplaceItem() {
+    int line = peek().line;
+    advance(); // replace
+    expectWord("item");
+    expectWord("at");
+    Expr *index = parseExpr();
+    expectWord("in");
+    std::string name = expectIdentName();
+    expectWord("with");
+    Expr *expr = parseExpr();
+    expectDot();
+    return arena_.makeStmt(ReplaceItemStmt{index, name, expr}, line);
+}
+
+Stmt *Parser::parseRemoveItem() {
+    int line = peek().line;
+    advance(); // remove
+    expectWord("item");
+    expectWord("at");
+    Expr *index = parseExpr();
+    expectWord("from");
+    std::string name = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(RemoveItemStmt{index, name}, line);
+}
+
 Stmt *Parser::parseComment() {
     int line = peek().line;
-    advance(); // comment
-    std::string text;
-    while (peek().kind != TokKind::Dot && peek().kind != TokKind::Eof) {
-        if (!text.empty()) text += " ";
-        text += peek().text;
-        advance();
-    }
-    expectDot();
-    return arena_.makeStmt(CommentStmt{text}, line);
+    std::string text = advance().text;
+    return arena_.makeStmt(CommentStmt{std::move(text)}, line);
 }
 
 Stmt *Parser::parseRepeat() {
@@ -212,6 +249,18 @@ Stmt *Parser::parseWhile() {
     return arena_.makeStmt(WhileStmt{cond, std::move(body)}, line);
 }
 
+Stmt *Parser::parseForEach() {
+    int line = peek().line;
+    advance(); // for
+    expectWord("each");
+    std::string itemName = expectIdentName();
+    expectWord("in");
+    Expr *list = parseExpr();
+    expectColon();
+    auto body = parseBlockUntil("end", "for");
+    return arena_.makeStmt(ForEachStmt{itemName, list, std::move(body)}, line);
+}
+
 Stmt *Parser::parseReturn() {
     int line = peek().line;
     advance(); // return
@@ -228,10 +277,11 @@ Stmt *Parser::parseCall() {
     if (checkWord("with")) {
         advance(); // with
         while (!checkWord("done")) {
+            if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"done\" to close this call");
             args.push_back(parseExpr());
         }
     }
-    advance(); // done
+    expectWord("done");
     expectDot();
     return arena_.makeStmt(CallStmt{name, std::move(args)}, line);
 }
@@ -244,7 +294,7 @@ Stmt *Parser::parseProcedure() {
     if (checkWord("takes")) {
         advance(); // takes
         params.push_back(expectIdentName());
-        while (peek().kind == TokKind::Ident && peek().text != ":") {
+        while (peek().kind == TokKind::Ident) {
             params.push_back(expectIdentName());
         }
     }
@@ -376,6 +426,38 @@ Expr *Parser::parsePrimary() {
         Expr *operand = parsePrimary();
         return arena_.makeExpr(LengthExpr{operand}, line);
     }
+    if (checkWord("list") && checkWordAt(1, "with")) {
+        int line = peek().line;
+        advance(); advance();
+        if (checkWord("done")) error("a list introduced with \"List with\" needs at least one item; use \"Empty list of ...\" for an empty list");
+        std::vector<Expr *> items;
+        items.push_back(parseExpr());
+        while (checkWord("followed") && checkWordAt(1, "by")) {
+            advance(); advance();
+            items.push_back(parseExpr());
+        }
+        expectWord("done");
+        return arena_.makeExpr(ListExpr{std::move(items)}, line);
+    }
+    if (checkWord("empty") && checkWordAt(1, "list") && checkWordAt(2, "of")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        ListElementKind elementKind;
+        if (checkWord("numbers")) elementKind = ListElementKind::Number;
+        else if (checkWord("decimals")) elementKind = ListElementKind::Decimal;
+        else if (checkWord("strings")) elementKind = ListElementKind::String;
+        else error("expected \"numbers\", \"decimals\", or \"strings\" after \"Empty list of\"");
+        advance();
+        return arena_.makeExpr(EmptyListExpr{elementKind}, line);
+    }
+    if (checkWord("item") && checkWordAt(1, "at")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *index = parseExpr();
+        expectWord("in");
+        Expr *list = parsePrimary();
+        return arena_.makeExpr(ItemExpr{index, list}, line);
+    }
     if (checkWord("square") && checkWordAt(1, "root") && checkWordAt(2, "of")) {
         int line = peek().line;
         advance(); advance(); advance();
@@ -414,12 +496,13 @@ Expr *Parser::parsePrimary() {
         if (checkWord("with")) {
             advance(); // with
             while (!checkWord("done")) {
+                if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"done\" to close this call");
                 args.push_back(parseExpr());
             }
         }
-        advance(); // done
+        expectWord("done");
         return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
     }
-    if (t.kind == TokKind::Ident)  { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a decimal, a string, a name, true, false, minus, Length of, or a math function here");
+    if (t.kind == TokKind::Ident) { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
+    error("expected a number, a decimal, a string, a name, true, false, minus, Length of, List with, Empty list of, Item at, or a math function here");
 }
