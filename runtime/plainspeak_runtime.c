@@ -238,9 +238,24 @@ PsValue ps_cos(PsValue v) { return unary_math(v, cos); }
 PsValue ps_tan(PsValue v) { return unary_math(v, tan); }
 PsValue ps_sqrt(PsValue v) { return unary_math(v, sqrt); }
 PsValue ps_log(PsValue v) { return unary_math(v, log); }
-PsValue ps_abs(PsValue v) { return unary_math(v, fabs); }
-PsValue ps_floor(PsValue v) { return unary_math(v, floor); }
-PsValue ps_ceil(PsValue v) { return unary_math(v, ceil); }
+PsValue ps_abs(PsValue v) {
+    if (v.type == PS_INT) return ps_int(labs(v.as.i));
+    if (v.type == PS_DOUBLE) return ps_double(fabs(v.as.d));
+    die("expected a number for absolute value");
+    return ps_int(0);
+}
+PsValue ps_floor(PsValue v) {
+    if (v.type == PS_INT) return ps_int(v.as.i);
+    if (v.type == PS_DOUBLE) return ps_double(floor(v.as.d));
+    die("expected a number for floor");
+    return ps_int(0);
+}
+PsValue ps_ceil(PsValue v) {
+    if (v.type == PS_INT) return ps_int(v.as.i);
+    if (v.type == PS_DOUBLE) return ps_double(ceil(v.as.d));
+    die("expected a number for ceiling");
+    return ps_int(0);
+}
 PsValue ps_pow(PsValue a, PsValue b) {
     if ((a.type == PS_INT || a.type == PS_DOUBLE) && (b.type == PS_INT || b.type == PS_DOUBLE)) return ps_double(pow(as_double(a), as_double(b)));
     die("cannot compute power of a non-number"); return ps_int(0);
