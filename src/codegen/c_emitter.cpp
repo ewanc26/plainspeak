@@ -187,7 +187,7 @@ void emitStmt(const Stmt *s, std::ostream &out, std::string indent, int &loopCou
             std::string i = "ps__i" + std::to_string(id);
             std::string n = "ps__n" + std::to_string(id);
             out << indent << "{\n";
-            out << indent << "    PsValue " << list << " = " << emitExpr(node.list) << ";\n";
+            out << indent << "    PsValue " << list << " = ps_list_copy(" << emitExpr(node.list) << ");\n";
             out << indent << "    long " << n << " = ps_length(" << list << ");\n";
             out << indent << "    for (long " << i << " = 1; " << i << " <= " << n << "; " << i << "++) {\n";
             out << indent << "        PsValue " << mangle(node.itemName) << " = ps_list_get(" << list << ", ps_int(" << i << "));\n";

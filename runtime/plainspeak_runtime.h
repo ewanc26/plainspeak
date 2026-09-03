@@ -32,6 +32,7 @@ PsValue ps_str(const char *v);
 
 /* Lists are mutable reference values. Source positions are one-based. */
 PsValue ps_list_from(const PsValue *items, size_t count);
+PsValue ps_list_copy(PsValue list);
 void ps_list_append(PsValue list, PsValue item);
 PsValue ps_list_get(PsValue list, PsValue index);
 void ps_list_set(PsValue list, PsValue index, PsValue item);

@@ -1,0 +1,1 @@
+Set numbers to List with 1 followed by 2 followed by 3 done. For each number in numbers: Say number. Remove item at 1 from numbers. End for. Say numbers.
