@@ -45,5 +45,8 @@ int main(void) {
     PsValue mixed = ps_div(ps_int(7), ps_double(2.0));
     assert(mixed.type == PS_DOUBLE && mixed.as.d == 3.5);
 
+    assert(ps_as_double(ps_int(7)) == 7.0);
+    assert(ps_as_double(ps_double(2.5)) == 2.5);
+
     return 0;
 }
