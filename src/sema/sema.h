@@ -3,8 +3,7 @@
 #include <unordered_map>
 #include <vector>
 #include "../ast/ast.h"
-
-enum class Type { Int, Double, String, ListInt, ListDouble, ListString };
+#include "type.h"
 
 struct Diag {
     int code;
