@@ -1,1 +1,1 @@
-error[E0001]: I don't know what to do with "y" — it is used here but never declared. Use Set to create it first.
+error[E0001]: I don't know what to do with "y" — it is used here but never declared. Use Set or Declare to create it first.
