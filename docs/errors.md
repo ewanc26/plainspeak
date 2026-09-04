@@ -26,6 +26,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0018 | Invalid typed Procedure signature, argument, return, prototype, or return placement |
 | E0019 | Invalid structure definition, completeness, member access, or member store |
 | E0020 | Invalid union definition, shared tag namespace, completeness, member access, or member store |
+| E0021 | Invalid positional or designated aggregate initializer |
 
 ## Parse-time errors
 
