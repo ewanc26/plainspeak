@@ -1,0 +1,1 @@
+error[E0023]: Structure member "storage" cannot contain a flexible-array structure by value; use a pointer instead.

@@ -147,7 +147,7 @@ Aggregate semantic metadata retains each member's ordinary type plus optional bi
 
 Unnamed bit-fields have no PlainSpeak member identity and are omitted from positional initializer slots. Named bit-fields use ordinary native member reads/stores, but semantic analysis records bit-field expressions so `Size of` can reject them before C compilation.
 
-A structure with a flexible tail remains a complete structure type for direct objects and `sizeof`, while the flexible member itself is an incomplete array. Sema prevents that structure from being embedded by value or used as a fixed-array element, forbids flexible union members, requires the tail to be last with another named member before it, and excludes it from aggregate initialization.
+A structure with a flexible tail remains a complete structure type for direct objects and `sizeof`, while the flexible member itself is an incomplete array. Sema forbids a flexible member directly in a union, but permits unions to contain flexible-array structures and propagates the inherited C restriction through containing unions. Flexible-array-bearing structures/unions are then rejected as structure members or fixed-array elements. The direct tail must still be last with another named member before it and is excluded from aggregate initialization.
 
 
 ## Native type qualifiers
