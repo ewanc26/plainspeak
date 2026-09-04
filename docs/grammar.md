@@ -59,8 +59,9 @@ IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
 WhileStmt ::= "While" Expr ":" Stmt* "End" "while" "."
 ForEachStmt ::= "For" "each" IDENT "in" Expr ":" Stmt* "End" "for" "."
 CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
-ProcedureStmt ::= "Procedure" IDENT ("takes" IDENT ("," IDENT)*)? ":" Stmt* "End" "procedure" "."
-ReturnStmt ::= "Return" Expr "."
+ProcedureParam ::= IDENT ("as" CType)?
+ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? ":" Stmt* "End" "procedure" "."
+ReturnStmt ::= "Return" Expr? "."
 ```
 
 `Set` has two related roles. If its name does not exist in the current visible scopes, it creates the existing inferred boxed PlainSpeak variable. If that name already denotes a variable, `Set` assigns a new value to it instead. Explicit C-compatible objects are introduced only with `Declare`.
@@ -172,6 +173,36 @@ Declare values as array of integer with length 4. Declare p as pointer to intege
 
 Whole-array assignment and whole-array initializers are intentionally not invented. Declare an array, then set elements individually. Variable-length arrays, pointer truthiness, null pointers, function pointers, qualifiers, allocated storage and aggregate members remain later work.
 
+## Procedures and typed signatures
+
+Legacy procedures remain source-compatible:
+
+```text
+Procedure greet takes name: Say name. End procedure. Call greet with "world" done.
+```
+
+A typed procedure gives every parameter a C type and explicitly states its return type:
+
+```text
+Procedure add takes left as integer, right as integer returns integer: Return left plus right. End procedure. Say Call add with 4, 5 done.
+```
+
+A procedure may also have no parameters while still being typed, for example `Procedure answer returns integer: Return 42. End procedure.` Typed and untyped parameters cannot be mixed, and a typed parameter list requires an explicit `returns` clause. Use `returns void` when no value is returned.
+
+Typed parameters are real native C objects inside the procedure. Scalar and pointer parameter types therefore preserve their C representation. A fixed array parameter is adjusted to a pointer to its first element, matching C function-parameter adjustment:
+
+```text
+Procedure first takes values as array of integer with length 4 returns integer: Return Element at 0 in values. End procedure.
+```
+
+Typed call arguments are checked against the registered parameter types using the same supported assignment conversions as native object initialization. Typed calls may return arithmetic scalars or object pointers. C functions cannot return arrays directly, so an array return type is rejected; return a pointer instead.
+
+A `void` typed procedure may fall through or use bare `Return.`. A non-void typed procedure must currently end with a `Return` statement, and every returned value is checked against its declared return type. This final-statement rule is intentionally conservative until full control-flow definite-return analysis lands.
+
+Procedure signatures are registered before bodies are checked and generated C prototypes are emitted before definitions. Forward calls and mutual recursion therefore do not depend on source order.
+
+Legacy procedures continue using the boxed `PsValue` calling convention and retain their previous permissive argument-value behaviour. Native pointers/arrays are transported through the typed procedure surface instead of being boxed into legacy procedure arguments.
+
 ## Size and alignment queries
 
 ```text
@@ -254,7 +285,7 @@ The compiler's structural semantic type system also represents functions, qualif
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
 - Variable-length arrays, whole-array initializers, structs/unions/bit-fields, enums, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
-- Procedure parameter and return type declarations remain implicit and cannot transport native pointers yet.
+- Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, or native arrays.
 
