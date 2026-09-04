@@ -82,6 +82,12 @@ bool isNativeRef(const Expr *e, const AnalysisResult &analysis) {
     return analysis.nativeObjectRefs.count(e) != 0;
 }
 
+const ProcedureSignature *procedureSignature(const std::string &name,
+                                             const AnalysisResult &analysis) {
+    auto it = analysis.procedureSignatures.find(name);
+    return it == analysis.procedureSignatures.end() ? nullptr : &it->second;
+}
+
 std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis);
 std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
 
@@ -110,6 +116,16 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return "((" + emitRawExpr(node.base, analysis) + ")[(" + emitRawExpr(node.index, analysis) + ")])";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) return mangle(node.name);
+        } else if constexpr (std::is_same_v<T, CallExpr>) {
+            const ProcedureSignature *signature = procedureSignature(node.name, analysis);
+            if (signature && signature->nativeTyped) {
+                std::string result = mangle(node.name) + "(";
+                for (size_t i = 0; i < node.args.size(); ++i) {
+                    if (i > 0) result += ", ";
+                    result += emitRawExpr(node.args[i], analysis);
+                }
+                return result + ")";
+            }
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             Type lhsType = exprType(node.lhs, analysis);
             Type rhsType = exprType(node.rhs, analysis);
@@ -200,6 +216,17 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             std::string fn = it != mathFn.end() ? it->second : "ps_" + node.func;
             return fn + "(" + emitBoxedExpr(node.arg, analysis) + ")";
         } else if constexpr (std::is_same_v<T, CallExpr>) {
+            const ProcedureSignature *signature = procedureSignature(node.name, analysis);
+            if (signature && signature->nativeTyped) {
+                std::string raw = mangle(node.name) + "(";
+                for (size_t i = 0; i < node.args.size(); ++i) {
+                    if (i > 0) raw += ", ";
+                    raw += emitRawExpr(node.args[i], analysis);
+                }
+                raw += ")";
+                return boxRaw(raw, signature->returnType);
+            }
+
             static const std::unordered_map<std::string, std::string> builtins = {
                 {"sin", "ps_sin"}, {"cos", "ps_cos"}, {"tan", "ps_tan"},
                 {"sqrt", "ps_sqrt"}, {"log", "ps_log"}, {"abs", "ps_abs"},
@@ -273,7 +300,8 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
 
 void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
               int &loopCounter, const AnalysisResult &analysis,
-              const std::unordered_map<int, std::string> *sourceLines) {
+              const std::unordered_map<int, std::string> *sourceLines,
+              const ProcedureSignature *currentProcedure = nullptr) {
     bool isComment = std::holds_alternative<CommentStmt>(s->node);
     if (sourceLines && !isComment) {
         auto it = sourceLines->find(s->line);
@@ -339,23 +367,23 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "{\n";
             out << indent << "    long " << n << " = ps_as_int(" << emitBoxedExpr(node.count, analysis) << ");\n";
             out << indent << "    for (long " << i << " = 0; " << i << " < " << n << "; " << i << "++) {\n";
-            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines);
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "    }\n";
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, IfStmt>) {
             out << indent << "if (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
-            for (Stmt *inner : node.thenBody) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines);
+            for (Stmt *inner : node.thenBody) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "}";
             if (!node.elseBody.empty()) {
                 out << " else {\n";
-                for (Stmt *inner : node.elseBody) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines);
+                for (Stmt *inner : node.elseBody) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
                 out << indent << "}\n";
             } else {
                 out << "\n";
             }
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             out << indent << "while (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
-            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines);
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, ForEachStmt>) {
             int id = loopCounter++;
@@ -367,31 +395,61 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "    long " << n << " = ps_length(" << list << ");\n";
             out << indent << "    for (long " << i << " = 1; " << i << " <= " << n << "; " << i << "++) {\n";
             out << indent << "        PsValue " << mangle(node.itemName) << " = ps_list_get(" << list << ", ps_int(" << i << "));\n";
-            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines);
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "    }\n";
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
+            const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             out << indent << "(void)" << mangle(node.name) << "(";
             for (size_t i = 0; i < node.args.size(); ++i) {
                 if (i > 0) out << ", ";
-                out << emitBoxedExpr(node.args[i], analysis);
+                out << (signature && signature->nativeTyped
+                        ? emitRawExpr(node.args[i], analysis)
+                        : emitBoxedExpr(node.args[i], analysis));
             }
             out << ");\n";
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
-            out << indent << "return " << emitBoxedExpr(node.expr, analysis) << ";\n";
+            if (currentProcedure && currentProcedure->nativeTyped) {
+                if (currentProcedure->returnType.kind == TypeKind::Void) {
+                    out << indent << "return;\n";
+                } else {
+                    out << indent << "return " << emitRawExpr(node.expr, analysis) << ";\n";
+                }
+            } else {
+                out << indent << "return " << emitBoxedExpr(node.expr, analysis) << ";\n";
+            }
         }
     }, s->node);
+}
+
+std::string emitProcedureDeclaration(const ProcedureStmt &proc,
+                                     const AnalysisResult &analysis) {
+    const ProcedureSignature *signature = procedureSignature(proc.name, analysis);
+    bool typed = signature && signature->nativeTyped;
+
+    std::string parameters;
+    for (size_t i = 0; i < proc.params.size(); ++i) {
+        if (i > 0) parameters += ", ";
+        if (typed && i < signature->parameterTypes.size()) {
+            parameters += emitCDeclaration(signature->parameterTypes[i], mangle(proc.params[i].name));
+        } else {
+            parameters += "PsValue " + mangle(proc.params[i].name);
+        }
+    }
+    if (parameters.empty()) parameters = "void";
+
+    if (typed) {
+        return emitCDeclaration(signature->returnType,
+                                mangle(proc.name) + "(" + parameters + ")");
+    }
+    return "PsValue " + mangle(proc.name) + "(" + parameters + ")";
 }
 
 void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
                    const AnalysisResult &analysis,
                    const std::unordered_map<int, std::string> *sourceLines) {
-    out << "PsValue " << mangle(proc.name) << "(";
-    for (size_t i = 0; i < proc.params.size(); ++i) {
-        if (i > 0) out << ", ";
-        out << "PsValue " << mangle(proc.params[i]);
-    }
-    out << ") {\n";
+    const ProcedureSignature *signature = procedureSignature(proc.name, analysis);
+    out << emitProcedureDeclaration(proc, analysis) << " {\n";
 
     std::set<std::string> localVars;
     collectVars(proc.body, localVars, analysis);
@@ -399,9 +457,13 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
     if (!localVars.empty()) out << "\n";
 
     int loopCounter = 0;
-    for (Stmt *inner : proc.body) emitStmt(inner, out, "    ", loopCounter, analysis, sourceLines);
+    for (Stmt *inner : proc.body) {
+        emitStmt(inner, out, "    ", loopCounter, analysis, sourceLines, signature);
+    }
 
-    out << "    return ps_int(0L);\n";
+    if (!signature || !signature->nativeTyped) {
+        out << "    return ps_int(0L);\n";
+    }
     out << "}\n\n";
 }
 
@@ -428,6 +490,18 @@ std::string emitProgram(const std::vector<Stmt *> &program,
         }
     }
     if (!vars.empty()) out << "\n";
+
+    // Prototypes make forward and mutually recursive procedure calls valid C.
+    for (Stmt *s : program) {
+        if (auto *proc = std::get_if<ProcedureStmt>(&s->node)) {
+            out << emitProcedureDeclaration(*proc, analysis) << ";\n";
+        }
+    }
+    bool hasProcedures = false;
+    for (Stmt *s : program) {
+        if (std::holds_alternative<ProcedureStmt>(s->node)) { hasProcedures = true; break; }
+    }
+    if (hasProcedures) out << "\n";
 
     for (Stmt *s : program) {
         if (auto *proc = std::get_if<ProcedureStmt>(&s->node)) {
