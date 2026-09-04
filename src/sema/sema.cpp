@@ -856,6 +856,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
 
                 if (field.flexibleArray) {
                     Type elementType = resolveTypeSpec(field.type);
+                    if (!validateTypeQualifiers(elementType, s->line, diags)) valid = false;
                     if (field.name.empty()) {
                         diags.push_back({23, s->line, "A flexible array member must have a name."});
                         valid = false;
@@ -877,7 +878,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
 
                 Type fieldType = resolveTypeSpec(field.type);
+                if (!validateTypeQualifiers(fieldType, s->line, diags)) valid = false;
                 if (field.bitWidth) {
+                    if (fieldType.qualifiers.isAtomic) {
+                        diags.push_back({24, s->line, "Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object."});
+                        valid = false;
+                    }
                     auto limit = bitFieldWidthLimit(fieldType);
                     if (!limit) {
                         diags.push_back({23, s->line, "Bit-field \"" +
@@ -957,13 +963,19 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                               "\" is not allowed in a Union; C flexible array members are structure-only."});
                     valid = false;
                     Type elementType = resolveTypeSpec(field.type);
+                    if (!validateTypeQualifiers(elementType, s->line, diags)) valid = false;
                     fields.push_back(AggregateFieldInfo{
                         field.name, Type::incompleteArrayOf(std::move(elementType)), std::nullopt, true});
                     continue;
                 }
 
                 Type fieldType = resolveTypeSpec(field.type);
+                if (!validateTypeQualifiers(fieldType, s->line, diags)) valid = false;
                 if (field.bitWidth) {
+                    if (fieldType.qualifiers.isAtomic) {
+                        diags.push_back({24, s->line, "Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object."});
+                        valid = false;
+                    }
                     auto limit = bitFieldWidthLimit(fieldType);
                     if (!limit) {
                         diags.push_back({23, s->line, "Bit-field \"" +
@@ -1079,6 +1091,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type declared = resolveTypeSpec(node.type);
             if (analysis_) analysis_->declarationTypes[s] = declared;
+            if (!validateTypeQualifiers(declared, s->line, diags)) return;
             if (declared.kind == TypeKind::Void) {
                 diags.push_back({13, s->line, "I can't Declare \"" + node.name + "\" as void because void is not an object type."});
                 return;
@@ -1093,6 +1106,15 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 return;
             }
             bool created = declareVar(node.name, declared, true, s->line, diags);
+            if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer) {
+                diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
+                return;
+            }
+            if (node.aggregateInitializer &&
+                (hasConstSubobject(declared) || declared.qualifiers.isAtomic)) {
+                diags.push_back({24, s->line, "This aggregate initializer requires post-declaration member stores, which are not valid for constant subobjects or atomic aggregate objects."});
+                return;
+            }
             if (node.initializer) {
                 std::size_t diagnosticCount = diags.size();
                 Type init = inferExpr(node.initializer, s->line, diags);
