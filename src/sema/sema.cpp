@@ -17,9 +17,29 @@ bool isIntegralType(const Type &t) {
     return t.kind == TypeKind::Boolean || t.kind == TypeKind::Enumeration || t.isInteger();
 }
 
+bool hasAnyQualifiers(const TypeQualifiers &q) {
+    return q.isConst || q.isVolatile || q.isRestrict || q.isAtomic;
+}
+
+Type stripTopQualifiers(Type t) {
+    t.qualifiers = {};
+    return t;
+}
+
 Type decayArray(Type t) {
     if (t.isArray() && t.elementType) return Type::pointerTo(*t.elementType);
-    return t;
+    return stripTopQualifiers(std::move(t));
+}
+
+bool qualifierSuperset(const TypeQualifiers &target, const TypeQualifiers &source) {
+    return (!source.isConst || target.isConst) &&
+           (!source.isVolatile || target.isVolatile) &&
+           (!source.isRestrict || target.isRestrict) &&
+           (!source.isAtomic || target.isAtomic);
+}
+
+bool isObjectPointee(const Type &t) {
+    return t.kind != TypeKind::Void && t.kind != TypeKind::Function;
 }
 
 bool hasCompletePointee(const Type &t) {
@@ -60,6 +80,14 @@ std::string integerName(const Type &t) {
 }
 
 std::string typeToString(const Type &t) {
+    if (hasAnyQualifiers(t.qualifiers)) {
+        std::string prefix;
+        if (t.qualifiers.isConst) prefix += "constant ";
+        if (t.qualifiers.isVolatile) prefix += "volatile ";
+        if (t.qualifiers.isRestrict) prefix += "restricted ";
+        if (t.qualifiers.isAtomic) prefix += "atomic ";
+        return prefix + typeToString(stripTopQualifiers(t));
+    }
     switch (t.kind) {
         case TypeKind::Void: return "void";
         case TypeKind::Boolean: return "boolean";
@@ -86,23 +114,54 @@ std::string typeToString(const Type &t) {
     return "unknown type";
 }
 
-bool isVoidPointer(const Type &t) {
-    return t.isPointer() && t.elementType && t.elementType->kind == TypeKind::Void;
+bool pointerBasesCompatible(const Type &a, const Type &b) {
+    if (!a.isPointer() || !b.isPointer() || !a.elementType || !b.elementType) return false;
+    Type aPointee = *a.elementType;
+    Type bPointee = *b.elementType;
+    Type aBase = stripTopQualifiers(aPointee);
+    Type bBase = stripTopQualifiers(bPointee);
+    if (aBase == bBase) return true;
+    if (aBase.kind == TypeKind::Void && isObjectPointee(bBase)) return true;
+    if (bBase.kind == TypeKind::Void && isObjectPointee(aBase)) return true;
+    return false;
 }
 
-bool pointersCompatible(const Type &target, const Type &source) {
-    if (!target.isPointer() || !source.isPointer()) return false;
-    if (target == source) return true;
-    return isVoidPointer(target) || isVoidPointer(source);
+bool pointersAssignable(const Type &target, const Type &source) {
+    Type valueTarget = stripTopQualifiers(target);
+    Type valueSource = stripTopQualifiers(source);
+    if (!pointerBasesCompatible(valueTarget, valueSource) ||
+        !valueTarget.elementType || !valueSource.elementType) {
+        return false;
+    }
+    return qualifierSuperset(valueTarget.elementType->qualifiers,
+                             valueSource.elementType->qualifiers);
+}
+
+bool pointersComparable(const Type &a, const Type &b) {
+    return pointerBasesCompatible(stripTopQualifiers(a), stripTopQualifiers(b));
 }
 
 bool assignableTo(const Type &target, const Type &source) {
     if (target.isArray()) return false;
+    Type valueTarget = stripTopQualifiers(target);
     Type valueSource = decayArray(source);
-    if (target == valueSource) return true;
-    if (isArithmeticScalar(target) && isArithmeticScalar(valueSource)) return true;
-    if (pointersCompatible(target, valueSource)) return true;
+    if (valueTarget == valueSource) return true;
+    if (isArithmeticScalar(valueTarget) && isArithmeticScalar(valueSource)) return true;
+    if (pointersAssignable(valueTarget, valueSource)) return true;
     return false;
+}
+
+Type memberTypeWithAggregateQualifiers(Type member, const TypeQualifiers &aggregateQualifiers) {
+    if (member.isArray() && member.elementType) {
+        Type element = *member.elementType;
+        if (aggregateQualifiers.isConst) element.qualifiers.isConst = true;
+        if (aggregateQualifiers.isVolatile) element.qualifiers.isVolatile = true;
+        member.elementType = std::make_shared<Type>(std::move(element));
+        return member;
+    }
+    if (aggregateQualifiers.isConst) member.qualifiers.isConst = true;
+    if (aggregateQualifiers.isVolatile) member.qualifiers.isVolatile = true;
+    return member;
 }
 
 bool supportsCObjectQuery(const Type &t) {
@@ -513,7 +572,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 }
                 bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
                 bool relational = node.op == BinOp::Gt || node.op == BinOp::Lt || node.op == BinOp::Ge || node.op == BinOp::Le;
-                if (equality && lhsPointer && rhsPointer && pointersCompatible(lhsValue, rhsValue)) return Type::number();
+                if (equality && lhsPointer && rhsPointer && pointersComparable(lhsValue, rhsValue)) return Type::number();
                 if (relational && lhsPointer && rhsPointer && hasCompletePointee(lhsValue) && hasCompletePointee(rhsValue) &&
                     lhsValue.elementType && rhsValue.elementType && *lhsValue.elementType == *rhsValue.elementType) return Type::number();
                 diags.push_back({16, line, "This pointer operation needs compatible object-pointer operands."});
