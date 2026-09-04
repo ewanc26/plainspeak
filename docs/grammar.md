@@ -257,7 +257,7 @@ Bit-fields lower to native C bit-field declarations rather than masks maintained
 Structure flags: Bit field low as unsigned integer with width 3. Bit field as unsigned integer with width 0. Bit field high as unsigned integer with width 2. End structure.
 ```
 
-A named bit-field must have a positive width. An unnamed width-0 bit-field is the prose form of C's allocation-unit/alignment separator. Existing integer ranks, `boolean`, and completed enumerations are accepted where the target C compiler supports them; the width is checked against the represented target type. Named bit-fields participate in `Member` reads/stores and aggregate initialization like scalar members. Unnamed bit-fields are skipped by positional initialization and cannot be named by a designator.
+A named bit-field must have a positive width. An unnamed width-0 bit-field is the prose form of C's allocation-unit/alignment separator. Existing integer ranks, `boolean`, and completed enumerations are accepted where the target C compiler supports them. PlainSpeak validates widths against its current backend scalar-width model; exhaustive detection of implementation-defined bit-field bases and enum representation remains a conformance boundary. Named bit-fields participate in `Member` reads/stores and aggregate initialization like scalar members. Unnamed bit-fields are skipped by positional initialization and cannot be named by a designator.
 
 C does not permit `sizeof` on a bit-field expression, so `Size of Member flags of value` is rejected even though the member has an integer semantic type. The current `Address of` syntax only accepts declared object names, so it cannot incorrectly take a bit-field address.
 
@@ -267,7 +267,7 @@ A flexible array member is structure-only and uses an incomplete trailing C arra
 Structure packet: Field length as unsigned integer. Flexible field data as unsigned character. End structure.
 ```
 
-The flexible member must be last and the structure must contain at least one other named member. A union cannot contain one. A structure containing a flexible member may exist as a native object and has normal C `sizeof` semantics (the flexible tail contributes no elements), but it cannot be embedded by value in another aggregate or used as a fixed-array element. Use a pointer instead.
+The flexible member must be last and the structure must contain at least one other named member. A union cannot declare a flexible array member directly, but it may contain a structure that has one. Such a union inherits C's restriction: it may not then be a structure member or an array element, and that restriction propagates recursively through containing unions. A structure containing a flexible member may exist as a native object and has normal C `sizeof` semantics (the flexible tail contributes no elements), but it cannot itself be a structure member or array element. Use a pointer when one of those placements is required.
 
 `Member data of packet` retains incomplete-array semantics and can decay for element access once suitably extended storage exists. The current language does not yet provide allocation sized beyond the base structure, so direct flexible-tail element access is not presented as a safe allocation facility. Flexible members are never aggregate initializer targets; their storage is supplied separately, matching the C object model.
 

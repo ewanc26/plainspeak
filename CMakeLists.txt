@@ -59,6 +59,8 @@ add_executable(unit_tests
     src/lexer/alias_table.cpp
     src/parser/parser.cpp
     src/sema/sema.cpp
+    src/codegen/c_emitter.cpp
+    src/codegen/mangling.cpp
 )
 target_include_directories(unit_tests PRIVATE src)
 target_link_libraries(unit_tests PRIVATE Catch2::Catch2WithMain)

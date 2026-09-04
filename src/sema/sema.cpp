@@ -622,9 +622,17 @@ bool Sema::isModifiableObjectType(const Type &type) const {
 
 bool Sema::containsFlexibleArray(const Type &type) const {
     if (type.isArray() && type.elementType) return containsFlexibleArray(*type.elementType);
-    if (type.kind != TypeKind::Structure) return false;
-    auto it = structureTable_.find(type.tag);
-    return it != structureTable_.end() && it->second.complete && it->second.hasFlexibleArray;
+
+    const StructureInfo *info = nullptr;
+    if (type.kind == TypeKind::Structure) {
+        auto it = structureTable_.find(type.tag);
+        if (it != structureTable_.end()) info = &it->second;
+    } else if (type.kind == TypeKind::Union) {
+        auto it = unionTable_.find(type.tag);
+        if (it != unionTable_.end()) info = &it->second;
+    }
+
+    return info && info->complete && info->hasFlexibleArray;
 }
 
 const AggregateFieldInfo *Sema::findAggregateField(const Type &base, const std::string &name) const {
@@ -1005,6 +1013,50 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
 }
 
 void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
+    auto validateBitField = [&](const StructureField &field, const Type &fieldType) {
+        bool valid = true;
+        const std::string fieldName = field.name.empty() ? std::string("<unnamed>") : field.name;
+
+        if (fieldType.qualifiers.isAtomic) {
+            diags.push_back({24, s->line, "Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object."});
+            valid = false;
+        }
+
+        if (fieldType.kind == TypeKind::Enumeration) {
+            auto enumeration = enumerationTable_.find(fieldType.tag);
+            if (enumeration == enumerationTable_.end()) {
+                diags.push_back({23, s->line, "Bit-field \"" + fieldName +
+                                          "\" uses unknown Enumeration \"" + fieldType.tag + "\"."});
+                return false;
+            }
+            if (!enumeration->second.complete) {
+                diags.push_back({23, s->line, "Bit-field \"" + fieldName +
+                                          "\" needs Enumeration \"" + fieldType.tag +
+                                          "\" to be complete before it can be used by value."});
+                return false;
+            }
+        }
+
+        auto limit = bitFieldWidthLimit(fieldType);
+        if (!limit) {
+            diags.push_back({23, s->line, "Bit-field \"" + fieldName +
+                                      "\" must use an integer, boolean, or enumeration type supported by the target C compiler."});
+            valid = false;
+        } else {
+            if (!field.name.empty() && *field.bitWidth == 0) {
+                diags.push_back({23, s->line, "A named bit-field cannot have width 0; zero width is reserved for unnamed alignment fields."});
+                valid = false;
+            }
+            if (*field.bitWidth > *limit) {
+                diags.push_back({23, s->line, "Bit-field \"" + fieldName +
+                                          "\" width " + std::to_string(*field.bitWidth) +
+                                          " exceeds its target type width of " + std::to_string(*limit) + " bits."});
+                valid = false;
+            }
+        }
+        return valid;
+    };
+
     std::visit([&](auto &&node) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, SayStmt>) {
@@ -1083,29 +1135,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 Type fieldType = resolveTypeSpec(field.type);
                 if (!validateTypeQualifiers(fieldType, s->line, diags)) valid = false;
                 if (field.bitWidth) {
-                    if (fieldType.qualifiers.isAtomic) {
-                        diags.push_back({24, s->line, "Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object."});
-                        valid = false;
-                    }
-                    auto limit = bitFieldWidthLimit(fieldType);
-                    if (!limit) {
-                        diags.push_back({23, s->line, "Bit-field \"" +
-                                                  (field.name.empty() ? std::string("<unnamed>") : field.name) +
-                                                  "\" must use an integer, boolean, or enumeration type supported by the target C compiler."});
-                        valid = false;
-                    } else {
-                        if (!field.name.empty() && *field.bitWidth == 0) {
-                            diags.push_back({23, s->line, "A named bit-field cannot have width 0; zero width is reserved for unnamed alignment fields."});
-                            valid = false;
-                        }
-                        if (*field.bitWidth > *limit) {
-                            diags.push_back({23, s->line, "Bit-field \"" +
-                                                      (field.name.empty() ? std::string("<unnamed>") : field.name) +
-                                                      "\" width " + std::to_string(*field.bitWidth) +
-                                                      " exceeds its target type width of " + std::to_string(*limit) + " bits."});
-                            valid = false;
-                        }
-                    }
+                    if (!validateBitField(field, fieldType)) valid = false;
                     fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), field.bitWidth, false});
                     continue;
                 }
@@ -1153,6 +1183,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             std::vector<AggregateFieldInfo> fields;
             std::unordered_set<std::string> names;
             bool valid = true;
+            bool containsFlexible = false;
             for (const auto &field : node.fields) {
                 if (!field.name.empty() && !names.insert(field.name).second) {
                     diags.push_back({20, s->line, "Union \"" + node.name +
@@ -1175,29 +1206,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 Type fieldType = resolveTypeSpec(field.type);
                 if (!validateTypeQualifiers(fieldType, s->line, diags)) valid = false;
                 if (field.bitWidth) {
-                    if (fieldType.qualifiers.isAtomic) {
-                        diags.push_back({24, s->line, "Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object."});
-                        valid = false;
-                    }
-                    auto limit = bitFieldWidthLimit(fieldType);
-                    if (!limit) {
-                        diags.push_back({23, s->line, "Bit-field \"" +
-                                                  (field.name.empty() ? std::string("<unnamed>") : field.name) +
-                                                  "\" must use an integer, boolean, or enumeration type supported by the target C compiler."});
-                        valid = false;
-                    } else {
-                        if (!field.name.empty() && *field.bitWidth == 0) {
-                            diags.push_back({23, s->line, "A named bit-field cannot have width 0; zero width is reserved for unnamed alignment fields."});
-                            valid = false;
-                        }
-                        if (*field.bitWidth > *limit) {
-                            diags.push_back({23, s->line, "Bit-field \"" +
-                                                      (field.name.empty() ? std::string("<unnamed>") : field.name) +
-                                                      "\" width " + std::to_string(*field.bitWidth) +
-                                                      " exceeds its target type width of " + std::to_string(*limit) + " bits."});
-                            valid = false;
-                        }
-                    }
+                    if (!validateBitField(field, fieldType)) valid = false;
                     fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), field.bitWidth, false});
                     continue;
                 }
@@ -1211,9 +1220,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                               typeToString(fieldType) + "; use a pointer for recursive or forward references."});
                     valid = false;
                 } else if (!fieldType.isPointer() && containsFlexibleArray(fieldType)) {
-                    diags.push_back({23, s->line, "Union member \"" + field.name +
-                                              "\" cannot contain a flexible-array structure by value; use a pointer instead."});
-                    valid = false;
+                    containsFlexible = true;
                 }
                 fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), std::nullopt, false});
             }
@@ -1226,6 +1233,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             if (valid) {
                 found->second.fields = fields;
                 found->second.complete = true;
+                found->second.hasFlexibleArray = containsFlexible;
                 if (analysis_) {
                     analysis_->unions[node.name] = found->second;
                     analysis_->unionFields[s] = fields;

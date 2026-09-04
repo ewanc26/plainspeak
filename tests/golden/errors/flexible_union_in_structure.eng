@@ -1,0 +1,1 @@
+Structure packet: Field length as integer. Flexible field data as character. End structure. Union storage: Field packet as structure packet. Field marker as unsigned integer. End union. Structure wrapper: Field storage as union storage. End structure.
