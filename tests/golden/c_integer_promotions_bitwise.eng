@@ -1,0 +1,1 @@
+Declare small as unsigned character with value 7. Declare one as integer with value 1. Say small plus one. Say 6 bitwise and 3. Say 6 bitwise xor 3. Say 4 bitwise or 1. Say bitwise not 0. Say 1 plus 1 shifted left by 2. Say 16 shifted right by 2.
