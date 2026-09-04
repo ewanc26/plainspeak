@@ -1,0 +1,1 @@
+error[E0021]: A union initializer selects exactly one member; "u" received 2 member designators.
