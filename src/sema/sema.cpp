@@ -46,6 +46,16 @@ bool isObjectPointee(const Type &t) {
     return t.kind != TypeKind::Void && t.kind != TypeKind::Function;
 }
 
+Type adjustFunctionParameter(Type type) {
+    if (type.isArray() && type.elementType) return Type::pointerTo(*type.elementType);
+    if (type.isFunction()) return Type::pointerTo(std::move(type));
+    return type;
+}
+
+bool isFunctionPointer(const Type &type) {
+    return type.isPointer() && type.elementType && type.elementType->isFunction();
+}
+
 bool hasCompletePointee(const Type &t) {
     return t.isPointer() && t.elementType && t.elementType->kind != TypeKind::Void &&
            t.elementType->kind != TypeKind::Function;
@@ -107,7 +117,19 @@ std::string typeToString(const Type &t) {
         case TypeKind::Array:
             return "array of " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown")) +
                    (t.arrayBound ? " with length " + std::to_string(*t.arrayBound) : std::string(" with unknown length"));
-        case TypeKind::Function: return "function";
+        case TypeKind::Function: {
+            std::string text = "function taking ";
+            if (t.parameterTypes.empty()) text += "nothing";
+            else {
+                for (std::size_t i = 0; i < t.parameterTypes.size(); ++i) {
+                    if (i) text += " followed by ";
+                    text += typeToString(t.parameterTypes[i]);
+                }
+            }
+            text += " returning ";
+            text += t.returnType ? typeToString(*t.returnType) : "unknown";
+            return text;
+        }
         case TypeKind::Structure: return "structure " + t.tag;
         case TypeKind::Union: return "union " + t.tag;
         case TypeKind::Enumeration: return "enumeration " + t.tag;
@@ -334,7 +356,12 @@ bool canExplicitCast(const Type &target, const Type &source) {
     if (to == from) return true;
     if (to.kind == TypeKind::Boolean) return true;
     if (isCastArithmetic(to) && isCastArithmetic(from)) return true;
-    if (to.kind == TypeKind::Pointer && (from.kind == TypeKind::Pointer || from.kind == TypeKind::Nullptr)) return true;
+    if (to.kind == TypeKind::Pointer && from.kind == TypeKind::Nullptr) return true;
+    if (to.kind == TypeKind::Pointer && from.kind == TypeKind::Pointer) {
+        const bool toFunction = isFunctionPointer(to);
+        const bool fromFunction = isFunctionPointer(from);
+        return toFunction == fromFunction;
+    }
     if (to.kind == TypeKind::Pointer && isCastInteger(from)) return true;
     if (isCastInteger(to) && from.kind == TypeKind::Pointer) return true;
     return false;
@@ -487,8 +514,8 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
                 if (paramType.kind == TypeKind::Void) {
                     result.diagnostics.push_back({18, s->line, "Typed parameter \"" + param.name + "\" cannot have type void."});
                     paramType = Type::number();
-                } else if (paramType.isArray()) {
-                    paramType = decayArray(paramType);
+                } else {
+                    paramType = adjustFunctionParameter(std::move(paramType));
                 }
             }
             signature.parameterTypes.push_back(std::move(paramType));
@@ -570,6 +597,16 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             result = Type::arrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
                                    spec.arrayBound);
             break;
+        case TypeSpecKind::Function: {
+            Type returnType = spec.functionReturn ? resolveTypeSpec(*spec.functionReturn) : Type::voidType();
+            std::vector<Type> params;
+            params.reserve(spec.functionParameters.size());
+            for (const auto &param : spec.functionParameters) {
+                params.push_back(adjustFunctionParameter(param ? resolveTypeSpec(*param) : Type::voidType()));
+            }
+            result = Type::function(std::move(returnType), std::move(params), spec.functionVariadic);
+            break;
+        }
         case TypeSpecKind::Structure: result = Type::structure(spec.tag); break;
         case TypeSpecKind::Union: result = Type::unionType(spec.tag); break;
         case TypeSpecKind::Enumeration: result = Type::enumeration(spec.tag); break;
