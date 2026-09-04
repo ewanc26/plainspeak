@@ -84,7 +84,22 @@ struct Expr { ExprNode node; int line; };
 
 struct SayStmt       { Expr *expr; };
 struct SetStmt       { std::string name; Expr *expr; };
-struct NativeDeclStmt { std::string name; TypeSpec type; Expr *initializer; };
+enum class AggregateInitKind { Positional, Members, Elements };
+struct AggregateInitEntry {
+    std::string memberName{};
+    std::size_t elementIndex = 0;
+    Expr *expr = nullptr;
+};
+struct AggregateInitializer {
+    AggregateInitKind kind = AggregateInitKind::Positional;
+    std::vector<AggregateInitEntry> entries;
+};
+struct NativeDeclStmt {
+    std::string name;
+    TypeSpec type;
+    Expr *initializer;
+    std::optional<AggregateInitializer> aggregateInitializer;
+};
 struct StoreThroughStmt { Expr *pointer; Expr *expr; };
 struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };
 struct StoreMemberStmt { std::string name; Expr *base; Expr *expr; };
