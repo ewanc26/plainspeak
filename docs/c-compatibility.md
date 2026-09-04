@@ -17,7 +17,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 
 | ID | Status | Scope |
 |---|---|---|
-| `types.integer-model` | foundation | Structural integer ranks/signedness exist and explicit native declarations can use the ordinary C integer family; full promotions/conversions remain incomplete. |
+| `types.integer-model` | foundation | Structural integer ranks/signedness and the ordinary C integer promotions/usual signed-unsigned conversions are executable; C23 `_BitInt` rank interactions and remaining conversion edge cases are incomplete. |
 | `types.bitint` | foundation | C23 bit-precise integer type is structurally representable. |
 | `types.floating-model` | foundation | Float/double/long-double ranks are structurally represented and native objects can use all three; the full C floating environment/model is still incomplete. |
 | `types.complex` | planned | Complex objects and arithmetic. |
