@@ -1,0 +1,1 @@
+error[E0020]: Union "value" defines member "x" more than once.
