@@ -31,6 +31,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             return "structure " + type.tag;
         case TypeSpecKind::Union:
             return "union " + type.tag;
+        case TypeSpecKind::Enumeration:
+            return "enumeration " + type.tag;
     }
     return "<unknown type>";
 }
@@ -50,6 +52,7 @@ std::string printExpr(const Expr *e) {
         else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);
         else if constexpr (std::is_same_v<T, ElementExpr>) return "Element at " + printExpr(node.index) + " in " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, MemberExpr>) return "Member " + node.name + " of " + printExpr(node.base);
+        else if constexpr (std::is_same_v<T, EnumeratorExpr>) return "Enumerator " + node.name + " of " + node.enumeration;
         else if constexpr (std::is_same_v<T, ListExpr>) {
             std::string out = "List with ";
             for (size_t i = 0; i < node.items.size(); ++i) {
@@ -125,6 +128,18 @@ std::string printStmt(const Stmt *s) {
                 out += "Field " + field.name + " as " + printTypeSpec(field.type) + ". ";
             }
             return out + "End union. ";
+        }
+        else if constexpr (std::is_same_v<T, EnumerationStmt>) {
+            std::string out = "Enumeration " + node.name + ": ";
+            for (const auto &enumerator : node.enumerators) {
+                out += "Enumerator " + enumerator.name;
+                if (enumerator.explicitValue) {
+                    if (*enumerator.explicitValue < 0) out += " as minus " + std::to_string(-*enumerator.explicitValue);
+                    else out += " as " + std::to_string(*enumerator.explicitValue);
+                }
+                out += ". ";
+            }
+            return out + "End enumeration. ";
         }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             std::string out = "Declare " + node.name + " as " + printTypeSpec(node.type);
