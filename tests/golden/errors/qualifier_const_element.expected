@@ -1,0 +1,1 @@
+error[E0024]: I can't store an element through pointer to constant integer because its element type is not modifiable.
