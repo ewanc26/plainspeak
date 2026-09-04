@@ -138,14 +138,6 @@ Stmt *Parser::parseSet() {
         expectDot();
         return arena_.makeStmt(StoreElementStmt{index, base, expr}, line);
     }
-    if (checkWord("enumerator")) {
-        int line = peek().line;
-        advance();
-        std::string name = expectIdentName();
-        expectWord("of");
-        std::string enumeration = expectIdentName();
-        return arena_.makeExpr(EnumeratorExpr{std::move(name), std::move(enumeration)}, line);
-    }
     if (checkWord("member")) {
         advance();
         std::string member = expectIdentName();
@@ -777,6 +769,14 @@ Expr *Parser::parsePrimary() {
         else error("expected \"numbers\", \"decimals\", or \"strings\" after \"Empty list of\"");
         advance();
         return arena_.makeExpr(EmptyListExpr{elementKind}, line);
+    }
+    if (checkWord("enumerator")) {
+        int line = peek().line;
+        advance();
+        std::string name = expectIdentName();
+        expectWord("of");
+        std::string enumeration = expectIdentName();
+        return arena_.makeExpr(EnumeratorExpr{std::move(name), std::move(enumeration)}, line);
     }
     if (checkWord("member")) {
         int line = peek().line;
