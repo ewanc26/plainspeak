@@ -60,6 +60,7 @@ std::string printExpr(const Expr *e) {
         else if constexpr (std::is_same_v<T, VarRef>) return node.name;
         else if constexpr (std::is_same_v<T, AddressOfExpr>) return "Address of " + node.name;
         else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);
+        else if constexpr (std::is_same_v<T, CastExpr>) return "Convert " + printExpr(node.operand) + " to type " + printTypeSpec(node.target);
         else if constexpr (std::is_same_v<T, ElementExpr>) return "Element at " + printExpr(node.index) + " in " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, MemberExpr>) return "Member " + node.name + " of " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, EnumeratorExpr>) return "Enumerator " + node.name + " of " + node.enumeration;
