@@ -116,10 +116,17 @@ bool supportsCObjectQuery(const Type &t) {
            t.kind == TypeKind::Structure || t.kind == TypeKind::Union;
 }
 
-std::optional<std::size_t> portableBitFieldWidthLimit(const Type &type) {
+std::optional<std::size_t> bitFieldWidthLimit(const Type &type) {
     if (type.kind == TypeKind::Boolean) return 1;
-    if (type.kind == TypeKind::Integer && type.integerRank == IntegerRank::Int) {
-        return sizeof(int) * CHAR_BIT;
+    if (type.kind == TypeKind::Enumeration) return sizeof(int) * CHAR_BIT;
+    if (type.kind != TypeKind::Integer) return std::nullopt;
+
+    switch (type.integerRank) {
+        case IntegerRank::Char: return sizeof(signed char) * CHAR_BIT;
+        case IntegerRank::Short: return sizeof(short) * CHAR_BIT;
+        case IntegerRank::Int: return sizeof(int) * CHAR_BIT;
+        case IntegerRank::Long: return sizeof(long) * CHAR_BIT;
+        case IntegerRank::LongLong: return sizeof(long long) * CHAR_BIT;
     }
     return std::nullopt;
 }
@@ -714,11 +721,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
 
                 Type fieldType = resolveTypeSpec(field.type);
                 if (field.bitWidth) {
-                    auto limit = portableBitFieldWidthLimit(fieldType);
+                    auto limit = bitFieldWidthLimit(fieldType);
                     if (!limit) {
                         diags.push_back({23, s->line, "Bit-field \"" +
                                                   (field.name.empty() ? std::string("<unnamed>") : field.name) +
-                                                  "\" must use boolean, integer, or unsigned integer in this portable C tranche."});
+                                                  "\" must use an integer, boolean, or enumeration type supported by the target C compiler."});
                         valid = false;
                     } else {
                         if (!field.name.empty() && *field.bitWidth == 0) {
@@ -800,11 +807,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
 
                 Type fieldType = resolveTypeSpec(field.type);
                 if (field.bitWidth) {
-                    auto limit = portableBitFieldWidthLimit(fieldType);
+                    auto limit = bitFieldWidthLimit(fieldType);
                     if (!limit) {
                         diags.push_back({23, s->line, "Bit-field \"" +
                                                   (field.name.empty() ? std::string("<unnamed>") : field.name) +
-                                                  "\" must use boolean, integer, or unsigned integer in this portable C tranche."});
+                                                  "\" must use an integer, boolean, or enumeration type supported by the target C compiler."});
                         valid = false;
                     } else {
                         if (!field.name.empty() && *field.bitWidth == 0) {
