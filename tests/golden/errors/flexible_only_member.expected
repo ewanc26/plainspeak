@@ -1,0 +1,1 @@
+error[E0023]: Structure "packet" needs at least one other named member before its flexible array member.
