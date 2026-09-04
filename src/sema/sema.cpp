@@ -164,9 +164,13 @@ bool assignableTo(const Type &target, const Type &source) {
     return false;
 }
 
+bool isNullPointerLike(const Type &type, const Expr *expr) {
+    return stripTopQualifiers(type).kind == TypeKind::Nullptr || isNullPointerConstantExpr(expr);
+}
+
 bool assignableExprTo(const Type &target, const Type &source, const Expr *expr) {
     return assignableTo(target, source) ||
-           (stripTopQualifiers(target).isPointer() && isNullPointerConstantExpr(expr));
+           (stripTopQualifiers(target).isPointer() && isNullPointerLike(source, expr));
 }
 
 Type memberTypeWithAggregateQualifiers(Type member, const TypeQualifiers &aggregateQualifiers) {
@@ -827,8 +831,8 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return usualArithmeticConversion(trueValue, falseValue);
             }
 
-            if (trueValue.isPointer() && isNullPointerConstantExpr(node.whenFalse)) return trueValue;
-            if (falseValue.isPointer() && isNullPointerConstantExpr(node.whenTrue)) return falseValue;
+            if (trueValue.isPointer() && isNullPointerLike(falseValue, node.whenFalse)) return trueValue;
+            if (falseValue.isPointer() && isNullPointerLike(trueValue, node.whenTrue)) return falseValue;
             if (trueValue.kind == TypeKind::Nullptr && falseValue.kind == TypeKind::Nullptr) {
                 return Type::nullptrType();
             }
@@ -975,8 +979,8 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             bool lhsPointer = lhsValue.isPointer();
             bool rhsPointer = rhsValue.isPointer();
             bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
-            if (equality && lhsPointer && isNullPointerConstantExpr(node.rhs)) return Type::integer(IntegerRank::Int);
-            if (equality && rhsPointer && isNullPointerConstantExpr(node.lhs)) return Type::integer(IntegerRank::Int);
+            if (equality && lhsPointer && isNullPointerLike(rhsValue, node.rhs)) return Type::integer(IntegerRank::Int);
+            if (equality && rhsPointer && isNullPointerLike(lhsValue, node.lhs)) return Type::integer(IntegerRank::Int);
             if (equality && lhsValue.kind == TypeKind::Nullptr && rhsValue.kind == TypeKind::Nullptr) return Type::integer(IntegerRank::Int);
             if (lhsPointer || rhsPointer) {
                 if (node.op == BinOp::Add) {
@@ -1044,11 +1048,11 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return integerPromotion(lhsValue);
             }
             if (node.op == BinOp::And || node.op == BinOp::Or) {
-                if (!isArithmeticScalar(lhsValue) || !isArithmeticScalar(rhsValue)) {
+                if (!isConditionalScalar(lhsValue) || !isConditionalScalar(rhsValue)) {
                     diags.push_back({2, line, "I can't do logical " + std::string(node.op == BinOp::And ? "and" : "or") +
-                                             " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be arithmetic scalar values."});
+                                             " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be C scalar values."});
                 }
-                return Type::number();
+                return Type::integer(IntegerRank::Int);
             }
             if (isList(lhsValue) || isList(rhsValue) ||
                 (lhsValue != rhsValue && !(isArithmeticScalar(lhsValue) && isArithmeticScalar(rhsValue)))) {
@@ -1075,10 +1079,10 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 }
                 return integerPromotion(value);
             }
-            if (value != Type::number()) {
-                diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
+            if (!isConditionalScalar(value)) {
+                diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a C scalar value."});
             }
-            return Type::number();
+            return Type::integer(IntegerRank::Int);
         }
         else if constexpr (std::is_same_v<T, CallExpr>) {
             auto found = procTable_.find(node.name);
