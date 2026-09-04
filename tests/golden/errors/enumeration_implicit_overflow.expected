@@ -1,1 +1,1 @@
-error[E0022]: Implicit Enumerator "tooFar" would exceed the supported C int range.
+error[E0022]: Implicit Enumerator "toofar" would exceed the supported C int range.
