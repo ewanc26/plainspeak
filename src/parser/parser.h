@@ -37,6 +37,7 @@ private:
     Stmt *parseSet();
     Stmt *parseDeclare();
     Stmt *parseStructure();
+    Stmt *parseUnion();
     Stmt *parseAdd();
     Stmt *parseSub();
     Stmt *parseRead();
