@@ -646,6 +646,24 @@ const AggregateFieldInfo *Sema::findAggregateField(const Type &base, const std::
     return nullptr;
 }
 
+bool Sema::isNativeLvalueExpr(const Expr *e) const {
+    return std::visit([&](auto &&node) -> bool {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, VarRef>) {
+            return analysis_ && analysis_->nativeObjectRefs.count(e) != 0;
+        } else if constexpr (std::is_same_v<T, DerefExpr> ||
+                             std::is_same_v<T, ElementExpr>) {
+            return true;
+        } else if constexpr (std::is_same_v<T, MemberExpr>) {
+            if (!analysis_) return false;
+            auto found = analysis_->exprTypes.find(node.base);
+            if (found != analysis_->exprTypes.end() && found->second.isPointer()) return true;
+            return isNativeLvalueExpr(node.base);
+        }
+        return false;
+    }, e->node);
+}
+
 Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
     Type result = std::visit([&](auto &&node) -> Type {
         using T = std::decay_t<decltype(node)>;
@@ -721,6 +739,41 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return Type::number();
             }
             return target;
+        }
+        else if constexpr (std::is_same_v<T, IncDecExpr>) {
+            const std::size_t before = diags.size();
+            Type operand = inferExpr(node.operand, line, diags);
+            if (diags.size() != before) return Type::number();
+
+            if (!isNativeLvalueExpr(node.operand)) {
+                diags.push_back({27, line,
+                    "Increment/decrement needs a native modifiable lvalue, not a temporary or boxed value."});
+                return Type::number();
+            }
+            if (!isModifiableObjectType(operand)) {
+                diags.push_back({27, line,
+                    "Increment/decrement cannot modify " + typeToString(operand) +
+                    " because it is not a modifiable C object type."});
+                return Type::number();
+            }
+
+            Type value = stripTopQualifiers(operand);
+            if (value.isPointer()) {
+                if (!value.elementType || !isCompleteObjectType(*value.elementType)) {
+                    diags.push_back({27, line,
+                        "Increment/decrement on a pointer requires a pointer to a complete object type, not " +
+                        typeToString(operand) + "."});
+                    return Type::number();
+                }
+                return value;
+            }
+            if (!isArithmeticScalar(value)) {
+                diags.push_back({27, line,
+                    "Increment/decrement needs a real arithmetic value or complete object pointer, not " +
+                    typeToString(operand) + "."});
+                return Type::number();
+            }
+            return value;
         }
         else if constexpr (std::is_same_v<T, MemberExpr>) {
             Type base = inferExpr(node.base, line, diags);
