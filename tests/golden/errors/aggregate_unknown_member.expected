@@ -1,0 +1,1 @@
+error[E0021]: Structure "point" has no member "y" to initialize.
