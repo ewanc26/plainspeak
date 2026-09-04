@@ -1223,7 +1223,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, SayStmt>) {
             Type type = inferExpr(node.expr, s->line, diags);
-            if (type.isPointer() || type.isArray() || type.isAggregate()) {
+            if (type.isPointer() || type.kind == TypeKind::Nullptr || type.isArray() || type.isAggregate()) {
                 diags.push_back({16, s->line, "Say does not format native pointers, whole arrays, or aggregates; say a scalar Member, Element, or Value instead."});
             }
         }
@@ -1776,7 +1776,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, IfStmt>) {
             Type cond = inferExpr(node.cond, s->line, diags);
-            if (cond.isPointer()) diags.push_back({16, s->line, "Pointer conditions are not implemented yet."});
+            (void)cond;
             enterScope();
             for (Stmt *inner : node.thenBody) checkStmt(inner, diags);
             leaveScope();
@@ -1788,8 +1788,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, WhileStmt>) {
             Type condType = inferExpr(node.cond, s->line, diags);
-            if (!isNumeric(condType)) {
-                diags.push_back({5, s->line, "While needs a number condition, not a " + typeToString(condType) + "."});
+            if (!isConditionalScalar(condType)) {
+                diags.push_back({5, s->line, "While needs a C scalar condition, not a " + typeToString(condType) + "."});
             }
             enterScope();
             for (Stmt *inner : node.body) checkStmt(inner, diags);
