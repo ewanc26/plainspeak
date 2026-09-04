@@ -79,6 +79,13 @@ std::string emitCDeclaration(const Type &type, const std::string &name) {
     return emitCDeclarator(type, name);
 }
 
+std::string emitAggregateFieldDeclaration(const AggregateFieldInfo &field) {
+    const std::string name = field.name.empty() ? std::string() : mangle(field.name);
+    std::string declaration = emitCDeclaration(field.type, name);
+    if (field.bitWidth) declaration += " : " + std::to_string(*field.bitWidth);
+    return declaration;
+}
+
 std::string mangleEnumerator(const std::string &enumeration, const std::string &name) {
     return mangle(enumeration) + "__" + mangle(name);
 }
@@ -111,10 +118,14 @@ void emitAggregateStores(const std::string &name, const Type &declared,
             if (it != analysis.unions.end()) info = &it->second;
         }
         if (!info) return;
-        std::size_t count = std::min(aggregate.entries.size(), info->fields.size());
+        std::vector<const AggregateFieldInfo *> positionalFields;
+        for (const auto &field : info->fields) {
+            if (!field.name.empty() && !field.flexibleArray) positionalFields.push_back(&field);
+        }
+        std::size_t count = std::min(aggregate.entries.size(), positionalFields.size());
         if (declared.kind == TypeKind::Union) count = std::min<std::size_t>(count, 1);
         for (std::size_t i = 0; i < count; ++i) {
-            emitStore("(" + name + ")." + mangle(info->fields[i].first), aggregate.entries[i].expr);
+            emitStore("(" + name + ")." + mangle(positionalFields[i]->name), aggregate.entries[i].expr);
         }
         return;
     }
@@ -595,7 +606,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             if (fieldsIt == analysis.structureFields.end()) continue;
             out << "struct " << mangle(structure->name) << " {\n";
             for (const auto &field : fieldsIt->second) {
-                out << "    " << emitCDeclaration(field.second, mangle(field.first)) << ";\n";
+                out << "    " << emitAggregateFieldDeclaration(field) << ";\n";
             }
             out << "};\n";
         } else if (auto *uni = std::get_if<UnionStmt>(&s->node)) {
@@ -603,7 +614,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             if (fieldsIt == analysis.unionFields.end()) continue;
             out << "union " << mangle(uni->name) << " {\n";
             for (const auto &field : fieldsIt->second) {
-                out << "    " << emitCDeclaration(field.second, mangle(field.first)) << ";\n";
+                out << "    " << emitAggregateFieldDeclaration(field) << ";\n";
             }
             out << "};\n";
         }

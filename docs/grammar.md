@@ -51,9 +51,13 @@ NativeInitializer ::= "with" "value" Expr
 StoreThroughStmt ::= ("Set" | "Let" | "Make") "value" "at" Expr "to" Expr "."
 StoreElementStmt ::= ("Set" | "Let" | "Make") "element" "at" Expr "in" Expr "to" Expr "."
 StoreMemberStmt ::= ("Set" | "Let" | "Make") "member" IDENT "of" Expr "to" Expr "."
-StructureField ::= "Field" IDENT "as" CType "."
-StructureStmt ::= "Structure" IDENT ":" StructureField+ "End" "structure" "."
-UnionStmt ::= "Union" IDENT ":" StructureField+ "End" "union" "."
+OrdinaryField ::= "Field" IDENT "as" CType "."
+BitField ::= "Bit" "field" IDENT? "as" CType "with" "width" NUMBER "."
+FlexibleField ::= "Flexible" "field" IDENT "as" CType "."
+StructureMember ::= OrdinaryField | BitField | FlexibleField
+UnionMember ::= OrdinaryField | BitField
+StructureStmt ::= "Structure" IDENT ":" StructureMember+ "End" "structure" "."
+UnionStmt ::= "Union" IDENT ":" UnionMember+ "End" "union" "."
 EnumeratorDef ::= "Enumerator" IDENT ("as" ("minus")? NUMBER)? "."
 EnumerationStmt ::= "Enumeration" IDENT ":" EnumeratorDef+ "End" "enumeration" "."
 AddStmt ::= "Add" Expr "to" IDENT "."
@@ -200,7 +204,7 @@ Structure, union, and enumeration tags use C's shared tag namespace and are pre-
 
 Fixed arrays and already-complete structures may be fields. Array fields can be reached with native `Element at`, including nested expressions. Whole-array member assignment is still intentionally rejected.
 
-Native structures can be copied by assignment, initialized positionally or with named member designators, and transported by value through typed Procedures when their tags match. Compound literals, anonymous members, flexible array members and bit-fields remain separate work.
+Native structures can be copied by assignment, initialized positionally or with named member designators, and transported by value through typed Procedures when their tags match. Compound literals and anonymous aggregate members remain separate work.
 
 ## Native unions
 
@@ -216,7 +220,29 @@ Unions share C's tag namespace with structures, so `Structure value` and `Union 
 
 PlainSpeak does **not** add a runtime active-member discriminator. Writing one member and then reading another follows whatever semantics the generated C program has on the target/compiler; the language does not reinterpret C unions as tagged variants. The conformance tests therefore validate same-member reads/writes and layout, not type-punning assumptions.
 
-Unions can be initialized through their first member positionally or one named member designator. Compound literals, anonymous members and bit-fields remain separate work.
+Unions can be initialized through their first member positionally or one named member designator. Compound literals and anonymous aggregate members remain separate work.
+
+## Bit-fields and flexible array members
+
+Bit-fields lower to native C bit-field declarations rather than masks maintained by the PlainSpeak runtime:
+
+```text
+Structure flags: Bit field low as unsigned integer with width 3. Bit field as unsigned integer with width 0. Bit field high as unsigned integer with width 2. End structure.
+```
+
+A named bit-field must have a positive width. An unnamed width-0 bit-field is the prose form of C's allocation-unit/alignment separator. Existing integer ranks, `boolean`, and completed enumerations are accepted where the target C compiler supports them; the width is checked against the represented target type. Named bit-fields participate in `Member` reads/stores and aggregate initialization like scalar members. Unnamed bit-fields are skipped by positional initialization and cannot be named by a designator.
+
+C does not permit `sizeof` on a bit-field expression, so `Size of Member flags of value` is rejected even though the member has an integer semantic type. The current `Address of` syntax only accepts declared object names, so it cannot incorrectly take a bit-field address.
+
+A flexible array member is structure-only and uses an incomplete trailing C array:
+
+```text
+Structure packet: Field length as unsigned integer. Flexible field data as unsigned character. End structure.
+```
+
+The flexible member must be last and the structure must contain at least one other named member. A union cannot contain one. A structure containing a flexible member may exist as a native object and has normal C `sizeof` semantics (the flexible tail contributes no elements), but it cannot be embedded by value in another aggregate or used as a fixed-array element. Use a pointer instead.
+
+`Member data of packet` retains incomplete-array semantics and can decay for element access once suitably extended storage exists. The current language does not yet provide allocation sized beyond the base structure, so direct flexible-tail element access is not presented as a safe allocation facility. Flexible members are never aggregate initializer targets; their storage is supplied separately, matching the C object model.
 
 ## Native enumerations
 
@@ -377,7 +403,7 @@ The compiler's structural semantic type system also represents functions, qualif
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
-- Variable-length arrays, nested aggregate initializers, compound literals, bit-fields/flexible or anonymous aggregate members, enum constant-expression/underlying-type extensions, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Variable-length arrays, nested aggregate initializers, compound literals, anonymous aggregate members, enum constant-expression/underlying-type extensions, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.

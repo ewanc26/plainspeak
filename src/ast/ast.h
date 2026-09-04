@@ -105,7 +105,12 @@ struct NativeDeclStmt {
 struct StoreThroughStmt { Expr *pointer; Expr *expr; };
 struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };
 struct StoreMemberStmt { std::string name; Expr *base; Expr *expr; };
-struct StructureField { std::string name; TypeSpec type; };
+struct StructureField {
+    std::string name;
+    TypeSpec type;
+    std::optional<std::size_t> bitWidth;
+    bool flexibleArray = false;
+};
 struct StructureStmt { std::string name; std::vector<StructureField> fields; };
 struct UnionStmt { std::string name; std::vector<StructureField> fields; };
 struct EnumeratorDef { std::string name; std::optional<long> explicitValue; };

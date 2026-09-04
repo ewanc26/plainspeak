@@ -1,5 +1,6 @@
 #include "sema.h"
 #include <algorithm>
+#include <climits>
 #include <limits>
 #include <type_traits>
 #include <utility>
@@ -113,6 +114,21 @@ bool supportsCObjectQuery(const Type &t) {
            t.kind == TypeKind::Floating || t.kind == TypeKind::Pointer ||
            t.kind == TypeKind::Enumeration || t.kind == TypeKind::BitInt ||
            t.kind == TypeKind::Structure || t.kind == TypeKind::Union;
+}
+
+std::optional<std::size_t> bitFieldWidthLimit(const Type &type) {
+    if (type.kind == TypeKind::Boolean) return 1;
+    if (type.kind == TypeKind::Enumeration) return sizeof(int) * CHAR_BIT;
+    if (type.kind != TypeKind::Integer) return std::nullopt;
+
+    switch (type.integerRank) {
+        case IntegerRank::Char: return sizeof(signed char) * CHAR_BIT;
+        case IntegerRank::Short: return sizeof(short) * CHAR_BIT;
+        case IntegerRank::Int: return sizeof(int) * CHAR_BIT;
+        case IntegerRank::Long: return sizeof(long) * CHAR_BIT;
+        case IntegerRank::LongLong: return sizeof(long long) * CHAR_BIT;
+    }
+    return std::nullopt;
 }
 
 } // namespace
@@ -296,7 +312,9 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
 bool Sema::isCompleteObjectType(const Type &type) const {
     if (type.kind == TypeKind::Void || type.kind == TypeKind::Function) return false;
     if (type.isArray()) {
-        return type.arrayBound && type.elementType && isCompleteObjectType(*type.elementType);
+        return type.arrayBound && type.elementType &&
+               isCompleteObjectType(*type.elementType) &&
+               !containsFlexibleArray(*type.elementType);
     }
     if (type.kind == TypeKind::Structure) {
         auto it = structureTable_.find(type.tag);
@@ -315,7 +333,14 @@ bool Sema::isCompleteObjectType(const Type &type) const {
            type.kind == TypeKind::BitInt;
 }
 
-const Type *Sema::findAggregateField(const Type &base, const std::string &name) const {
+bool Sema::containsFlexibleArray(const Type &type) const {
+    if (type.isArray() && type.elementType) return containsFlexibleArray(*type.elementType);
+    if (type.kind != TypeKind::Structure) return false;
+    auto it = structureTable_.find(type.tag);
+    return it != structureTable_.end() && it->second.complete && it->second.hasFlexibleArray;
+}
+
+const AggregateFieldInfo *Sema::findAggregateField(const Type &base, const std::string &name) const {
     Type aggregate = base;
     if (aggregate.isPointer() && aggregate.elementType) aggregate = *aggregate.elementType;
 
@@ -329,7 +354,7 @@ const Type *Sema::findAggregateField(const Type &base, const std::string &name) 
     }
     if (!info || !info->complete) return nullptr;
     for (const auto &field : info->fields) {
-        if (field.first == name) return &field.second;
+        if (!field.name.empty() && field.name == name) return &field;
     }
     return nullptr;
 }
@@ -409,12 +434,13 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                                             "\" is incomplete here, so its members are not available."});
                 return Type::number();
             }
-            const Type *field = findAggregateField(base, node.name);
+            const AggregateFieldInfo *field = findAggregateField(base, node.name);
             if (!field) {
                 diags.push_back({code, line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
                 return Type::number();
             }
-            return *field;
+            if (field->bitWidth && analysis_) analysis_->bitFieldExprs.insert(e);
+            return field->type;
         }
         else if constexpr (std::is_same_v<T, ElementExpr>) {
             Type index = inferExpr(node.index, line, diags);
@@ -589,7 +615,9 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, SizeOfExpr>) {
             Type queried = inferExpr(node.operand, line, diags);
             if (analysis_) analysis_->typeOperands[e] = queried;
-            if (!isCompleteObjectType(queried)) {
+            if (analysis_ && analysis_->bitFieldExprs.count(node.operand)) {
+                diags.push_back({23, line, "I can't ask for the size of a bit-field because C does not permit sizeof on a bit-field expression."});
+            } else if (!isCompleteObjectType(queried)) {
                 diags.push_back({12, line, "I can't ask for the size of a " + typeToString(queried) + " value because it does not currently have complete native C object layout."});
             }
             return Type::number();
@@ -651,18 +679,71 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             auto found = structureTable_.find(node.name);
             if (found == structureTable_.end() || found->second.complete) return;
 
-            std::vector<std::pair<std::string, Type>> fields;
+            std::vector<AggregateFieldInfo> fields;
             std::unordered_set<std::string> names;
             bool valid = true;
-            for (const auto &field : node.fields) {
-                if (!names.insert(field.name).second) {
-                    diags.push_back({19, s->line, "Structure \"" + node.name +
-                                              "\" defines member \"" + field.name + "\" more than once."});
-                    valid = false;
+            bool hasFlexible = false;
+            std::size_t namedMembers = 0;
+
+            for (std::size_t fieldIndex = 0; fieldIndex < node.fields.size(); ++fieldIndex) {
+                const auto &field = node.fields[fieldIndex];
+                if (!field.name.empty()) {
+                    ++namedMembers;
+                    if (!names.insert(field.name).second) {
+                        diags.push_back({19, s->line, "Structure \"" + node.name +
+                                                  "\" defines member \"" + field.name + "\" more than once."});
+                        valid = false;
+                        continue;
+                    }
+                }
+
+                if (field.flexibleArray) {
+                    Type elementType = resolveTypeSpec(field.type);
+                    if (field.name.empty()) {
+                        diags.push_back({23, s->line, "A flexible array member must have a name."});
+                        valid = false;
+                    }
+                    if (fieldIndex + 1 != node.fields.size()) {
+                        diags.push_back({23, s->line, "Flexible member \"" + field.name +
+                                                  "\" must be the last member of Structure \"" + node.name + "\"."});
+                        valid = false;
+                    }
+                    if (!isCompleteObjectType(elementType) || containsFlexibleArray(elementType)) {
+                        diags.push_back({23, s->line, "Flexible member \"" + field.name +
+                                                  "\" needs a complete element type that does not itself contain a flexible array."});
+                        valid = false;
+                    }
+                    fields.push_back(AggregateFieldInfo{
+                        field.name, Type::incompleteArrayOf(std::move(elementType)), std::nullopt, true});
+                    hasFlexible = true;
                     continue;
                 }
 
                 Type fieldType = resolveTypeSpec(field.type);
+                if (field.bitWidth) {
+                    auto limit = bitFieldWidthLimit(fieldType);
+                    if (!limit) {
+                        diags.push_back({23, s->line, "Bit-field \"" +
+                                                  (field.name.empty() ? std::string("<unnamed>") : field.name) +
+                                                  "\" must use an integer, boolean, or enumeration type supported by the target C compiler."});
+                        valid = false;
+                    } else {
+                        if (!field.name.empty() && *field.bitWidth == 0) {
+                            diags.push_back({23, s->line, "A named bit-field cannot have width 0; zero width is reserved for unnamed alignment fields."});
+                            valid = false;
+                        }
+                        if (*field.bitWidth > *limit) {
+                            diags.push_back({23, s->line, "Bit-field \"" +
+                                                      (field.name.empty() ? std::string("<unnamed>") : field.name) +
+                                                      "\" width " + std::to_string(*field.bitWidth) +
+                                                      " exceeds its target type width of " + std::to_string(*limit) + " bits."});
+                            valid = false;
+                        }
+                    }
+                    fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), field.bitWidth, false});
+                    continue;
+                }
+
                 if (fieldType.kind == TypeKind::Void || fieldType.kind == TypeKind::Function) {
                     diags.push_back({19, s->line, "Structure member \"" + field.name +
                                               "\" needs a complete object type, not " + typeToString(fieldType) + "."});
@@ -671,18 +752,28 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({19, s->line, "Structure member \"" + field.name + "\" has incomplete by-value type " +
                                               typeToString(fieldType) + "; use a pointer for recursive or forward references."});
                     valid = false;
+                } else if (!fieldType.isPointer() && containsFlexibleArray(fieldType)) {
+                    diags.push_back({23, s->line, "Structure member \"" + field.name +
+                                              "\" cannot contain a flexible-array structure by value; use a pointer instead."});
+                    valid = false;
                 }
-                fields.emplace_back(field.name, std::move(fieldType));
+                fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), std::nullopt, false});
             }
 
             if (node.fields.empty()) {
                 diags.push_back({19, s->line, "Structure \"" + node.name + "\" needs at least one member in this tranche."});
                 valid = false;
             }
+            if (hasFlexible && namedMembers < 2) {
+                diags.push_back({23, s->line, "Structure \"" + node.name +
+                                          "\" needs at least one other named member before its flexible array member."});
+                valid = false;
+            }
 
             if (valid) {
                 found->second.fields = fields;
                 found->second.complete = true;
+                found->second.hasFlexibleArray = hasFlexible;
                 if (analysis_) {
                     analysis_->structures[node.name] = found->second;
                     analysis_->structureFields[s] = fields;
@@ -693,18 +784,52 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             auto found = unionTable_.find(node.name);
             if (found == unionTable_.end() || found->second.complete) return;
 
-            std::vector<std::pair<std::string, Type>> fields;
+            std::vector<AggregateFieldInfo> fields;
             std::unordered_set<std::string> names;
             bool valid = true;
             for (const auto &field : node.fields) {
-                if (!names.insert(field.name).second) {
+                if (!field.name.empty() && !names.insert(field.name).second) {
                     diags.push_back({20, s->line, "Union \"" + node.name +
                                               "\" defines member \"" + field.name + "\" more than once."});
                     valid = false;
                     continue;
                 }
 
+                if (field.flexibleArray) {
+                    diags.push_back({23, s->line, "Flexible member \"" + field.name +
+                                              "\" is not allowed in a Union; C flexible array members are structure-only."});
+                    valid = false;
+                    Type elementType = resolveTypeSpec(field.type);
+                    fields.push_back(AggregateFieldInfo{
+                        field.name, Type::incompleteArrayOf(std::move(elementType)), std::nullopt, true});
+                    continue;
+                }
+
                 Type fieldType = resolveTypeSpec(field.type);
+                if (field.bitWidth) {
+                    auto limit = bitFieldWidthLimit(fieldType);
+                    if (!limit) {
+                        diags.push_back({23, s->line, "Bit-field \"" +
+                                                  (field.name.empty() ? std::string("<unnamed>") : field.name) +
+                                                  "\" must use an integer, boolean, or enumeration type supported by the target C compiler."});
+                        valid = false;
+                    } else {
+                        if (!field.name.empty() && *field.bitWidth == 0) {
+                            diags.push_back({23, s->line, "A named bit-field cannot have width 0; zero width is reserved for unnamed alignment fields."});
+                            valid = false;
+                        }
+                        if (*field.bitWidth > *limit) {
+                            diags.push_back({23, s->line, "Bit-field \"" +
+                                                      (field.name.empty() ? std::string("<unnamed>") : field.name) +
+                                                      "\" width " + std::to_string(*field.bitWidth) +
+                                                      " exceeds its target type width of " + std::to_string(*limit) + " bits."});
+                            valid = false;
+                        }
+                    }
+                    fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), field.bitWidth, false});
+                    continue;
+                }
+
                 if (fieldType.kind == TypeKind::Void || fieldType.kind == TypeKind::Function) {
                     diags.push_back({20, s->line, "Union member \"" + field.name +
                                               "\" needs a complete object type, not " + typeToString(fieldType) + "."});
@@ -713,8 +838,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({20, s->line, "Union member \"" + field.name + "\" has incomplete by-value type " +
                                               typeToString(fieldType) + "; use a pointer for recursive or forward references."});
                     valid = false;
+                } else if (!fieldType.isPointer() && containsFlexibleArray(fieldType)) {
+                    diags.push_back({23, s->line, "Union member \"" + field.name +
+                                              "\" cannot contain a flexible-array structure by value; use a pointer instead."});
+                    valid = false;
                 }
-                fields.emplace_back(field.name, std::move(fieldType));
+                fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), std::nullopt, false});
             }
 
             if (node.fields.empty()) {
@@ -858,7 +987,13 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                             if (it != unionTable_.end()) info = &it->second;
                         }
                         if (info && info->complete) {
-                            std::size_t allowed = declared.kind == TypeKind::Union ? 1 : info->fields.size();
+                            std::vector<const AggregateFieldInfo *> positionalFields;
+                            for (const auto &field : info->fields) {
+                                if (!field.name.empty() && !field.flexibleArray) positionalFields.push_back(&field);
+                            }
+                            std::size_t allowed = declared.kind == TypeKind::Union
+                                                    ? std::min<std::size_t>(1, positionalFields.size())
+                                                    : positionalFields.size();
                             if (aggregate.entries.size() > allowed) {
                                 diags.push_back({21, s->line, (declared.kind == TypeKind::Union ? "Union" : "Structure") +
                                                           std::string(" \"") + declared.tag + "\" accepts at most " +
@@ -867,8 +1002,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                             }
                             std::size_t count = std::min(aggregate.entries.size(), allowed);
                             for (std::size_t i = 0; i < count; ++i) {
-                                checkValue(info->fields[i].second, aggregate.entries[i].expr,
-                                           "member \"" + info->fields[i].first + "\" of \"" + node.name + "\"");
+                                checkValue(positionalFields[i]->type, aggregate.entries[i].expr,
+                                           "member \"" + positionalFields[i]->name + "\" of \"" + node.name + "\"");
                             }
                         }
                     } else {
@@ -895,7 +1030,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                 continue;
                             }
                             Type aggregateType = declared;
-                            const Type *field = findAggregateField(aggregateType, entry.memberName);
+                            const AggregateFieldInfo *field = findAggregateField(aggregateType, entry.memberName);
                             if (!field) {
                                 diags.push_back({21, s->line, (declared.kind == TypeKind::Structure ? "Structure" : "Union") +
                                                           std::string(" \"") + declared.tag + "\" has no member \"" +
@@ -903,7 +1038,13 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                 inferExpr(entry.expr, s->line, diags);
                                 continue;
                             }
-                            checkValue(*field, entry.expr, "member \"" + entry.memberName + "\" of \"" + node.name + "\"");
+                            if (field->flexibleArray) {
+                                diags.push_back({21, s->line, "Flexible member \"" + entry.memberName +
+                                                          "\" is not an initializer target; C flexible array storage is outside sizeof the structure."});
+                                inferExpr(entry.expr, s->line, diags);
+                                continue;
+                            }
+                            checkValue(field->type, entry.expr, "member \"" + entry.memberName + "\" of \"" + node.name + "\"");
                         }
                     }
                 } else {
@@ -967,12 +1108,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 if (!info || !info->complete) {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag +
                                                 "\" is incomplete here, so its members cannot be stored."});
-                } else if (const Type *field = findAggregateField(base, node.name)) {
-                    if (field->isArray()) {
+                } else if (const AggregateFieldInfo *field = findAggregateField(base, node.name)) {
+                    if (field->type.isArray()) {
                         diags.push_back({code, s->line, "Whole-array aggregate member assignment is not implemented yet."});
-                    } else if (!assignableTo(*field, value)) {
+                    } else if (!assignableTo(field->type, value)) {
                         diags.push_back({code, s->line, "I can't store a " + typeToString(value) + " in member \"" +
-                                                   node.name + "\", which is a " + typeToString(*field) + "."});
+                                                   node.name + "\", which is a " + typeToString(field->type) + "."});
                     }
                 } else {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});

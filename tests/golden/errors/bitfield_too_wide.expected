@@ -1,0 +1,1 @@
+error[E0023]: Bit-field "value" width 2 exceeds its target type width of 1 bits.

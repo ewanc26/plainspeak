@@ -20,9 +20,19 @@ struct ProcedureSignature {
     bool nativeTyped = false;
 };
 
+struct AggregateFieldInfo {
+    std::string name;
+    Type type;
+    std::optional<std::size_t> bitWidth;
+    bool flexibleArray = false;
+
+    bool isUnnamedBitField() const { return bitWidth.has_value() && name.empty(); }
+};
+
 struct StructureInfo {
-    std::vector<std::pair<std::string, Type>> fields;
+    std::vector<AggregateFieldInfo> fields;
     bool complete = false;
+    bool hasFlexibleArray = false;
 };
 
 struct EnumerationInfo {
@@ -39,10 +49,11 @@ struct AnalysisResult {
     std::unordered_map<std::string, StructureInfo> structures;
     std::unordered_map<std::string, StructureInfo> unions;
     std::unordered_map<std::string, EnumerationInfo> enumerations;
-    std::unordered_map<const Stmt *, std::vector<std::pair<std::string, Type>>> structureFields;
-    std::unordered_map<const Stmt *, std::vector<std::pair<std::string, Type>>> unionFields;
+    std::unordered_map<const Stmt *, std::vector<AggregateFieldInfo>> structureFields;
+    std::unordered_map<const Stmt *, std::vector<AggregateFieldInfo>> unionFields;
     std::unordered_map<const Stmt *, std::vector<std::pair<std::string, long>>> enumerationValues;
     std::unordered_set<const Expr *> nativeObjectRefs;
+    std::unordered_set<const Expr *> bitFieldExprs;
 
     // Existing Set/Add/Sub statements whose target is an explicitly declared
     // C object. C itself performs the already-checked assignment conversion.
@@ -76,7 +87,8 @@ private:
                     int line, std::vector<Diag> &diags);
     Type resolveTypeSpec(const TypeSpec &spec) const;
     bool isCompleteObjectType(const Type &type) const;
-    const Type *findAggregateField(const Type &base, const std::string &name) const;
+    bool containsFlexibleArray(const Type &type) const;
+    const AggregateFieldInfo *findAggregateField(const Type &base, const std::string &name) const;
     Type inferExpr(const Expr *e, int line, std::vector<Diag> &diags);
     void checkStmt(const Stmt *s, std::vector<Diag> &diags);
 };

@@ -118,14 +118,30 @@ std::string printStmt(const Stmt *s) {
         else if constexpr (std::is_same_v<T, StructureStmt>) {
             std::string out = "Structure " + node.name + ": ";
             for (const auto &field : node.fields) {
-                out += "Field " + field.name + " as " + printTypeSpec(field.type) + ". ";
+                if (field.bitWidth) {
+                    out += "Bit field ";
+                    if (!field.name.empty()) out += field.name + " ";
+                    out += "as " + printTypeSpec(field.type) + " with width " + std::to_string(*field.bitWidth) + ". ";
+                } else if (field.flexibleArray) {
+                    out += "Flexible field " + field.name + " as " + printTypeSpec(field.type) + ". ";
+                } else {
+                    out += "Field " + field.name + " as " + printTypeSpec(field.type) + ". ";
+                }
             }
             return out + "End structure. ";
         }
         else if constexpr (std::is_same_v<T, UnionStmt>) {
             std::string out = "Union " + node.name + ": ";
             for (const auto &field : node.fields) {
-                out += "Field " + field.name + " as " + printTypeSpec(field.type) + ". ";
+                if (field.bitWidth) {
+                    out += "Bit field ";
+                    if (!field.name.empty()) out += field.name + " ";
+                    out += "as " + printTypeSpec(field.type) + " with width " + std::to_string(*field.bitWidth) + ". ";
+                } else if (field.flexibleArray) {
+                    out += "Flexible field " + field.name + " as " + printTypeSpec(field.type) + ". ";
+                } else {
+                    out += "Field " + field.name + " as " + printTypeSpec(field.type) + ". ";
+                }
             }
             return out + "End union. ";
         }

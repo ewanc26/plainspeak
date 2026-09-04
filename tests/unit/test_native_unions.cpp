@@ -32,8 +32,8 @@ TEST_CASE("sema completes unions and types members", "[sema][unions][c99]") {
     const auto &info = analysis.unions.at("node");
     REQUIRE(info.complete);
     REQUIRE(info.fields.size() == 2);
-    CHECK(info.fields[0].second == Type::integer(IntegerRank::Int));
-    CHECK(info.fields[1].second.isPointer());
+    CHECK(info.fields[0].type == Type::integer(IntegerRank::Int));
+    CHECK(info.fields[1].type.isPointer());
     const auto &say = std::get<SayStmt>(program[3]->node);
     CHECK(analysis.exprTypes.at(say.expr) == Type::integer(IntegerRank::Int));
 }
