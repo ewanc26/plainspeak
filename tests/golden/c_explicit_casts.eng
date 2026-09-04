@@ -1,0 +1,1 @@
+Say Convert 3.75 to type integer. Say Convert 7 to type decimal. Declare x as integer with value 9. Declare vp as pointer to void with value Convert Address of x to type pointer to void. Declare p as pointer to integer with value Convert vp to type pointer to integer. Say Value at p. Say Convert Address of x to type boolean.
