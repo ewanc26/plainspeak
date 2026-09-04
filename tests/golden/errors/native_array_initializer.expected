@@ -1,0 +1,1 @@
+error[E0017]: Whole-array initializers are not implemented yet; Declare the array and Set its elements individually.
