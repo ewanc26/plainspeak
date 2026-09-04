@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -13,11 +14,18 @@ struct Diag {
     std::string message;
 };
 
+struct ProcedureSignature {
+    std::vector<Type> parameterTypes;
+    Type returnType = Type::number();
+    bool nativeTyped = false;
+};
+
 struct AnalysisResult {
     std::vector<Diag> diagnostics;
     std::unordered_map<const Expr *, Type> exprTypes;
     std::unordered_map<const Expr *, Type> typeOperands;
     std::unordered_map<const Stmt *, Type> declarationTypes;
+    std::unordered_map<std::string, ProcedureSignature> procedureSignatures;
     std::unordered_set<const Expr *> nativeObjectRefs;
 
     // Existing Set/Add/Sub statements whose target is an explicitly declared
@@ -37,7 +45,8 @@ private:
     };
 
     std::vector<std::unordered_map<std::string, Symbol>> scopes_;
-    std::unordered_map<std::string, std::vector<Type>> procTable_;
+    std::unordered_map<std::string, ProcedureSignature> procTable_;
+    std::optional<ProcedureSignature> currentProcedure_;
     AnalysisResult *analysis_ = nullptr;
 
     void enterScope();
