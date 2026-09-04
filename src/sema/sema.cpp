@@ -783,21 +783,44 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             if (node.op == BinOp::Add) {
                 bool lhsStr = lhs.kind == TypeKind::String;
                 bool rhsStr = rhs.kind == TypeKind::String;
-                bool lhsNum = isNumeric(lhs);
-                bool rhsNum = isNumeric(rhs);
+                bool lhsNum = isArithmeticScalar(lhsValue);
+                bool rhsNum = isArithmeticScalar(rhsValue);
                 if (!((lhsStr && rhsStr) || (lhsNum && rhsNum) || (lhsStr && rhsNum) || (lhsNum && rhsStr))) {
                     diags.push_back({2, line, "I can't add a " + typeToString(lhs) + " to a " + typeToString(rhs) + "."});
                 }
                 if (lhsStr || rhsStr) return Type::string();
-                if (lhs.isFloating() || rhs.isFloating()) return Type::decimal();
-                return Type::number();
+                return usualArithmeticConversion(lhsValue, rhsValue);
             }
-            if (node.op == BinOp::Sub || node.op == BinOp::Mul || node.op == BinOp::Div || node.op == BinOp::Mod) {
-                if (!isNumeric(lhs) || !isNumeric(rhs)) {
-                    diags.push_back({2, line, "I can't do arithmetic on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
+            if (node.op == BinOp::Sub || node.op == BinOp::Mul || node.op == BinOp::Div) {
+                if (!isArithmeticScalar(lhsValue) || !isArithmeticScalar(rhsValue)) {
+                    diags.push_back({2, line, "I can't do arithmetic on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be arithmetic scalars."});
+                    return Type::number();
                 }
-                if (lhs.isFloating() || rhs.isFloating()) return Type::decimal();
-                return Type::number();
+                return usualArithmeticConversion(lhsValue, rhsValue);
+            }
+            if (node.op == BinOp::Mod) {
+                if (!isBitwiseIntegral(lhsValue) || !isBitwiseIntegral(rhsValue)) {
+                    diags.push_back({2, line, "Modulo needs integer operands after C value conversion, not " +
+                                             typeToString(lhs) + " and " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return usualIntegerConversion(lhsValue, rhsValue);
+            }
+            if (node.op == BinOp::BitAnd || node.op == BinOp::BitXor || node.op == BinOp::BitOr) {
+                if (!isBitwiseIntegral(lhsValue) || !isBitwiseIntegral(rhsValue)) {
+                    diags.push_back({25, line, "Bitwise operators need integer operands, not " +
+                                              typeToString(lhs) + " and " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return usualIntegerConversion(lhsValue, rhsValue);
+            }
+            if (node.op == BinOp::ShiftLeft || node.op == BinOp::ShiftRight) {
+                if (!isBitwiseIntegral(lhsValue) || !isBitwiseIntegral(rhsValue)) {
+                    diags.push_back({25, line, "Shift operators need integer operands, not " +
+                                              typeToString(lhs) + " and " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return integerPromotion(lhsValue);
             }
             if (node.op == BinOp::And || node.op == BinOp::Or) {
                 if (lhsValue != Type::number() || rhsValue != Type::number()) {
@@ -807,18 +830,29 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return Type::number();
             }
             if (isList(lhsValue) || isList(rhsValue) ||
-                (lhsValue != rhsValue && !(isNumeric(lhsValue) && isNumeric(rhsValue)))) {
+                (lhsValue != rhsValue && !(isArithmeticScalar(lhsValue) && isArithmeticScalar(rhsValue)))) {
                 diags.push_back({4, line, "I can't compare a " + typeToString(lhs) + " with a " + typeToString(rhs) +
                                          ". Both sides must be comparable scalar values."});
             }
-            return Type::number();
+            return Type::integer(IntegerRank::Int);
         }
         else if constexpr (std::is_same_v<T, UnaryExpr>) {
             Type rhs = inferExpr(node.rhs, line, diags);
             Type value = decayArray(rhs);
             if (node.op == UnaryOp::Neg) {
-                if (!isNumeric(value)) diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
+                if (!isArithmeticScalar(value)) {
+                    diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                if (isBitwiseIntegral(value)) return integerPromotion(value);
                 return value;
+            }
+            if (node.op == UnaryOp::BitNot) {
+                if (!isBitwiseIntegral(value)) {
+                    diags.push_back({25, line, "Bitwise not needs an integer operand, not a " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return integerPromotion(value);
             }
             if (value != Type::number()) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
