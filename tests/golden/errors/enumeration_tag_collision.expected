@@ -1,0 +1,1 @@
+error[E0022]: Tag "value" is already used by a structure or union; C aggregate and enumeration tags share one namespace.

@@ -38,6 +38,7 @@ private:
     Stmt *parseDeclare();
     Stmt *parseStructure();
     Stmt *parseUnion();
+    Stmt *parseEnumeration();
     Stmt *parseAdd();
     Stmt *parseSub();
     Stmt *parseRead();

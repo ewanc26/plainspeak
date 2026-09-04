@@ -1,18 +1,19 @@
 #include "sema.h"
 #include <algorithm>
+#include <limits>
 #include <type_traits>
 #include <utility>
 
 namespace {
 
-bool isNumeric(const Type &t) { return t.isNumeric(); }
+bool isNumeric(const Type &t) { return t.kind == TypeKind::Enumeration || t.isNumeric(); }
 bool isList(const Type &t) { return t.isList(); }
 bool isArithmeticScalar(const Type &t) {
-    return t.kind == TypeKind::Boolean || t.isNumeric();
+    return t.kind == TypeKind::Boolean || isNumeric(t);
 }
 
 bool isIntegralType(const Type &t) {
-    return t.kind == TypeKind::Boolean || t.isInteger();
+    return t.kind == TypeKind::Boolean || t.kind == TypeKind::Enumeration || t.isInteger();
 }
 
 Type decayArray(Type t) {
@@ -122,6 +123,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
     procTable_.clear();
     structureTable_.clear();
     unionTable_.clear();
+    enumerationTable_.clear();
     currentProcedure_.reset();
     scopes_.emplace_back();
     analysis_ = &result;
@@ -156,6 +158,25 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         }
         unionTable_[uni->name] = StructureInfo{};
         result.unions[uni->name] = StructureInfo{};
+    }
+
+    // Enumeration tags share C's tag namespace with structures and unions.
+    // Register them incomplete first so pointers can name the tag before the
+    // definition, while by-value uses still require source-order completeness.
+    for (Stmt *s : program) {
+        auto *enumeration = std::get_if<EnumerationStmt>(&s->node);
+        if (!enumeration) continue;
+        if (enumerationTable_.count(enumeration->name)) {
+            result.diagnostics.push_back({22, s->line, "Enumeration \"" + enumeration->name + "\" is already defined."});
+            continue;
+        }
+        if (structureTable_.count(enumeration->name) || unionTable_.count(enumeration->name)) {
+            result.diagnostics.push_back({22, s->line, "Tag \"" + enumeration->name +
+                                              "\" is already used by a structure or union; C aggregate and enumeration tags share one namespace."});
+            continue;
+        }
+        enumerationTable_[enumeration->name] = EnumerationInfo{};
+        result.enumerations[enumeration->name] = EnumerationInfo{};
     }
 
     // Register every procedure signature before checking any body. This makes
@@ -266,6 +287,8 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             return Type::structure(spec.tag);
         case TypeSpecKind::Union:
             return Type::unionType(spec.tag);
+        case TypeSpecKind::Enumeration:
+            return Type::enumeration(spec.tag);
     }
     return Type::voidType();
 }
@@ -283,9 +306,13 @@ bool Sema::isCompleteObjectType(const Type &type) const {
         auto it = unionTable_.find(type.tag);
         return it != unionTable_.end() && it->second.complete;
     }
+    if (type.kind == TypeKind::Enumeration) {
+        auto it = enumerationTable_.find(type.tag);
+        return it != enumerationTable_.end() && it->second.complete;
+    }
     return type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
            type.kind == TypeKind::Floating || type.kind == TypeKind::Pointer ||
-           type.kind == TypeKind::Enumeration || type.kind == TypeKind::BitInt;
+           type.kind == TypeKind::BitInt;
 }
 
 const Type *Sema::findAggregateField(const Type &base, const std::string &name) const {
@@ -318,6 +345,25 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             auto [symbol, found] = lookupVar(node.name, line, diags);
             if (found && symbol.nativeObject && analysis_) analysis_->nativeObjectRefs.insert(e);
             return symbol.type;
+        }
+        else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
+            auto found = enumerationTable_.find(node.enumeration);
+            if (found == enumerationTable_.end()) {
+                diags.push_back({22, line, "I don't know enumeration \"" + node.enumeration +
+                                           "\" for Enumerator \"" + node.name + "\"."});
+                return Type::integer(IntegerRank::Int);
+            }
+            if (!found->second.complete) {
+                diags.push_back({22, line, "Enumeration \"" + node.enumeration +
+                                           "\" is incomplete here, so its enumerators are not available."});
+                return Type::integer(IntegerRank::Int);
+            }
+            for (const auto &enumerator : found->second.enumerators) {
+                if (enumerator.first == node.name) return Type::integer(IntegerRank::Int);
+            }
+            diags.push_back({22, line, "Enumeration \"" + node.enumeration +
+                                       "\" has no Enumerator \"" + node.name + "\"."});
+            return Type::integer(IntegerRank::Int);
         }
         else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             auto [symbol, found] = lookupVar(node.name, line, diags);
@@ -682,6 +728,65 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 if (analysis_) {
                     analysis_->unions[node.name] = found->second;
                     analysis_->unionFields[s] = fields;
+                }
+            }
+        }
+        else if constexpr (std::is_same_v<T, EnumerationStmt>) {
+            auto found = enumerationTable_.find(node.name);
+            if (found == enumerationTable_.end() || found->second.complete) return;
+
+            std::vector<std::pair<std::string, long>> values;
+            std::unordered_set<std::string> names;
+            bool valid = true;
+            long previous = -1;
+            bool havePrevious = false;
+            constexpr long minInt = static_cast<long>(std::numeric_limits<int>::min());
+            constexpr long maxInt = static_cast<long>(std::numeric_limits<int>::max());
+
+            for (const auto &enumerator : node.enumerators) {
+                if (!names.insert(enumerator.name).second) {
+                    diags.push_back({22, s->line, "Enumeration \"" + node.name +
+                                              "\" defines Enumerator \"" + enumerator.name + "\" more than once."});
+                    valid = false;
+                    continue;
+                }
+
+                long value = 0;
+                if (enumerator.explicitValue) {
+                    value = *enumerator.explicitValue;
+                    if (value < minInt || value > maxInt) {
+                        diags.push_back({22, s->line, "Enumerator \"" + enumerator.name + "\" value " +
+                                                  std::to_string(value) +
+                                                  " is outside the C99-C17 int range supported by this backend tranche."});
+                        valid = false;
+                    }
+                } else if (!havePrevious) {
+                    value = 0;
+                } else if (previous == maxInt) {
+                    diags.push_back({22, s->line, "Implicit Enumerator \"" + enumerator.name +
+                                              "\" would exceed the supported C int range."});
+                    value = previous;
+                    valid = false;
+                } else {
+                    value = previous + 1;
+                }
+
+                values.emplace_back(enumerator.name, value);
+                previous = value;
+                havePrevious = true;
+            }
+
+            if (node.enumerators.empty()) {
+                diags.push_back({22, s->line, "Enumeration \"" + node.name + "\" needs at least one Enumerator."});
+                valid = false;
+            }
+
+            if (valid) {
+                found->second.enumerators = values;
+                found->second.complete = true;
+                if (analysis_) {
+                    analysis_->enumerations[node.name] = found->second;
+                    analysis_->enumerationValues[s] = values;
                 }
             }
         }

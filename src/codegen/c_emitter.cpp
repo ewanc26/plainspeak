@@ -79,6 +79,10 @@ std::string emitCDeclaration(const Type &type, const std::string &name) {
     return emitCDeclarator(type, name);
 }
 
+std::string mangleEnumerator(const std::string &enumeration, const std::string &name) {
+    return mangle(enumeration) + "__" + mangle(name);
+}
+
 std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis);
 std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
 
@@ -167,6 +171,8 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             Type baseType = exprType(node.base, analysis);
             std::string op = baseType.isPointer() ? "->" : ".";
             return "((" + emitRawExpr(node.base, analysis) + ")" + op + mangle(node.name) + ")";
+        } else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
+            return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) return mangle(node.name);
         } else if constexpr (std::is_same_v<T, CallExpr>) {
@@ -241,6 +247,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, MemberExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+        } else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, ListExpr>) {
             std::string result = "ps_list_from((PsValue[]){";
@@ -373,8 +381,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             } else {
                 out << indent << mangle(node.name) << " = " << emitBoxedExpr(node.expr, analysis) << ";\n";
             }
-        } else if constexpr (std::is_same_v<T, StructureStmt> || std::is_same_v<T, UnionStmt>) {
-            // Top-level aggregate definitions are emitted before declarations
+        } else if constexpr (std::is_same_v<T, StructureStmt> ||
+                             std::is_same_v<T, UnionStmt> ||
+                             std::is_same_v<T, EnumerationStmt>) {
+            // Top-level native type definitions are emitted before declarations
             // and procedure prototypes by emitProgram.
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
@@ -552,6 +562,30 @@ std::string emitProgram(const std::vector<Stmt *> &program,
 
     for (const auto &v : vars) out << "PsValue " << mangle(v) << ";\n";
 
+    // Enumeration definitions come first so any later aggregate/object/function
+    // use sees a complete native C enum type. Enumerator C names are qualified
+    // by their PlainSpeak enumeration so source enums may reuse member names.
+    for (Stmt *s : program) {
+        auto *enumeration = std::get_if<EnumerationStmt>(&s->node);
+        if (!enumeration) continue;
+        auto valuesIt = analysis.enumerationValues.find(s);
+        if (valuesIt == analysis.enumerationValues.end()) continue;
+        out << "enum " << mangle(enumeration->name) << " {\n";
+        for (std::size_t i = 0; i < valuesIt->second.size(); ++i) {
+            const auto &enumerator = valuesIt->second[i];
+            out << "    " << mangleEnumerator(enumeration->name, enumerator.first)
+                << " = " << enumerator.second;
+            if (i + 1 != valuesIt->second.size()) out << ",";
+            out << "\n";
+        }
+        out << "};\n";
+    }
+    bool hasEnumerations = false;
+    for (Stmt *s : program) {
+        if (analysis.enumerationValues.count(s)) { hasEnumerations = true; break; }
+    }
+    if (hasEnumerations) out << "\n";
+
     // Emit complete native aggregate definitions before objects and function
     // prototypes so by-value uses have real C layout. Pointer fields may
     // mention later tags because C permits incomplete pointed-to aggregates.
@@ -616,7 +650,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
     for (Stmt *s : program) {
         if (std::holds_alternative<ProcedureStmt>(s->node) ||
             std::holds_alternative<StructureStmt>(s->node) ||
-            std::holds_alternative<UnionStmt>(s->node)) continue;
+            std::holds_alternative<UnionStmt>(s->node) ||
+            std::holds_alternative<EnumerationStmt>(s->node)) continue;
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
             if (decl->initializer) {
                 out << "    " << mangle(decl->name) << " = "

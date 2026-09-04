@@ -62,6 +62,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "declare") return parseDeclare();
     if (t.text == "structure") return parseStructure();
     if (t.text == "union") return parseUnion();
+    if (t.text == "enumeration") return parseEnumeration();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
     if (t.text == "readfloat") return parseReadFloat();
@@ -272,6 +273,41 @@ Stmt *Parser::parseUnion() {
     advance(); advance();
     expectDot();
     return arena_.makeStmt(UnionStmt{std::move(name), std::move(fields)}, line);
+}
+
+Stmt *Parser::parseEnumeration() {
+    int line = peek().line;
+    advance();
+    std::string name = expectIdentName();
+    expectColon();
+
+    std::vector<EnumeratorDef> enumerators;
+    while (!(checkWord("end") && checkWordAt(1, "enumeration"))) {
+        if (peek().kind == TokKind::Eof) {
+            error("reached end of file while looking for \"End enumeration.\"");
+        }
+        expectWord("enumerator");
+        std::string enumeratorName = expectIdentName();
+        std::optional<long> explicitValue;
+        if (checkWord("as")) {
+            advance();
+            bool negative = false;
+            if (checkWord("minus")) {
+                negative = true;
+                advance();
+            }
+            if (peek().kind != TokKind::Number) {
+                error("an Enumerator explicit value must be a whole-number literal");
+            }
+            long value = advance().num;
+            explicitValue = negative ? -value : value;
+        }
+        expectDot();
+        enumerators.push_back(EnumeratorDef{std::move(enumeratorName), explicitValue});
+    }
+    advance(); advance();
+    expectDot();
+    return arena_.makeStmt(EnumerationStmt{std::move(name), std::move(enumerators)}, line);
 }
 
 Stmt *Parser::parseAdd() {
@@ -497,6 +533,13 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
 }
 
 TypeSpec Parser::parseTypeSpec() {
+    if (checkWord("enumeration")) {
+        advance();
+        std::string tag = expectIdentName();
+        TypeSpec type{TypeSpecKind::Enumeration};
+        type.tag = std::move(tag);
+        return type;
+    }
     if (checkWord("union")) {
         advance();
         std::string tag = expectIdentName();
@@ -564,7 +607,7 @@ TypeSpec Parser::parseTypeSpec() {
         advance(); advance(); return TypeSpec{TypeSpecKind::LongDecimal};
     }
 
-    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"structure point\", \"union value\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
+    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"structure point\", \"union value\", \"enumeration color\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }
@@ -726,6 +769,14 @@ Expr *Parser::parsePrimary() {
         else error("expected \"numbers\", \"decimals\", or \"strings\" after \"Empty list of\"");
         advance();
         return arena_.makeExpr(EmptyListExpr{elementKind}, line);
+    }
+    if (checkWord("enumerator")) {
+        int line = peek().line;
+        advance();
+        std::string name = expectIdentName();
+        expectWord("of");
+        std::string enumeration = expectIdentName();
+        return arena_.makeExpr(EnumeratorExpr{std::move(name), std::move(enumeration)}, line);
     }
     if (checkWord("member")) {
         int line = peek().line;

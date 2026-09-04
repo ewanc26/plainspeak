@@ -25,6 +25,11 @@ struct StructureInfo {
     bool complete = false;
 };
 
+struct EnumerationInfo {
+    std::vector<std::pair<std::string, long>> enumerators;
+    bool complete = false;
+};
+
 struct AnalysisResult {
     std::vector<Diag> diagnostics;
     std::unordered_map<const Expr *, Type> exprTypes;
@@ -33,8 +38,10 @@ struct AnalysisResult {
     std::unordered_map<std::string, ProcedureSignature> procedureSignatures;
     std::unordered_map<std::string, StructureInfo> structures;
     std::unordered_map<std::string, StructureInfo> unions;
+    std::unordered_map<std::string, EnumerationInfo> enumerations;
     std::unordered_map<const Stmt *, std::vector<std::pair<std::string, Type>>> structureFields;
     std::unordered_map<const Stmt *, std::vector<std::pair<std::string, Type>>> unionFields;
+    std::unordered_map<const Stmt *, std::vector<std::pair<std::string, long>>> enumerationValues;
     std::unordered_set<const Expr *> nativeObjectRefs;
 
     // Existing Set/Add/Sub statements whose target is an explicitly declared
@@ -57,6 +64,7 @@ private:
     std::unordered_map<std::string, ProcedureSignature> procTable_;
     std::unordered_map<std::string, StructureInfo> structureTable_;
     std::unordered_map<std::string, StructureInfo> unionTable_;
+    std::unordered_map<std::string, EnumerationInfo> enumerationTable_;
     std::optional<ProcedureSignature> currentProcedure_;
     AnalysisResult *analysis_ = nullptr;
 

@@ -46,7 +46,8 @@ enum class TypeSpecKind {
     Pointer,
     Array,
     Structure,
-    Union
+    Union,
+    Enumeration
 };
 
 struct TypeSpec {
@@ -67,6 +68,7 @@ struct AddressOfExpr   { std::string name; };
 struct DerefExpr       { Expr *pointer; };
 struct ElementExpr     { Expr *index; Expr *base; };
 struct MemberExpr      { std::string name; Expr *base; };
+struct EnumeratorExpr  { std::string name; std::string enumeration; };
 struct MathCallExpr    { std::string func; Expr *arg; };
 struct CallExpr        { std::string name; std::vector<Expr *> args; };
 struct PowExpr         { Expr *base; Expr *exp; };
@@ -78,7 +80,7 @@ struct ItemExpr        { Expr *index; Expr *list; };
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, AddressOfExpr, DerefExpr,
-                              ElementExpr, MemberExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
+                              ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
@@ -106,6 +108,8 @@ struct StoreMemberStmt { std::string name; Expr *base; Expr *expr; };
 struct StructureField { std::string name; TypeSpec type; };
 struct StructureStmt { std::string name; std::vector<StructureField> fields; };
 struct UnionStmt { std::string name; std::vector<StructureField> fields; };
+struct EnumeratorDef { std::string name; std::optional<long> explicitValue; };
+struct EnumerationStmt { std::string name; std::vector<EnumeratorDef> enumerators; };
 struct AddStmt       { Expr *expr; std::string varName; };
 struct SubStmt       { Expr *expr; std::string varName; };
 struct ReadStmt      { std::string varName; };
@@ -128,7 +132,7 @@ struct ProcedureStmt {
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, UnionStmt,
+using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, UnionStmt, EnumerationStmt,
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt,
