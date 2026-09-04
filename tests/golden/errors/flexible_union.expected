@@ -1,0 +1,1 @@
+error[E0023]: Flexible member "data" is not allowed in a Union; C flexible array members are structure-only.
