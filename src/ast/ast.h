@@ -1,5 +1,6 @@
 #pragma once
 #include <deque>
+#include <memory>
 #include <string>
 #include <variant>
 #include <vector>
@@ -21,7 +22,8 @@ enum class ListElementKind { Number, Decimal, String };
 
 // AST-level type spellings are deliberately independent from semantic Type.
 // Sema resolves these source spellings into the structural C-capable model in
-// src/sema/type.h.
+// src/sema/type.h. Pointer is recursive so prose can spell pointer-to-pointer
+// types without duplicating C's declarator grammar.
 enum class TypeSpecKind {
     Void,
     Boolean,
@@ -38,17 +40,24 @@ enum class TypeSpecKind {
     UnsignedLongLongInteger,
     Float,
     Decimal,
-    LongDecimal
+    LongDecimal,
+    Pointer
 };
 
-struct TypeSpec { TypeSpecKind kind; };
+struct TypeSpec {
+    TypeSpecKind kind;
+    std::shared_ptr<TypeSpec> pointee{};
+};
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
 enum class UnaryOp { Not, Neg };
 struct UnaryExpr       { UnaryOp op; Expr *rhs; };
 struct LengthExpr      { Expr *operand; };
 struct SizeOfTypeExpr  { TypeSpec type; };
+struct SizeOfExpr      { Expr *operand; };
 struct AlignOfTypeExpr { TypeSpec type; };
+struct AddressOfExpr   { std::string name; };
+struct DerefExpr       { Expr *pointer; };
 struct MathCallExpr    { std::string func; Expr *arg; };
 struct CallExpr        { std::string name; std::vector<Expr *> args; };
 struct PowExpr         { Expr *base; Expr *exp; };
@@ -58,13 +67,16 @@ struct EmptyListExpr   { ListElementKind elementKind; };
 struct ItemExpr        { Expr *index; Expr *list; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef,
-                              LengthExpr, SizeOfTypeExpr, AlignOfTypeExpr,
+                              LengthExpr, SizeOfTypeExpr, SizeOfExpr,
+                              AlignOfTypeExpr, AddressOfExpr, DerefExpr,
                               MathCallExpr, CallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
 struct SayStmt       { Expr *expr; };
 struct SetStmt       { std::string name; Expr *expr; };
+struct NativeDeclStmt { std::string name; TypeSpec type; Expr *initializer; };
+struct StoreThroughStmt { Expr *pointer; Expr *expr; };
 struct AddStmt       { Expr *expr; std::string varName; };
 struct SubStmt       { Expr *expr; std::string varName; };
 struct ReadStmt      { std::string varName; };
@@ -81,7 +93,8 @@ struct ProcedureStmt { std::string name; std::vector<std::string> params; std::v
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, AddStmt, SubStmt, ReadStmt,
+using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt,
+                              StoreThroughStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt,
                               ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt,

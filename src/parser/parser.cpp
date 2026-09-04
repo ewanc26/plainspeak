@@ -3,7 +3,7 @@
 
 const Token &Parser::peek(int ahead) const {
     size_t idx = pos_ + static_cast<size_t>(ahead);
-    return idx < tokens_.size() ? tokens_[idx] : tokens_.back(); // Eof
+    return idx < tokens_.size() ? tokens_[idx] : tokens_.back();
 }
 
 const Token &Parser::advance() {
@@ -55,10 +55,11 @@ std::vector<Stmt *> Parser::parseProgram() {
 Stmt *Parser::parseTopLevelStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Append, Repeat, If, While, For, Call, Procedure)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call, Procedure)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
+    if (t.text == "declare") return parseDeclare();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
     if (t.text == "readfloat") return parseReadFloat();
@@ -75,16 +76,17 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Add, Append, Repeat, If, While, For, Call)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
+    if (t.text == "declare") return parseDeclare();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
     if (t.text == "readfloat") return parseReadFloat();
@@ -101,7 +103,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -115,11 +117,35 @@ Stmt *Parser::parseSay() {
 Stmt *Parser::parseSet() {
     int line = peek().line;
     advance();
+    if (checkWord("value") && checkWordAt(1, "at")) {
+        advance(); advance();
+        Expr *pointer = parseExpr();
+        expectWord("to");
+        Expr *expr = parseExpr();
+        expectDot();
+        return arena_.makeStmt(StoreThroughStmt{pointer, expr}, line);
+    }
     std::string name = expectIdentName();
     expectWord("to");
     Expr *expr = parseExpr();
     expectDot();
     return arena_.makeStmt(SetStmt{name, expr}, line);
+}
+
+Stmt *Parser::parseDeclare() {
+    int line = peek().line;
+    advance();
+    std::string name = expectIdentName();
+    expectWord("as");
+    TypeSpec type = parseTypeSpec();
+    Expr *initializer = nullptr;
+    if (checkWord("with")) {
+        advance();
+        expectWord("value");
+        initializer = parseExpr();
+    }
+    expectDot();
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer}, line);
 }
 
 Stmt *Parser::parseAdd() {
@@ -315,72 +341,49 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
 }
 
 TypeSpec Parser::parseTypeSpec() {
-    if (checkWord("void")) {
-        advance();
-        return TypeSpec{TypeSpecKind::Void};
-    }
-    if (checkWord("boolean")) {
-        advance();
-        return TypeSpec{TypeSpecKind::Boolean};
-    }
-    if (checkWord("character")) {
-        advance();
-        return TypeSpec{TypeSpecKind::Character};
-    }
-    if (checkWord("signed") && checkWordAt(1, "character")) {
+    if (checkWord("pointer") && checkWordAt(1, "to")) {
         advance(); advance();
-        return TypeSpec{TypeSpecKind::SignedCharacter};
+        TypeSpec pointee = parseTypeSpec();
+        return TypeSpec{TypeSpecKind::Pointer, std::make_shared<TypeSpec>(std::move(pointee))};
+    }
+    if (checkWord("void")) { advance(); return TypeSpec{TypeSpecKind::Void}; }
+    if (checkWord("boolean")) { advance(); return TypeSpec{TypeSpecKind::Boolean}; }
+    if (checkWord("character")) { advance(); return TypeSpec{TypeSpecKind::Character}; }
+    if (checkWord("signed") && checkWordAt(1, "character")) {
+        advance(); advance(); return TypeSpec{TypeSpecKind::SignedCharacter};
     }
     if (checkWord("unsigned") && checkWordAt(1, "character")) {
-        advance(); advance();
-        return TypeSpec{TypeSpecKind::UnsignedCharacter};
+        advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedCharacter};
     }
     if (checkWord("short") && checkWordAt(1, "integer")) {
-        advance(); advance();
-        return TypeSpec{TypeSpecKind::ShortInteger};
+        advance(); advance(); return TypeSpec{TypeSpecKind::ShortInteger};
     }
     if (checkWord("unsigned") && checkWordAt(1, "short") && checkWordAt(2, "integer")) {
-        advance(); advance(); advance();
-        return TypeSpec{TypeSpecKind::UnsignedShortInteger};
+        advance(); advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedShortInteger};
     }
-    if (checkWord("integer")) {
-        advance();
-        return TypeSpec{TypeSpecKind::Integer};
-    }
+    if (checkWord("integer")) { advance(); return TypeSpec{TypeSpecKind::Integer}; }
     if (checkWord("unsigned") && checkWordAt(1, "integer")) {
-        advance(); advance();
-        return TypeSpec{TypeSpecKind::UnsignedInteger};
+        advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedInteger};
     }
     if (checkWord("long") && checkWordAt(1, "long") && checkWordAt(2, "integer")) {
-        advance(); advance(); advance();
-        return TypeSpec{TypeSpecKind::LongLongInteger};
+        advance(); advance(); advance(); return TypeSpec{TypeSpecKind::LongLongInteger};
     }
     if (checkWord("unsigned") && checkWordAt(1, "long") && checkWordAt(2, "long") && checkWordAt(3, "integer")) {
-        advance(); advance(); advance(); advance();
-        return TypeSpec{TypeSpecKind::UnsignedLongLongInteger};
+        advance(); advance(); advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedLongLongInteger};
     }
     if (checkWord("long") && checkWordAt(1, "integer")) {
-        advance(); advance();
-        return TypeSpec{TypeSpecKind::LongInteger};
+        advance(); advance(); return TypeSpec{TypeSpecKind::LongInteger};
     }
     if (checkWord("unsigned") && checkWordAt(1, "long") && checkWordAt(2, "integer")) {
-        advance(); advance(); advance();
-        return TypeSpec{TypeSpecKind::UnsignedLongInteger};
+        advance(); advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedLongInteger};
     }
-    if (checkWord("float")) {
-        advance();
-        return TypeSpec{TypeSpecKind::Float};
-    }
-    if (checkWord("decimal")) {
-        advance();
-        return TypeSpec{TypeSpecKind::Decimal};
-    }
+    if (checkWord("float")) { advance(); return TypeSpec{TypeSpecKind::Float}; }
+    if (checkWord("decimal")) { advance(); return TypeSpec{TypeSpecKind::Decimal}; }
     if (checkWord("long") && checkWordAt(1, "decimal")) {
-        advance(); advance();
-        return TypeSpec{TypeSpecKind::LongDecimal};
+        advance(); advance(); return TypeSpec{TypeSpecKind::LongDecimal};
     }
 
-    error("expected a C scalar type such as \"integer\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
+    error("expected a C type such as \"integer\", \"pointer to integer\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }
@@ -485,6 +488,18 @@ Expr *Parser::parsePrimary() {
         Expr *rhs = parsePrimary();
         return arena_.makeExpr(UnaryExpr{UnaryOp::Neg, rhs}, line);
     }
+    if (checkWord("address") && checkWordAt(1, "of")) {
+        int line = peek().line;
+        advance(); advance();
+        std::string name = expectIdentName();
+        return arena_.makeExpr(AddressOfExpr{name}, line);
+    }
+    if (checkWord("value") && checkWordAt(1, "at")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *pointer = parsePrimary();
+        return arena_.makeExpr(DerefExpr{pointer}, line);
+    }
     if (checkWord("length") && checkWordAt(1, "of")) {
         int line = peek().line;
         advance(); advance();
@@ -495,6 +510,12 @@ Expr *Parser::parsePrimary() {
         int line = peek().line;
         advance(); advance(); advance();
         return arena_.makeExpr(SizeOfTypeExpr{parseTypeSpec()}, line);
+    }
+    if (checkWord("size") && checkWordAt(1, "of")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *operand = parsePrimary();
+        return arena_.makeExpr(SizeOfExpr{operand}, line);
     }
     if (checkWord("alignment") && checkWordAt(1, "of") && checkWordAt(2, "type")) {
         int line = peek().line;
@@ -579,5 +600,5 @@ Expr *Parser::parsePrimary() {
         return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
     }
     if (t.kind == TokKind::Ident) { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a decimal, a string, a name, true, false, minus, Length of, Size of type, Alignment of type, List with, Empty list of, Item at, or a math function here");
+    error("expected a number, a decimal, a string, a name, true, false, minus, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
 }

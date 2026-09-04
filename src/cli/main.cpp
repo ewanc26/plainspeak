@@ -72,21 +72,19 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    {
-        Sema sema;
-        auto diags = sema.check(program);
-        for (const auto &d : diags) {
-            std::cerr << "error[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
-        }
-        if (!diags.empty()) return 1;
+    Sema sema;
+    AnalysisResult analysis = sema.analyze(program);
+    for (const auto &d : analysis.diagnostics) {
+        std::cerr << "error[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
     }
+    if (!analysis.diagnostics.empty()) return 1;
 
     if (printAstOnly) {
         std::cout << printAST(program);
         return 0;
     }
 
-    std::string cSource = emitProgram(program, &sourceLines);
+    std::string cSource = emitProgram(program, analysis, &sourceLines);
 
     if (emitCOnly) {
         std::cout << cSource;

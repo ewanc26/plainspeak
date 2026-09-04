@@ -1,10 +1,6 @@
 #pragma once
 #include <stddef.h>
 
-/* plainspeak runtime: the tagged-value type and built-in verbs that
- * generated C code calls into. Kept deliberately small — see
- * docs/runtime.md for the API contract generated code relies on. */
-
 typedef enum { PS_INT, PS_DOUBLE, PS_STRING, PS_LIST } PsType;
 
 typedef struct PsValue PsValue;
@@ -30,7 +26,6 @@ PsValue ps_int(long v);
 PsValue ps_double(double v);
 PsValue ps_str(const char *v);
 
-/* Lists are mutable reference values. Source positions are one-based. */
 PsValue ps_list_from(const PsValue *items, size_t count);
 PsValue ps_list_copy(PsValue list);
 void ps_list_append(PsValue list, PsValue item);
@@ -38,14 +33,12 @@ PsValue ps_list_get(PsValue list, PsValue index);
 void ps_list_set(PsValue list, PsValue index, PsValue item);
 void ps_list_remove(PsValue list, PsValue index);
 
-/* "Add X to Y" / "X plus Y" */
 PsValue ps_add(PsValue a, PsValue b);
 PsValue ps_sub(PsValue a, PsValue b);
 PsValue ps_mul(PsValue a, PsValue b);
 PsValue ps_div(PsValue a, PsValue b);
 PsValue ps_mod(PsValue a, PsValue b);
 
-/* logical operators */
 PsValue ps_and(PsValue a, PsValue b);
 PsValue ps_or(PsValue a, PsValue b);
 PsValue ps_not(PsValue v);
@@ -56,7 +49,6 @@ long ps_strlen(PsValue v);
 PsValue ps_read(void);
 PsValue ps_read_double(void);
 
-/* comparisons: result is PS_INT holding 0 or 1 */
 PsValue ps_gt(PsValue a, PsValue b);
 PsValue ps_lt(PsValue a, PsValue b);
 PsValue ps_eq(PsValue a, PsValue b);
@@ -65,11 +57,13 @@ PsValue ps_ge(PsValue a, PsValue b);
 PsValue ps_le(PsValue a, PsValue b);
 
 long ps_as_int(PsValue v);
+static inline double ps_as_double(PsValue v) {
+    return v.type == PS_DOUBLE ? v.as.d : (double)ps_as_int(v);
+}
 int ps_truthy(PsValue v);
 
 void ps_say(PsValue v);
 
-/* scientific functions */
 PsValue ps_sin(PsValue v);
 PsValue ps_cos(PsValue v);
 PsValue ps_tan(PsValue v);

@@ -4,6 +4,8 @@
 #include <vector>
 
 #include "../ast/ast.h"
+#include "../sema/sema.h"
 
 std::string emitProgram(const std::vector<Stmt *> &program,
+                        const AnalysisResult &analysis,
                         const std::unordered_map<int, std::string> *sourceLines = nullptr);
