@@ -1,0 +1,1 @@
+Declare x as integer. Declare cp as pointer to constant integer with value Address of x. Declare p as pointer to integer with value cp.
