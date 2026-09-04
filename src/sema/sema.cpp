@@ -698,23 +698,27 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             return *pointer.elementType;
         }
         else if constexpr (std::is_same_v<T, CastExpr>) {
+            const std::size_t before = diags.size();
             Type source = inferExpr(node.operand, line, diags);
             Type target = resolveTypeSpec(node.target);
-            validateTypeQualifiers(target, line, diags);
+
+            if (!validateTypeQualifiers(target, line, diags)) return Type::number();
+            if (diags.size() != before) return Type::number();
 
             if (target.kind == TypeKind::Void) {
                 diags.push_back({26, line, "Convert to void is not available as a value expression yet; PlainSpeak needs a discard-expression statement surface first."});
-                return Type::voidType();
+                return Type::number();
             }
             if (target.kind == TypeKind::Enumeration && !isCompleteObjectType(target)) {
                 diags.push_back({26, line, "Convert needs a complete enumeration target; " +
                                           typeToString(target) + " is incomplete here."});
-                return target;
+                return Type::number();
             }
             if (!canExplicitCast(target, source)) {
                 diags.push_back({26, line, "I can't explicitly convert " + typeToString(source) +
                                           " to " + typeToString(target) +
                                           "; C casts here require compatible scalar conversion categories."});
+                return Type::number();
             }
             return target;
         }
