@@ -18,6 +18,7 @@ struct IntLit    { long value; };
 struct BoolLit   { bool value; };
 struct FloatLit  { double value; };
 struct StringLit { std::string value; };
+struct NullptrLit {};
 struct VarRef    { std::string name; };
 
 enum class ListElementKind { Number, Decimal, String };
@@ -47,7 +48,8 @@ enum class TypeSpecKind {
     Array,
     Structure,
     Union,
-    Enumeration
+    Enumeration,
+    Nullptr
 };
 
 struct TypeSpecQualifiers {
@@ -89,7 +91,7 @@ struct ListExpr        { std::vector<Expr *> items; };
 struct EmptyListExpr   { ListElementKind elementKind; };
 struct ItemExpr        { Expr *index; Expr *list; };
 
-using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef,
+using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
                               ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
