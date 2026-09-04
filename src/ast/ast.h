@@ -65,8 +65,8 @@ struct TypeSpec {
     TypeSpecQualifiers qualifiers{};
 };
 
-enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
-enum class UnaryOp { Not, Neg };
+enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or };
+enum class UnaryOp { Not, Neg, BitNot };
 struct UnaryExpr       { UnaryOp op; Expr *rhs; };
 struct LengthExpr      { Expr *operand; };
 struct SizeOfTypeExpr  { TypeSpec type; };
