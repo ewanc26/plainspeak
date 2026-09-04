@@ -173,3 +173,10 @@ The same raw path is used for bitwise `&`, `^`, `|`, unary `~`, and shifts. This
 `Convert <primary> to type <CType>` lowers directly to a C cast around the raw operand. Arithmetic casts therefore happen before any result is boxed for legacy surfaces. Pointer-to-pointer and integer-to-pointer/pointer-to-integer casts are also emitted directly, intentionally leaving implementation-defined representation details to the target C implementation.
 
 Semantic analysis rejects non-scalar cast categories before C emission. Cast-to-void is intentionally deferred until PlainSpeak has a standalone expression-discard statement; allowing it as an ordinary value expression would invent semantics C does not have.
+
+
+## Native increment and decrement
+
+`Increment before` / `Decrement before` lower to prefix C `++` / `--`. `Increment after` / `Decrement after` lower to postfix forms. Codegen operates on the raw native lvalue expression, so dereferences, subscripts, aggregate members and bit-fields are updated by the target C implementation rather than by a runtime helper.
+
+Semantic analysis requires a native modifiable lvalue and either a real arithmetic type or a pointer to a complete object. Top-level qualifiers are removed from the expression result, matching value conversion. Atomic operands remain atomic at the object, while the yielded expression value is non-atomic; direct C lowering gives C11 atomic increment/decrement their native sequentially consistent read-modify-write behavior.
