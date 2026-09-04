@@ -30,8 +30,10 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.function-types` | foundation | Explicit typed Procedure parameters/returns now lower to native C function types; variadics, function pointers and the complete compatibility rules remain pending. |
 | `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; VLAs/incomplete source declarations and whole-array initialization remain pending. |
 | `types.vla` | planned | C99 variable-length and variably modified types. |
-| `types.structures` | foundation | Tagged structures have source definitions, completeness checking, native layout, self/forward pointers, by-value transport and member access; anonymous/flexible members and bit-fields remain pending. |
-| `types.unions` | foundation | Tagged unions have source definitions, completeness checking, native layout, self/forward pointers, by-value transport and member access; anonymous members and bit-fields remain pending. |
+| `types.structures` | foundation | Tagged structures have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access, bit-fields and flexible-array tails; anonymous members remain pending. |
+| `types.bit-fields` | foundation | Named/unnamed native C bit-fields support target-width checks, width-0 unnamed separators, member access/store and initialization; C23 _BitInt source types and exhaustive implementation-defined base-type feature detection remain pending. |
+| `types.flexible-array-members` | foundation | C99 trailing flexible structure members have native incomplete-array layout, sizeof/completeness and embedding/initializer constraints; allocation of extended objects remains pending. |
+| `types.unions` | foundation | Tagged unions have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access and native bit-fields; anonymous members remain pending. |
 | `types.enumerations` | foundation | Tagged enumerations have source definitions, implicit/explicit int-range enumerators, native enum storage, qualified enumerator expressions and typed transport; general integer constant expressions and C23 fixed underlying/wider rules remain pending. |
 | `types.aliases` | planned | typedef-equivalent aliases. |
 | `types.typeof` | planned | C23 `typeof` / `typeof_unqual` capability. |
@@ -59,7 +61,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.generic-selection` | planned |
 | `expr.nullptr-conversions` | planned |
 
-Explicit native objects are modifiable lvalues, pointer dereference produces a modifiable lvalue for concrete pointees, fixed-array elements are addressable/subscriptable native lvalues, and structure/union members are typed native lvalues. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, qualifiers, null pointers, complete conversions, anonymous/bit-field members, sequencing and the full usual arithmetic conversions are not complete.
+Explicit native objects are modifiable lvalues, pointer dereference produces a modifiable lvalue for concrete pointees, fixed-array elements are addressable/subscriptable native lvalues, and structure/union members (including named bit-fields) are typed native lvalues. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, qualifiers, null pointers, complete conversions, anonymous members, sequencing and the full usual arithmetic conversions are not complete.
 
 ## Declarations, storage and linkage
 
