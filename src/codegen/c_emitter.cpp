@@ -235,6 +235,9 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return "(&" + mangle(node.name) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return "(*(" + emitRawExpr(node.pointer, analysis) + "))";
+        } else if constexpr (std::is_same_v<T, CastExpr>) {
+            return "((" + emitCType(exprType(e, analysis)) + ")(" +
+                   emitRawExpr(node.operand, analysis) + "))";
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return "((" + emitRawExpr(node.base, analysis) + ")[(" + emitRawExpr(node.index, analysis) + ")])";
         } else if constexpr (std::is_same_v<T, MemberExpr>) {
@@ -317,6 +320,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "ps_int(0L)";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+        } else if constexpr (std::is_same_v<T, CastExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
