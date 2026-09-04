@@ -1,4 +1,5 @@
 #pragma once
+#include <cstddef>
 #include <deque>
 #include <memory>
 #include <string>
@@ -41,12 +42,14 @@ enum class TypeSpecKind {
     Float,
     Decimal,
     LongDecimal,
-    Pointer
+    Pointer,
+    Array
 };
 
 struct TypeSpec {
     TypeSpecKind kind;
     std::shared_ptr<TypeSpec> pointee{};
+    std::size_t arrayBound = 0;
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
@@ -58,6 +61,7 @@ struct SizeOfExpr      { Expr *operand; };
 struct AlignOfTypeExpr { TypeSpec type; };
 struct AddressOfExpr   { std::string name; };
 struct DerefExpr       { Expr *pointer; };
+struct ElementExpr     { Expr *index; Expr *base; };
 struct MathCallExpr    { std::string func; Expr *arg; };
 struct CallExpr        { std::string name; std::vector<Expr *> args; };
 struct PowExpr         { Expr *base; Expr *exp; };
@@ -69,7 +73,7 @@ struct ItemExpr        { Expr *index; Expr *list; };
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, AddressOfExpr, DerefExpr,
-                              MathCallExpr, CallExpr, PowExpr, BinaryExpr,
+                              ElementExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
@@ -77,6 +81,7 @@ struct SayStmt       { Expr *expr; };
 struct SetStmt       { std::string name; Expr *expr; };
 struct NativeDeclStmt { std::string name; TypeSpec type; Expr *initializer; };
 struct StoreThroughStmt { Expr *pointer; Expr *expr; };
+struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };
 struct AddStmt       { Expr *expr; std::string varName; };
 struct SubStmt       { Expr *expr; std::string varName; };
 struct ReadStmt      { std::string varName; };
@@ -94,7 +99,7 @@ struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 
 using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt,
-                              StoreThroughStmt, AddStmt, SubStmt, ReadStmt,
+                              StoreThroughStmt, StoreElementStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt,
                               ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt,
