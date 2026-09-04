@@ -30,6 +30,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0022 | Invalid enumeration definition, tag, enumerator, value, or use |
 | E0023 | Invalid bit-field or flexible-array-member layout/use |
 | E0024 | Invalid native type qualifier, forbidden const mutation, or unsupported qualified-object lowering |
+| E0025 | Invalid bitwise or shift operand |
 
 ## Parse-time errors
 

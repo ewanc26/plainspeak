@@ -179,6 +179,118 @@ bool supportsCObjectQuery(const Type &t) {
            t.kind == TypeKind::Structure || t.kind == TypeKind::Union;
 }
 
+Type signedInteger(IntegerRank rank) { return Type::integer(rank, false); }
+Type unsignedInteger(IntegerRank rank) { return Type::integer(rank, true); }
+
+int integerRankOrder(IntegerRank rank) {
+    switch (rank) {
+        case IntegerRank::Char: return 0;
+        case IntegerRank::Short: return 1;
+        case IntegerRank::Int: return 2;
+        case IntegerRank::Long: return 3;
+        case IntegerRank::LongLong: return 4;
+    }
+    return 0;
+}
+
+unsigned long long unsignedMaxForRank(IntegerRank rank) {
+    switch (rank) {
+        case IntegerRank::Char: return std::numeric_limits<unsigned char>::max();
+        case IntegerRank::Short: return std::numeric_limits<unsigned short>::max();
+        case IntegerRank::Int: return std::numeric_limits<unsigned int>::max();
+        case IntegerRank::Long: return std::numeric_limits<unsigned long>::max();
+        case IntegerRank::LongLong: return std::numeric_limits<unsigned long long>::max();
+    }
+    return 0;
+}
+
+unsigned long long signedMaxForRank(IntegerRank rank) {
+    switch (rank) {
+        case IntegerRank::Char: return static_cast<unsigned long long>(std::numeric_limits<signed char>::max());
+        case IntegerRank::Short: return static_cast<unsigned long long>(std::numeric_limits<short>::max());
+        case IntegerRank::Int: return static_cast<unsigned long long>(std::numeric_limits<int>::max());
+        case IntegerRank::Long: return static_cast<unsigned long long>(std::numeric_limits<long>::max());
+        case IntegerRank::LongLong: return static_cast<unsigned long long>(std::numeric_limits<long long>::max());
+    }
+    return 0;
+}
+
+Type integerPromotion(Type type) {
+    type = stripTopQualifiers(std::move(type));
+    if (type.kind == TypeKind::Boolean || type.kind == TypeKind::Enumeration) {
+        return signedInteger(IntegerRank::Int);
+    }
+    if (type.kind != TypeKind::Integer) return type;
+
+    if (integerRankOrder(type.integerRank) >= integerRankOrder(IntegerRank::Int)) {
+        return type;
+    }
+
+    if (type.integerRank == IntegerRank::Char && type.charSignedness == CharSignedness::Plain) {
+        if (std::numeric_limits<char>::lowest() >= std::numeric_limits<int>::lowest() &&
+            std::numeric_limits<char>::max() <= std::numeric_limits<int>::max()) {
+            return signedInteger(IntegerRank::Int);
+        }
+        return unsignedInteger(IntegerRank::Int);
+    }
+
+    const bool unsignedSource = type.isUnsigned || type.charSignedness == CharSignedness::Unsigned;
+    if (!unsignedSource || unsignedMaxForRank(type.integerRank) <= signedMaxForRank(IntegerRank::Int)) {
+        return signedInteger(IntegerRank::Int);
+    }
+    return unsignedInteger(IntegerRank::Int);
+}
+
+Type usualIntegerConversion(Type lhs, Type rhs) {
+    lhs = integerPromotion(std::move(lhs));
+    rhs = integerPromotion(std::move(rhs));
+    if (lhs == rhs) return lhs;
+
+    if (lhs.kind != TypeKind::Integer || rhs.kind != TypeKind::Integer) {
+        return Type::number();
+    }
+
+    const int lhsRank = integerRankOrder(lhs.integerRank);
+    const int rhsRank = integerRankOrder(rhs.integerRank);
+    if (lhs.isUnsigned == rhs.isUnsigned) return lhsRank >= rhsRank ? lhs : rhs;
+
+    Type unsignedType = lhs.isUnsigned ? lhs : rhs;
+    Type signedType = lhs.isUnsigned ? rhs : lhs;
+    const int unsignedRank = integerRankOrder(unsignedType.integerRank);
+    const int signedRank = integerRankOrder(signedType.integerRank);
+
+    if (unsignedRank >= signedRank) return unsignedType;
+    if (signedMaxForRank(signedType.integerRank) >= unsignedMaxForRank(unsignedType.integerRank)) {
+        return signedType;
+    }
+    return unsignedInteger(signedType.integerRank);
+}
+
+Type usualArithmeticConversion(Type lhs, Type rhs) {
+    lhs = decayArray(std::move(lhs));
+    rhs = decayArray(std::move(rhs));
+
+    if (lhs.kind == TypeKind::Floating || rhs.kind == TypeKind::Floating) {
+        FloatingRank rank = FloatingRank::Float;
+        auto raise = [&](const Type &t) {
+            if (t.kind != TypeKind::Floating) return;
+            if (t.floatingRank == FloatingRank::LongDouble) rank = FloatingRank::LongDouble;
+            else if (t.floatingRank == FloatingRank::Double && rank != FloatingRank::LongDouble)
+                rank = FloatingRank::Double;
+        };
+        raise(lhs);
+        raise(rhs);
+        return Type::floating(rank);
+    }
+    return usualIntegerConversion(std::move(lhs), std::move(rhs));
+}
+
+bool isBitwiseIntegral(const Type &type) {
+    Type value = stripTopQualifiers(type);
+    return value.kind == TypeKind::Boolean || value.kind == TypeKind::Enumeration ||
+           value.kind == TypeKind::Integer;
+}
+
 std::optional<std::size_t> bitFieldWidthLimit(const Type &type) {
     if (type.kind == TypeKind::Boolean) return 1;
     if (type.kind == TypeKind::Enumeration) return sizeof(int) * CHAR_BIT;
@@ -671,42 +783,76 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             if (node.op == BinOp::Add) {
                 bool lhsStr = lhs.kind == TypeKind::String;
                 bool rhsStr = rhs.kind == TypeKind::String;
-                bool lhsNum = isNumeric(lhs);
-                bool rhsNum = isNumeric(rhs);
+                bool lhsNum = isArithmeticScalar(lhsValue);
+                bool rhsNum = isArithmeticScalar(rhsValue);
                 if (!((lhsStr && rhsStr) || (lhsNum && rhsNum) || (lhsStr && rhsNum) || (lhsNum && rhsStr))) {
                     diags.push_back({2, line, "I can't add a " + typeToString(lhs) + " to a " + typeToString(rhs) + "."});
                 }
                 if (lhsStr || rhsStr) return Type::string();
-                if (lhs.isFloating() || rhs.isFloating()) return Type::decimal();
-                return Type::number();
+                return usualArithmeticConversion(lhsValue, rhsValue);
             }
-            if (node.op == BinOp::Sub || node.op == BinOp::Mul || node.op == BinOp::Div || node.op == BinOp::Mod) {
-                if (!isNumeric(lhs) || !isNumeric(rhs)) {
-                    diags.push_back({2, line, "I can't do arithmetic on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
+            if (node.op == BinOp::Sub || node.op == BinOp::Mul || node.op == BinOp::Div) {
+                if (!isArithmeticScalar(lhsValue) || !isArithmeticScalar(rhsValue)) {
+                    diags.push_back({2, line, "I can't do arithmetic on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be arithmetic scalars."});
+                    return Type::number();
                 }
-                if (lhs.isFloating() || rhs.isFloating()) return Type::decimal();
-                return Type::number();
+                return usualArithmeticConversion(lhsValue, rhsValue);
+            }
+            if (node.op == BinOp::Mod) {
+                if (!isBitwiseIntegral(lhsValue) || !isBitwiseIntegral(rhsValue)) {
+                    diags.push_back({2, line, "Modulo needs integer operands after C value conversion, not " +
+                                             typeToString(lhs) + " and " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return usualIntegerConversion(lhsValue, rhsValue);
+            }
+            if (node.op == BinOp::BitAnd || node.op == BinOp::BitXor || node.op == BinOp::BitOr) {
+                if (!isBitwiseIntegral(lhsValue) || !isBitwiseIntegral(rhsValue)) {
+                    diags.push_back({25, line, "Bitwise operators need integer operands, not " +
+                                              typeToString(lhs) + " and " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return usualIntegerConversion(lhsValue, rhsValue);
+            }
+            if (node.op == BinOp::ShiftLeft || node.op == BinOp::ShiftRight) {
+                if (!isBitwiseIntegral(lhsValue) || !isBitwiseIntegral(rhsValue)) {
+                    diags.push_back({25, line, "Shift operators need integer operands, not " +
+                                              typeToString(lhs) + " and " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return integerPromotion(lhsValue);
             }
             if (node.op == BinOp::And || node.op == BinOp::Or) {
-                if (lhsValue != Type::number() || rhsValue != Type::number()) {
+                if (!isArithmeticScalar(lhsValue) || !isArithmeticScalar(rhsValue)) {
                     diags.push_back({2, line, "I can't do logical " + std::string(node.op == BinOp::And ? "and" : "or") +
-                                             " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
+                                             " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be arithmetic scalar values."});
                 }
                 return Type::number();
             }
             if (isList(lhsValue) || isList(rhsValue) ||
-                (lhsValue != rhsValue && !(isNumeric(lhsValue) && isNumeric(rhsValue)))) {
+                (lhsValue != rhsValue && !(isArithmeticScalar(lhsValue) && isArithmeticScalar(rhsValue)))) {
                 diags.push_back({4, line, "I can't compare a " + typeToString(lhs) + " with a " + typeToString(rhs) +
                                          ". Both sides must be comparable scalar values."});
             }
-            return Type::number();
+            return Type::integer(IntegerRank::Int);
         }
         else if constexpr (std::is_same_v<T, UnaryExpr>) {
             Type rhs = inferExpr(node.rhs, line, diags);
             Type value = decayArray(rhs);
             if (node.op == UnaryOp::Neg) {
-                if (!isNumeric(value)) diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
+                if (!isArithmeticScalar(value)) {
+                    diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                if (isBitwiseIntegral(value)) return integerPromotion(value);
                 return value;
+            }
+            if (node.op == UnaryOp::BitNot) {
+                if (!isBitwiseIntegral(value)) {
+                    diags.push_back({25, line, "Bitwise not needs an integer operand, not a " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return integerPromotion(value);
             }
             if (value != Type::number()) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
