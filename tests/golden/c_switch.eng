@@ -1,0 +1,1 @@
+Declare value as integer with value 2. Switch value: Case 1: Say 1. Break. Case 1 plus 1: Say 2. Case 3: Say 3. Break. Default: Say 9. End switch. Declare other as integer with value 8. Switch other: Case 1: Say 1. Break. Default: Say 9. End switch. Set i to 0. While i is less than 3: Add 1 to i. Switch i: Case 2: Continue. Default: Say i. Break. End switch. Say 10. End while.

@@ -1,0 +1,1 @@
+error[E0032]: A Switch can contain at most one Default label.

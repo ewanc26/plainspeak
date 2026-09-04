@@ -55,7 +55,7 @@ std::vector<Stmt *> Parser::parseProgram() {
 Stmt *Parser::parseTopLevelStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call, Procedure)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Break, Continue, Repeat, If, While, Do, Switch, For, Call, Procedure)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
@@ -86,19 +86,20 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
+    if (t.text == "switch") return parseSwitch();
     if (t.text == "for") return parseForEach();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, switch, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Break, Continue, Repeat, If, While, Do, Switch, For, Call)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
@@ -126,13 +127,14 @@ Stmt *Parser::parseStmt() {
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
+    if (t.text == "switch") return parseSwitch();
     if (t.text == "for") return parseForEach();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, switch, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -531,6 +533,48 @@ Stmt *Parser::parseDoWhile() {
     Expr *cond = parseExpr();
     expectDot();
     return arena_.makeStmt(DoWhileStmt{std::move(body), cond}, line);
+}
+
+Stmt *Parser::parseSwitch() {
+    int line = peek().line;
+    expectWord("switch");
+    Expr *control = parseExpr();
+    expectColon();
+
+    std::vector<SwitchCase> cases;
+    while (!(checkWord("end") && checkWordAt(1, "switch"))) {
+        if (peek().kind == TokKind::Eof) {
+            error("reached end of file while looking for \"End switch.\"");
+        }
+
+        SwitchCase branch;
+        branch.line = peek().line;
+        if (checkWord("case")) {
+            advance();
+            branch.value = parseExpr();
+            expectColon();
+        } else if (checkWord("default")) {
+            advance();
+            branch.isDefault = true;
+            expectColon();
+        } else {
+            error("Switch bodies contain Case or Default labels before their statements");
+        }
+
+        while (!(checkWord("case") || checkWord("default") ||
+                 (checkWord("end") && checkWordAt(1, "switch")))) {
+            if (peek().kind == TokKind::Eof) {
+                error("reached end of file while looking for \"End switch.\"");
+            }
+            branch.body.push_back(parseStmt());
+        }
+        cases.push_back(std::move(branch));
+    }
+
+    advance();
+    advance();
+    expectDot();
+    return arena_.makeStmt(SwitchStmt{control, std::move(cases)}, line);
 }
 
 Stmt *Parser::parseForEach() {

@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <climits>
 #include <limits>
+#include <set>
 #include <type_traits>
 #include <utility>
 
@@ -1961,6 +1962,69 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             leaveScope();
             --breakableDepth_;
             --loopDepth_;
+        }
+        else if constexpr (std::is_same_v<T, SwitchStmt>) {
+            Type controlType = decayArray(inferExpr(node.control, s->line, diags));
+            if (!isIntegralType(controlType)) {
+                diags.push_back({32, s->line,
+                    "Switch needs an integer controlling expression, not a " +
+                    typeToString(controlType) + "."});
+            }
+            Type promotedControl = isIntegralType(controlType)
+                                 ? integerPromotion(controlType)
+                                 : Type::integer(IntegerRank::Int);
+
+            auto caseKey = [&](long value) {
+                if (promotedControl.kind == TypeKind::Integer && promotedControl.isUnsigned) {
+                    unsigned long long converted = 0;
+                    switch (promotedControl.integerRank) {
+                        case IntegerRank::Char: converted = static_cast<unsigned char>(value); break;
+                        case IntegerRank::Short: converted = static_cast<unsigned short>(value); break;
+                        case IntegerRank::Int: converted = static_cast<unsigned int>(value); break;
+                        case IntegerRank::Long: converted = static_cast<unsigned long>(value); break;
+                        case IntegerRank::LongLong: converted = static_cast<unsigned long long>(value); break;
+                    }
+                    return std::string("u:") + std::to_string(converted);
+                }
+                long long converted = value;
+                if (promotedControl.kind == TypeKind::Integer) {
+                    switch (promotedControl.integerRank) {
+                        case IntegerRank::Char: converted = static_cast<signed char>(value); break;
+                        case IntegerRank::Short: converted = static_cast<short>(value); break;
+                        case IntegerRank::Int: converted = static_cast<int>(value); break;
+                        case IntegerRank::Long: converted = static_cast<long>(value); break;
+                        case IntegerRank::LongLong: converted = static_cast<long long>(value); break;
+                    }
+                }
+                return std::string("s:") + std::to_string(converted);
+            };
+
+            std::set<std::string> caseValues;
+            bool sawDefault = false;
+            ++breakableDepth_;
+            enterScope();
+            for (const auto &branch : node.cases) {
+                if (branch.isDefault) {
+                    if (sawDefault) {
+                        diags.push_back({32, branch.line,
+                            "A Switch can contain at most one Default label."});
+                    }
+                    sawDefault = true;
+                } else {
+                    Type caseType = decayArray(inferExpr(branch.value, branch.line, diags));
+                    auto value = integerConstantValue(branch.value);
+                    if (!isIntegralType(caseType) || !value) {
+                        diags.push_back({32, branch.line,
+                            "Case requires an integer constant expression."});
+                    } else if (!caseValues.insert(caseKey(*value)).second) {
+                        diags.push_back({32, branch.line,
+                            "Switch Case values must be unique after conversion to the controlling type."});
+                    }
+                }
+                for (Stmt *inner : branch.body) checkStmt(inner, diags);
+            }
+            leaveScope();
+            --breakableDepth_;
         }
         else if constexpr (std::is_same_v<T, ForEachStmt>) {
             Type listType = inferExpr(node.list, s->line, diags);
