@@ -120,6 +120,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
     scopes_.clear();
     procTable_.clear();
     structureTable_.clear();
+    unionTable_.clear();
     currentProcedure_.reset();
     scopes_.emplace_back();
     analysis_ = &result;
@@ -136,6 +137,19 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         }
         structureTable_[structure->name] = StructureInfo{};
         result.structures[structure->name] = StructureInfo{};
+    }
+
+    // Union tags are a separate namespace from structure tags and follow the
+    // same incomplete-first rule for self/forward pointers.
+    for (Stmt *s : program) {
+        auto *uni = std::get_if<UnionStmt>(&s->node);
+        if (!uni) continue;
+        if (unionTable_.count(uni->name)) {
+            result.diagnostics.push_back({20, s->line, "Union \"" + uni->name + "\" is already defined."});
+            continue;
+        }
+        unionTable_[uni->name] = StructureInfo{};
+        result.unions[uni->name] = StructureInfo{};
     }
 
     // Register every procedure signature before checking any body. This makes
@@ -244,6 +258,8 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             return Type::arrayOf(Type::voidType(), spec.arrayBound);
         case TypeSpecKind::Structure:
             return Type::structure(spec.tag);
+        case TypeSpecKind::Union:
+            return Type::unionType(spec.tag);
     }
     return Type::voidType();
 }
@@ -257,20 +273,29 @@ bool Sema::isCompleteObjectType(const Type &type) const {
         auto it = structureTable_.find(type.tag);
         return it != structureTable_.end() && it->second.complete;
     }
-    if (type.kind == TypeKind::Union) return false;
+    if (type.kind == TypeKind::Union) {
+        auto it = unionTable_.find(type.tag);
+        return it != unionTable_.end() && it->second.complete;
+    }
     return type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
            type.kind == TypeKind::Floating || type.kind == TypeKind::Pointer ||
            type.kind == TypeKind::Enumeration || type.kind == TypeKind::BitInt;
 }
 
-const Type *Sema::findStructureField(const Type &base, const std::string &name) const {
+const Type *Sema::findAggregateField(const Type &base, const std::string &name) const {
     Type aggregate = base;
     if (aggregate.isPointer() && aggregate.elementType) aggregate = *aggregate.elementType;
-    if (aggregate.kind != TypeKind::Structure) return nullptr;
 
-    auto it = structureTable_.find(aggregate.tag);
-    if (it == structureTable_.end() || !it->second.complete) return nullptr;
-    for (const auto &field : it->second.fields) {
+    const StructureInfo *info = nullptr;
+    if (aggregate.kind == TypeKind::Structure) {
+        auto it = structureTable_.find(aggregate.tag);
+        if (it != structureTable_.end()) info = &it->second;
+    } else if (aggregate.kind == TypeKind::Union) {
+        auto it = unionTable_.find(aggregate.tag);
+        if (it != unionTable_.end()) info = &it->second;
+    }
+    if (!info || !info->complete) return nullptr;
+    for (const auto &field : info->fields) {
         if (field.first == name) return &field.second;
     }
     return nullptr;
@@ -312,20 +337,29 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             Type base = inferExpr(node.base, line, diags);
             Type aggregate = base;
             if (aggregate.isPointer() && aggregate.elementType) aggregate = *aggregate.elementType;
-            if (aggregate.kind != TypeKind::Structure) {
-                diags.push_back({19, line, "Member " + node.name + " needs a structure object or pointer, not a " +
+            if (aggregate.kind != TypeKind::Structure && aggregate.kind != TypeKind::Union) {
+                diags.push_back({19, line, "Member " + node.name + " needs a structure/union object or pointer, not a " +
                                            typeToString(base) + "."});
                 return Type::number();
             }
-            auto def = structureTable_.find(aggregate.tag);
-            if (def == structureTable_.end() || !def->second.complete) {
-                diags.push_back({19, line, "Structure \"" + aggregate.tag +
-                                           "\" is incomplete here, so its members are not available."});
+            const StructureInfo *info = nullptr;
+            int code = aggregate.kind == TypeKind::Structure ? 19 : 20;
+            std::string kind = aggregate.kind == TypeKind::Structure ? "Structure" : "Union";
+            if (aggregate.kind == TypeKind::Structure) {
+                auto it = structureTable_.find(aggregate.tag);
+                if (it != structureTable_.end()) info = &it->second;
+            } else {
+                auto it = unionTable_.find(aggregate.tag);
+                if (it != unionTable_.end()) info = &it->second;
+            }
+            if (!info || !info->complete) {
+                diags.push_back({code, line, kind + " \"" + aggregate.tag +
+                                            "\" is incomplete here, so its members are not available."});
                 return Type::number();
             }
-            const Type *field = findStructureField(base, node.name);
+            const Type *field = findAggregateField(base, node.name);
             if (!field) {
-                diags.push_back({19, line, "Structure \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
+                diags.push_back({code, line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
                 return Type::number();
             }
             return *field;
@@ -603,6 +637,48 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
             }
         }
+        else if constexpr (std::is_same_v<T, UnionStmt>) {
+            auto found = unionTable_.find(node.name);
+            if (found == unionTable_.end() || found->second.complete) return;
+
+            std::vector<std::pair<std::string, Type>> fields;
+            std::unordered_set<std::string> names;
+            bool valid = true;
+            for (const auto &field : node.fields) {
+                if (!names.insert(field.name).second) {
+                    diags.push_back({20, s->line, "Union \"" + node.name +
+                                              "\" defines member \"" + field.name + "\" more than once."});
+                    valid = false;
+                    continue;
+                }
+
+                Type fieldType = resolveTypeSpec(field.type);
+                if (fieldType.kind == TypeKind::Void || fieldType.kind == TypeKind::Function) {
+                    diags.push_back({20, s->line, "Union member \"" + field.name +
+                                              "\" needs a complete object type, not " + typeToString(fieldType) + "."});
+                    valid = false;
+                } else if (!fieldType.isPointer() && !isCompleteObjectType(fieldType)) {
+                    diags.push_back({20, s->line, "Union member \"" + field.name + "\" has incomplete by-value type " +
+                                              typeToString(fieldType) + "; use a pointer for recursive or forward references."});
+                    valid = false;
+                }
+                fields.emplace_back(field.name, std::move(fieldType));
+            }
+
+            if (node.fields.empty()) {
+                diags.push_back({20, s->line, "Union \"" + node.name + "\" needs at least one member in this tranche."});
+                valid = false;
+            }
+
+            if (valid) {
+                found->second.fields = fields;
+                found->second.complete = true;
+                if (analysis_) {
+                    analysis_->unions[node.name] = found->second;
+                    analysis_->unionFields[s] = fields;
+                }
+            }
+        }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type declared = resolveTypeSpec(node.type);
             if (analysis_) analysis_->declarationTypes[s] = declared;
@@ -650,23 +726,32 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             Type value = inferExpr(node.expr, s->line, diags);
             Type aggregate = base;
             if (aggregate.isPointer() && aggregate.elementType) aggregate = *aggregate.elementType;
-            if (aggregate.kind != TypeKind::Structure) {
-                diags.push_back({19, s->line, "Set member " + node.name + " needs a structure object or pointer target, not a " +
+            if (aggregate.kind != TypeKind::Structure && aggregate.kind != TypeKind::Union) {
+                diags.push_back({19, s->line, "Set member " + node.name + " needs a structure/union object or pointer target, not a " +
                                            typeToString(base) + "."});
             } else {
-                auto def = structureTable_.find(aggregate.tag);
-                if (def == structureTable_.end() || !def->second.complete) {
-                    diags.push_back({19, s->line, "Structure \"" + aggregate.tag +
-                                               "\" is incomplete here, so its members cannot be stored."});
-                } else if (const Type *field = findStructureField(base, node.name)) {
+                const StructureInfo *info = nullptr;
+                int code = aggregate.kind == TypeKind::Structure ? 19 : 20;
+                std::string kind = aggregate.kind == TypeKind::Structure ? "Structure" : "Union";
+                if (aggregate.kind == TypeKind::Structure) {
+                    auto it = structureTable_.find(aggregate.tag);
+                    if (it != structureTable_.end()) info = &it->second;
+                } else {
+                    auto it = unionTable_.find(aggregate.tag);
+                    if (it != unionTable_.end()) info = &it->second;
+                }
+                if (!info || !info->complete) {
+                    diags.push_back({code, s->line, kind + " \"" + aggregate.tag +
+                                                "\" is incomplete here, so its members cannot be stored."});
+                } else if (const Type *field = findAggregateField(base, node.name)) {
                     if (field->isArray()) {
-                        diags.push_back({19, s->line, "Whole-array structure member assignment is not implemented yet."});
+                        diags.push_back({code, s->line, "Whole-array aggregate member assignment is not implemented yet."});
                     } else if (!assignableTo(*field, value)) {
-                        diags.push_back({19, s->line, "I can't store a " + typeToString(value) + " in member \"" +
+                        diags.push_back({code, s->line, "I can't store a " + typeToString(value) + " in member \"" +
                                                    node.name + "\", which is a " + typeToString(*field) + "."});
                     }
                 } else {
-                    diags.push_back({19, s->line, "Structure \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
+                    diags.push_back({code, s->line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
                 }
             }
         }
