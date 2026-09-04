@@ -1,0 +1,1 @@
+error[E0023]: Bit-field "value" must use an integer, boolean, or enumeration type supported by the target C compiler.
