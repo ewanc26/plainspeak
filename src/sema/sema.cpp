@@ -10,6 +10,20 @@ bool isArithmeticScalar(const Type &t) {
     return t.kind == TypeKind::Boolean || t.isNumeric();
 }
 
+bool isIntegralType(const Type &t) {
+    return t.kind == TypeKind::Boolean || t.isInteger();
+}
+
+Type decayArray(Type t) {
+    if (t.isArray() && t.elementType) return Type::pointerTo(*t.elementType);
+    return t;
+}
+
+bool hasCompletePointee(const Type &t) {
+    return t.isPointer() && t.elementType && t.elementType->kind != TypeKind::Void &&
+           t.elementType->kind != TypeKind::Function;
+}
+
 Type listElementType(const Type &t) {
     if (t.kind == TypeKind::List && t.elementType) return *t.elementType;
     return Type::number();
@@ -56,7 +70,8 @@ std::string typeToString(const Type &t) {
         case TypeKind::Pointer:
             return "pointer to " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown"));
         case TypeKind::Array:
-            return "array of " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown"));
+            return "array of " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown")) +
+                   (t.arrayBound ? " with length " + std::to_string(*t.arrayBound) : std::string(" with unknown length"));
         case TypeKind::Function: return "function";
         case TypeKind::Structure: return "structure " + t.tag;
         case TypeKind::Union: return "union " + t.tag;
@@ -79,18 +94,23 @@ bool pointersCompatible(const Type &target, const Type &source) {
 }
 
 bool assignableTo(const Type &target, const Type &source) {
-    if (target == source) return true;
-    if (isArithmeticScalar(target) && isArithmeticScalar(source)) return true;
-    if (pointersCompatible(target, source)) return true;
+    if (target.isArray()) return false;
+    Type valueSource = decayArray(source);
+    if (target == valueSource) return true;
+    if (isArithmeticScalar(target) && isArithmeticScalar(valueSource)) return true;
+    if (pointersCompatible(target, valueSource)) return true;
     return false;
 }
 
 bool supportsCObjectQuery(const Type &t) {
+    if (t.isArray()) {
+        return t.arrayBound && t.elementType && supportsCObjectQuery(*t.elementType) &&
+               t.elementType->kind != TypeKind::Void && t.elementType->kind != TypeKind::Function;
+    }
     return t.kind == TypeKind::Boolean || t.kind == TypeKind::Integer ||
            t.kind == TypeKind::Floating || t.kind == TypeKind::Pointer ||
            t.kind == TypeKind::Enumeration || t.kind == TypeKind::BitInt ||
-           t.kind == TypeKind::Structure || t.kind == TypeKind::Union ||
-           t.kind == TypeKind::Array;
+           t.kind == TypeKind::Structure || t.kind == TypeKind::Union;
 }
 
 } // namespace
@@ -164,6 +184,9 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::Pointer:
             if (spec.pointee) return Type::pointerTo(resolveTypeSpec(*spec.pointee));
             return Type::pointerTo(Type::voidType());
+        case TypeSpecKind::Array:
+            if (spec.pointee) return Type::arrayOf(resolveTypeSpec(*spec.pointee), spec.arrayBound);
+            return Type::arrayOf(Type::voidType(), spec.arrayBound);
     }
     return Type::voidType();
 }
@@ -189,7 +212,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             return Type::pointerTo(symbol.type);
         }
         else if constexpr (std::is_same_v<T, DerefExpr>) {
-            Type pointer = inferExpr(node.pointer, line, diags);
+            Type pointer = decayArray(inferExpr(node.pointer, line, diags));
             if (!pointer.isPointer() || !pointer.elementType) {
                 diags.push_back({15, line, "Value at needs a pointer, not a " + typeToString(pointer) + "."});
                 return Type::number();
@@ -200,15 +223,31 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return *pointer.elementType;
         }
+        else if constexpr (std::is_same_v<T, ElementExpr>) {
+            Type index = inferExpr(node.index, line, diags);
+            if (!isIntegralType(index)) {
+                diags.push_back({17, line, "A native array index must be an integer, not a " + typeToString(index) + "."});
+            }
+            Type base = decayArray(inferExpr(node.base, line, diags));
+            if (!base.isPointer() || !base.elementType) {
+                diags.push_back({17, line, "Element at needs a native array or pointer, not a " + typeToString(base) + "."});
+                return Type::number();
+            }
+            if (base.elementType->kind == TypeKind::Void) {
+                diags.push_back({17, line, "I can't subscript a pointer to void because it has no element size."});
+                return Type::number();
+            }
+            return *base.elementType;
+        }
         else if constexpr (std::is_same_v<T, ListExpr>) {
             Type first = inferExpr(node.items.front(), line, diags);
-            if (isList(first) || first.isPointer()) {
-                diags.push_back({9, line, "Lists can't contain other lists or native pointers. Use numbers, decimals, or strings as list items."});
+            if (isList(first) || first.isPointer() || first.isArray()) {
+                diags.push_back({9, line, "Lists can't contain other lists, native pointers, or native arrays. Use numbers, decimals, or strings as list items."});
                 first = Type::number();
             }
             for (size_t i = 1; i < node.items.size(); ++i) {
                 Type item = inferExpr(node.items[i], line, diags);
-                if (isList(item) || item.isPointer() || item != first) {
+                if (isList(item) || item.isPointer() || item.isArray() || item != first) {
                     diags.push_back({9, line, "Every item in a list must have the same supported scalar type; this list starts with a " +
                                              typeToString(first) + " but also contains a " + typeToString(item) + "."});
                 }
@@ -233,8 +272,32 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, BinaryExpr>) {
             Type lhs = inferExpr(node.lhs, line, diags);
             Type rhs = inferExpr(node.rhs, line, diags);
-            if (lhs.isPointer() || rhs.isPointer()) {
-                diags.push_back({16, line, "Pointer arithmetic and comparison are not in this tranche yet; use Address of, Value at, native assignment, and Size of for now."});
+            Type lhsValue = decayArray(lhs);
+            Type rhsValue = decayArray(rhs);
+            bool lhsPointer = lhsValue.isPointer();
+            bool rhsPointer = rhsValue.isPointer();
+            if (lhsPointer || rhsPointer) {
+                if (node.op == BinOp::Add) {
+                    if (lhsPointer && hasCompletePointee(lhsValue) && isIntegralType(rhsValue)) return lhsValue;
+                    if (rhsPointer && hasCompletePointee(rhsValue) && isIntegralType(lhsValue)) return rhsValue;
+                    diags.push_back({16, line, "Pointer addition needs one complete object pointer and one integer offset."});
+                    return Type::number();
+                }
+                if (node.op == BinOp::Sub) {
+                    if (lhsPointer && hasCompletePointee(lhsValue) && isIntegralType(rhsValue)) return lhsValue;
+                    if (lhsPointer && rhsPointer && hasCompletePointee(lhsValue) && hasCompletePointee(rhsValue) &&
+                        lhsValue.elementType && rhsValue.elementType && *lhsValue.elementType == *rhsValue.elementType) {
+                        return Type::number();
+                    }
+                    diags.push_back({16, line, "Pointer subtraction needs a complete object pointer minus an integer, or two pointers to the same element type."});
+                    return Type::number();
+                }
+                bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
+                bool relational = node.op == BinOp::Gt || node.op == BinOp::Lt || node.op == BinOp::Ge || node.op == BinOp::Le;
+                if (equality && lhsPointer && rhsPointer && pointersCompatible(lhsValue, rhsValue)) return Type::number();
+                if (relational && lhsPointer && rhsPointer && hasCompletePointee(lhsValue) && hasCompletePointee(rhsValue) &&
+                    lhsValue.elementType && rhsValue.elementType && *lhsValue.elementType == *rhsValue.elementType) return Type::number();
+                diags.push_back({16, line, "This pointer operation needs compatible object-pointer operands."});
                 return Type::number();
             }
             if (node.op == BinOp::Add) {
@@ -356,8 +419,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, SayStmt>) {
             Type type = inferExpr(node.expr, s->line, diags);
-            if (type.isPointer()) {
-                diags.push_back({16, s->line, "Say does not format native pointers yet."});
+            if (type.isPointer() || type.isArray()) {
+                diags.push_back({16, s->line, "Say does not format native pointers or whole arrays; say an Element or Value instead."});
             }
         }
         else if constexpr (std::is_same_v<T, SetStmt>) {
@@ -370,9 +433,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                              typeToString(existing->type) + ", to a " + typeToString(exprType) + "."});
                 }
                 if (existing->nativeObject && analysis_) analysis_->nativeMutationTargets.insert(s);
-            } else if (exprType.isPointer()) {
-                diags.push_back({13, s->line, "Native pointers need an explicit type. Use Declare " + node.name +
-                                          " as pointer to ... with value ... instead of inferred Set."});
+            } else if (exprType.isPointer() || exprType.isArray()) {
+                diags.push_back({13, s->line, "Native pointers and arrays need explicit declarations; inferred Set cannot create or copy them."});
             } else {
                 declareVar(node.name, exprType, false, s->line, diags);
             }
@@ -384,10 +446,20 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({13, s->line, "I can't Declare \"" + node.name + "\" as void because void is not an object type."});
                 return;
             }
+            if (declared.isArray() && (!declared.elementType || !supportsCObjectQuery(*declared.elementType))) {
+                diags.push_back({17, s->line, "A fixed native array needs a complete object element type."});
+                return;
+            }
             bool created = declareVar(node.name, declared, true, s->line, diags);
             if (node.initializer) {
+                std::size_t diagnosticCount = diags.size();
                 Type init = inferExpr(node.initializer, s->line, diags);
-                if (created && !assignableTo(declared, init)) {
+                bool initializerFailed = diags.size() != diagnosticCount;
+                if (declared.isArray()) {
+                    if (!initializerFailed) {
+                        diags.push_back({17, s->line, "Whole-array initializers are not implemented yet; Declare the array and Set its elements individually."});
+                    }
+                } else if (created && !initializerFailed && !assignableTo(declared, init)) {
                     diags.push_back({13, s->line, "I can't initialize native object \"" + node.name +
                                               "\" of type " + typeToString(declared) + " with a " + typeToString(init) + "."});
                 }
@@ -404,12 +476,33 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " through a " + typeToString(pointer) + "."});
             }
         }
+        else if constexpr (std::is_same_v<T, StoreElementStmt>) {
+            Type index = inferExpr(node.index, s->line, diags);
+            if (!isIntegralType(index)) {
+                diags.push_back({17, s->line, "A native array index must be an integer, not a " + typeToString(index) + "."});
+            }
+            Type base = decayArray(inferExpr(node.base, s->line, diags));
+            Type value = inferExpr(node.expr, s->line, diags);
+            if (!base.isPointer() || !base.elementType) {
+                diags.push_back({17, s->line, "Set element at needs a native array or pointer target, not a " + typeToString(base) + "."});
+            } else if (base.elementType->kind == TypeKind::Void) {
+                diags.push_back({17, s->line, "I can't store an element through a pointer to void."});
+            } else if (base.elementType->isArray()) {
+                diags.push_back({17, s->line, "Whole-array element assignment is not implemented yet."});
+            } else if (!assignableTo(*base.elementType, value)) {
+                diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " as an element of " + typeToString(base) + "."});
+            }
+        }
         else if constexpr (std::is_same_v<T, AddStmt> || std::is_same_v<T, SubStmt>) {
             auto [symbol, found] = lookupVar(node.varName, s->line, diags);
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (found && symbol.nativeObject) {
-                if (!isArithmeticScalar(symbol.type) || !isArithmeticScalar(exprType)) {
-                    diags.push_back({3, s->line, "I can only change native arithmetic objects with Add/Subtract; \"" +
+                if (symbol.type.isPointer()) {
+                    if (!hasCompletePointee(symbol.type) || !isIntegralType(exprType)) {
+                        diags.push_back({16, s->line, "Changing a pointer with Add/Subtract needs a complete object pointer and an integer offset."});
+                    }
+                } else if (!isArithmeticScalar(symbol.type) || !isArithmeticScalar(exprType)) {
+                    diags.push_back({3, s->line, "I can only change native arithmetic objects or object pointers with Add/Subtract; \"" +
                                              node.varName + "\" is a " + typeToString(symbol.type) + "."});
                 }
                 if (analysis_) analysis_->nativeMutationTargets.insert(s);
@@ -523,13 +616,13 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
                 for (Expr *arg : node.args) {
                     Type argType = inferExpr(arg, s->line, diags);
-                    if (argType.isPointer()) diags.push_back({16, s->line, "Legacy Procedure parameters cannot carry native pointers yet."});
+                    if (argType.isPointer() || argType.isArray()) diags.push_back({16, s->line, "Legacy Procedure parameters cannot carry native pointers or arrays yet."});
                 }
             }
         }
         else if constexpr (std::is_same_v<T, ReturnStmt>) {
             Type type = inferExpr(node.expr, s->line, diags);
-            if (type.isPointer()) diags.push_back({16, s->line, "Legacy Procedures cannot return native pointers yet."});
+            if (type.isPointer() || type.isArray()) diags.push_back({16, s->line, "Legacy Procedures cannot return native pointers or arrays yet."});
         }
         else if constexpr (std::is_same_v<T, CommentStmt>) {
         }

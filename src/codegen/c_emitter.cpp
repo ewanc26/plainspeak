@@ -19,10 +19,7 @@ Type typeOperand(const Expr *e, const AnalysisResult &analysis) {
     return it == analysis.typeOperands.end() ? Type::number() : it->second;
 }
 
-std::string emitCType(const Type &type) {
-    if (type.kind == TypeKind::Pointer) {
-        return emitCType(type.elementType ? *type.elementType : Type::voidType()) + " *";
-    }
+std::string emitCBaseType(const Type &type) {
     if (type.kind == TypeKind::Boolean) return "_Bool";
     if (type.kind == TypeKind::Integer) {
         if (type.integerRank == IntegerRank::Char) {
@@ -49,6 +46,36 @@ std::string emitCType(const Type &type) {
     if (type.kind == TypeKind::Union) return "union " + type.tag;
     if (type.kind == TypeKind::Enumeration) return "enum " + type.tag;
     return "long";
+}
+
+std::string emitCDeclarator(const Type &type, const std::string &name) {
+    if (type.kind == TypeKind::Array && type.elementType) {
+        std::string bound = type.arrayBound ? std::to_string(*type.arrayBound) : "";
+        return emitCDeclarator(*type.elementType, name + "[" + bound + "]");
+    }
+    if (type.kind == TypeKind::Pointer && type.elementType) {
+        std::string pointerName;
+        if (type.elementType->kind == TypeKind::Array || type.elementType->kind == TypeKind::Function) {
+            pointerName = "(*" + name + ")";
+        } else {
+            pointerName = "*" + name;
+        }
+        return emitCDeclarator(*type.elementType, pointerName);
+    }
+    std::string base = emitCBaseType(type);
+    return name.empty() ? base : base + " " + name;
+}
+
+std::string emitCType(const Type &type) {
+    const std::string marker = "__ps_type_marker";
+    std::string text = emitCDeclarator(type, marker);
+    std::size_t pos = text.find(marker);
+    if (pos != std::string::npos) text.erase(pos, marker.size());
+    return text;
+}
+
+std::string emitCDeclaration(const Type &type, const std::string &name) {
+    return emitCDeclarator(type, name);
 }
 
 bool isNativeRef(const Expr *e, const AnalysisResult &analysis) {
@@ -79,8 +106,26 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return "(&" + mangle(node.name) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return "(*(" + emitRawExpr(node.pointer, analysis) + "))";
+        } else if constexpr (std::is_same_v<T, ElementExpr>) {
+            return "((" + emitRawExpr(node.base, analysis) + ")[(" + emitRawExpr(node.index, analysis) + ")])";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) return mangle(node.name);
+        } else if constexpr (std::is_same_v<T, BinaryExpr>) {
+            Type lhsType = exprType(node.lhs, analysis);
+            Type rhsType = exprType(node.rhs, analysis);
+            bool nativePointerOp = lhsType.isPointer() || lhsType.isArray() || rhsType.isPointer() || rhsType.isArray();
+            if (nativePointerOp) {
+                const char *op = node.op == BinOp::Add ? "+"
+                               : node.op == BinOp::Sub ? "-"
+                               : node.op == BinOp::Gt  ? ">"
+                               : node.op == BinOp::Lt  ? "<"
+                               : node.op == BinOp::Eq  ? "=="
+                               : node.op == BinOp::Ne  ? "!="
+                               : node.op == BinOp::Ge  ? ">="
+                                                       : "<=";
+                return "((" + emitRawExpr(node.lhs, analysis) + ") " + op + " (" +
+                       emitRawExpr(node.rhs, analysis) + "))";
+            }
         }
 
         Type type = exprType(e, analysis);
@@ -123,6 +168,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "ps_int(0L)";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+        } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, ListExpr>) {
             std::string result = "ps_list_from((PsValue[]){";
@@ -171,6 +218,11 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return "ps_pow(" + emitBoxedExpr(node.base, analysis) + ", " +
                    emitBoxedExpr(node.exp, analysis) + ")";
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
+            Type lhsType = exprType(node.lhs, analysis);
+            Type rhsType = exprType(node.rhs, analysis);
+            if (lhsType.isPointer() || lhsType.isArray() || rhsType.isPointer() || rhsType.isArray()) {
+                return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+            }
             const char *fn = node.op == BinOp::Add ? "ps_add"
                             : node.op == BinOp::Sub ? "ps_sub"
                             : node.op == BinOp::Mul ? "ps_mul"
@@ -240,11 +292,15 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             }
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
-            out << indent << emitCType(type) << " " << mangle(node.name);
+            out << indent << emitCDeclaration(type, mangle(node.name));
             if (node.initializer) out << " = " << emitRawExpr(node.initializer, analysis);
             out << ";\n";
         } else if constexpr (std::is_same_v<T, StoreThroughStmt>) {
             out << indent << "*(" << emitRawExpr(node.pointer, analysis) << ") = "
+                << emitRawExpr(node.expr, analysis) << ";\n";
+        } else if constexpr (std::is_same_v<T, StoreElementStmt>) {
+            out << indent << "(" << emitRawExpr(node.base, analysis) << ")[("
+                << emitRawExpr(node.index, analysis) << ")] = "
                 << emitRawExpr(node.expr, analysis) << ";\n";
         } else if constexpr (std::is_same_v<T, AddStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
@@ -368,7 +424,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
     // PlainSpeak initializers are executed in main below.
     for (Stmt *s : program) {
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
-            out << emitCType(analysis.declarationTypes.at(s)) << " " << mangle(decl->name) << ";\n";
+            out << emitCDeclaration(analysis.declarationTypes.at(s), mangle(decl->name)) << ";\n";
         }
     }
     if (!vars.empty()) out << "\n";
