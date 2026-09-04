@@ -838,6 +838,16 @@ Expr *Parser::parsePrimary() {
         Expr *rhs = parsePrimary();
         return arena_.makeExpr(UnaryExpr{UnaryOp::Neg, rhs}, line);
     }
+    if (checkWord("choose")) {
+        int line = peek().line;
+        advance();
+        Expr *whenTrue = parseExpr();
+        expectWord("when");
+        Expr *condition = parseExpr();
+        expectWord("otherwise");
+        Expr *whenFalse = parseExpr();
+        return arena_.makeExpr(ConditionalExpr{whenTrue, condition, whenFalse}, line);
+    }
     if ((checkWord("increment") || checkWord("decrement")) &&
         (checkWordAt(1, "before") || checkWordAt(1, "after"))) {
         int line = peek().line;
@@ -995,5 +1005,5 @@ Expr *Parser::parsePrimary() {
         return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
     }
     if (t.kind == TokKind::Ident) { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a decimal, a string, a name, true, false, minus, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
+    error("expected a number, a decimal, a string, a name, true, false, minus, Choose, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
 }

@@ -60,6 +60,10 @@ std::string printExpr(const Expr *e) {
         else if constexpr (std::is_same_v<T, VarRef>) return node.name;
         else if constexpr (std::is_same_v<T, AddressOfExpr>) return "Address of " + node.name;
         else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);
+        else if constexpr (std::is_same_v<T, ConditionalExpr>) {
+            return "Choose " + printExpr(node.whenTrue) + " when " +
+                   printExpr(node.condition) + " otherwise " + printExpr(node.whenFalse);
+        }
         else if constexpr (std::is_same_v<T, IncDecExpr>) {
             const bool increment = node.kind == IncDecKind::PrefixIncrement ||
                                    node.kind == IncDecKind::PostfixIncrement;

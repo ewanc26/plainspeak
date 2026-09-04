@@ -1,0 +1,1 @@
+Declare x as integer. Declare y as decimal. Declare p as pointer to integer with value Address of x. Declare q as pointer to decimal with value Address of y. Say Choose p when 1 otherwise q.
