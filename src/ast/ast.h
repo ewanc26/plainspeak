@@ -50,11 +50,19 @@ enum class TypeSpecKind {
     Enumeration
 };
 
+struct TypeSpecQualifiers {
+    bool isConst = false;
+    bool isVolatile = false;
+    bool isRestrict = false;
+    bool isAtomic = false;
+};
+
 struct TypeSpec {
     TypeSpecKind kind;
     std::shared_ptr<TypeSpec> pointee{};
     std::size_t arrayBound = 0;
     std::string tag{};
+    TypeSpecQualifiers qualifiers{};
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
