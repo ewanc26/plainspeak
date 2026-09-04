@@ -511,6 +511,23 @@ Stmt *Parser::parseReturn() {
 Stmt *Parser::parseCall() {
     int line = peek().line;
     advance();
+
+    if (checkWord("through")) {
+        advance();
+        Expr *callee = parsePrimary();
+        std::vector<Expr *> args;
+        if (checkWord("with")) {
+            advance();
+            while (!checkWord("done")) {
+                if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"done\" to close this indirect call");
+                args.push_back(parseExpr());
+            }
+        }
+        expectWord("done");
+        expectDot();
+        return arena_.makeStmt(IndirectCallStmt{callee, std::move(args)}, line);
+    }
+
     std::string name = expectIdentName();
     std::vector<Expr *> args;
     if (checkWord("with")) {
@@ -628,6 +645,28 @@ TypeSpec Parser::parseTypeSpec() {
         type.tag = std::move(tag);
         return finish(std::move(type));
     }
+    if (checkWord("function")) {
+        advance();
+        expectWord("taking");
+
+        std::vector<std::shared_ptr<TypeSpec>> params;
+        if (checkWord("nothing")) {
+            advance();
+        } else {
+            params.push_back(std::make_shared<TypeSpec>(parseTypeSpec()));
+            while (checkWord("followed") && checkWordAt(1, "by")) {
+                advance(); advance();
+                params.push_back(std::make_shared<TypeSpec>(parseTypeSpec()));
+            }
+        }
+
+        expectWord("returning");
+        auto result = std::make_shared<TypeSpec>(parseTypeSpec());
+        TypeSpec type{TypeSpecKind::Function};
+        type.functionParameters = std::move(params);
+        type.functionReturn = std::move(result);
+        return finish(std::move(type));
+    }
     if (checkWord("null") && checkWordAt(1, "pointer") && checkWordAt(2, "type")) {
         advance(); advance(); advance();
         return finish(TypeSpec{TypeSpecKind::Nullptr});
@@ -685,7 +724,7 @@ TypeSpec Parser::parseTypeSpec() {
         advance(); advance(); return finish(TypeSpec{TypeSpecKind::LongDecimal});
     }
 
-    error("expected a C type such as \"constant integer\", \"pointer to volatile integer\", \"restricted pointer to integer\", \"atomic integer\", \"null pointer type\", \"array of integer with length 4\", \"structure point\", or \"enumeration color\"");
+    error("expected a C type such as \"constant integer\", \"pointer to volatile integer\", \"restricted pointer to integer\", \"atomic integer\", \"null pointer type\", \"pointer to function taking integer returning integer\", \"array of integer with length 4\", \"structure point\", or \"enumeration color\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }
@@ -878,6 +917,12 @@ Expr *Parser::parsePrimary() {
         TypeSpec target = parseTypeSpec();
         return arena_.makeExpr(CastExpr{operand, std::move(target)}, line);
     }
+    if (checkWord("address") && checkWordAt(1, "of") && checkWordAt(2, "procedure")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        std::string name = expectIdentName();
+        return arena_.makeExpr(ProcedureAddressExpr{std::move(name)}, line);
+    }
     if (checkWord("address") && checkWordAt(1, "of")) {
         int line = peek().line;
         advance(); advance();
@@ -1001,6 +1046,22 @@ Expr *Parser::parsePrimary() {
     if (checkWord("call")) {
         int line = peek().line;
         advance();
+
+        if (checkWord("through")) {
+            advance();
+            Expr *callee = parsePrimary();
+            std::vector<Expr *> args;
+            if (checkWord("with")) {
+                advance();
+                while (!checkWord("done")) {
+                    if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"done\" to close this indirect call");
+                    args.push_back(parseExpr());
+                }
+            }
+            expectWord("done");
+            return arena_.makeExpr(IndirectCallExpr{callee, std::move(args)}, line);
+        }
+
         std::string name = expectIdentName();
         std::vector<Expr *> args;
         if (checkWord("with")) {
