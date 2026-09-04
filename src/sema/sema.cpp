@@ -827,6 +827,11 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return usualArithmeticConversion(trueValue, falseValue);
             }
 
+            if (trueValue.isPointer() && isNullPointerConstantExpr(node.whenFalse)) return trueValue;
+            if (falseValue.isPointer() && isNullPointerConstantExpr(node.whenTrue)) return falseValue;
+            if (trueValue.kind == TypeKind::Nullptr && falseValue.kind == TypeKind::Nullptr) {
+                return Type::nullptrType();
+            }
             if (trueValue.isPointer() && falseValue.isPointer()) {
                 if (auto pointer = conditionalPointerType(trueValue, falseValue)) return *pointer;
                 diags.push_back({28, line,
@@ -969,6 +974,10 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             Type rhsValue = decayArray(rhs);
             bool lhsPointer = lhsValue.isPointer();
             bool rhsPointer = rhsValue.isPointer();
+            bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
+            if (equality && lhsPointer && isNullPointerConstantExpr(node.rhs)) return Type::integer(IntegerRank::Int);
+            if (equality && rhsPointer && isNullPointerConstantExpr(node.lhs)) return Type::integer(IntegerRank::Int);
+            if (equality && lhsValue.kind == TypeKind::Nullptr && rhsValue.kind == TypeKind::Nullptr) return Type::integer(IntegerRank::Int);
             if (lhsPointer || rhsPointer) {
                 if (node.op == BinOp::Add) {
                     if (lhsPointer && hasCompletePointee(lhsValue) && isIntegralType(rhsValue)) return lhsValue;
@@ -985,7 +994,6 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                     diags.push_back({16, line, "Pointer subtraction needs a complete object pointer minus an integer, or two pointers to the same element type."});
                     return Type::number();
                 }
-                bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
                 bool relational = node.op == BinOp::Gt || node.op == BinOp::Lt || node.op == BinOp::Ge || node.op == BinOp::Le;
                 if (equality && lhsPointer && rhsPointer && pointersComparable(lhsValue, rhsValue)) return Type::number();
                 if (relational && lhsPointer && rhsPointer && hasCompletePointee(lhsValue) && hasCompletePointee(rhsValue) &&
