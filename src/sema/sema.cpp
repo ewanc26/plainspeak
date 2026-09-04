@@ -665,15 +665,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
 
             if (signatureIt->second.nativeTyped &&
                 signatureIt->second.returnType.kind != TypeKind::Void) {
-                bool endsWithValueReturn = false;
-                if (!node.body.empty()) {
-                    if (auto *ret = std::get_if<ReturnStmt>(&node.body.back()->node)) {
-                        endsWithValueReturn = ret->expr != nullptr;
-                    }
-                }
-                if (!endsWithValueReturn) {
+                bool endsWithReturn = !node.body.empty() &&
+                    std::holds_alternative<ReturnStmt>(node.body.back()->node);
+                if (!endsWithReturn) {
                     diags.push_back({18, s->line, "Typed Procedure \"" + node.name +
-                                              "\" must end with a value Return for now; full control-flow return analysis is still pending."});
+                                              "\" must end with Return for now; full control-flow return analysis is still pending."});
                 }
             }
 
