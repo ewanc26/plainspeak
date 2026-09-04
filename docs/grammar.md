@@ -424,13 +424,13 @@ Legacy PlainSpeak values remain:
 
 Explicit `Declare` objects instead use native C storage for the `CType` written in source. These two representations are intentionally distinct. Reading a native arithmetic object in a legacy expression boxes its current value; assigning a legacy numeric expression into a native arithmetic object converts it back to that object's C type.
 
-The compiler's structural semantic type system also represents functions, qualifiers, aggregates, enums, C23 bit-precise integers and null pointers as foundations for later syntax. Fixed arrays are now source-spellable native objects; variable-length and incomplete-array source forms remain pending. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
+The compiler's structural semantic type system also represents functions, qualified recursive native types, aggregates, enums, C23 bit-precise integers and null pointers. Qualifiers are now source-spellable; representation of the remaining shapes is still only a foundation until their syntax/lowering lands. Fixed arrays are now source-spellable native objects; variable-length and incomplete-array source forms remain pending. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
 
 ## Known gaps
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
-- Variable-length arrays, nested aggregate initializers, compound literals, anonymous aggregate members, enum constant-expression/underlying-type extensions, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Variable-length arrays, nested aggregate initializers, compound literals, anonymous aggregate members, enum constant-expression/underlying-type extensions, storage/linkage specifiers, allocation and C23 pointer additions remain pending. Atomic memory-order APIs, fences and lock-free queries are also still pending beyond the native `atomic` object foundation.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.
