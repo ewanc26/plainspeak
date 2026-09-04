@@ -698,12 +698,45 @@ Expr *Parser::parseOr() {
 }
 
 Expr *Parser::parseAnd() {
-    Expr *lhs = parseNot();
+    Expr *lhs = parseBitwiseOr();
     while (checkWord("and")) {
         int line = peek().line;
         advance();
-        Expr *rhs = parseNot();
+        Expr *rhs = parseBitwiseOr();
         lhs = arena_.makeExpr(BinaryExpr{BinOp::And, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parseBitwiseOr() {
+    Expr *lhs = parseBitwiseXor();
+    while (checkWord("bitwise") && checkWordAt(1, "or")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *rhs = parseBitwiseXor();
+        lhs = arena_.makeExpr(BinaryExpr{BinOp::BitOr, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parseBitwiseXor() {
+    Expr *lhs = parseBitwiseAnd();
+    while (checkWord("bitwise") && checkWordAt(1, "xor")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *rhs = parseBitwiseAnd();
+        lhs = arena_.makeExpr(BinaryExpr{BinOp::BitXor, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parseBitwiseAnd() {
+    Expr *lhs = parseNot();
+    while (checkWord("bitwise") && checkWordAt(1, "and")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *rhs = parseNot();
+        lhs = arena_.makeExpr(BinaryExpr{BinOp::BitAnd, lhs, rhs}, line);
     }
     return lhs;
 }
@@ -715,11 +748,17 @@ Expr *Parser::parseNot() {
         Expr *rhs = parseNot();
         return arena_.makeExpr(UnaryExpr{UnaryOp::Not, rhs}, line);
     }
+    if (checkWord("bitwise") && checkWordAt(1, "not")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *rhs = parseNot();
+        return arena_.makeExpr(UnaryExpr{UnaryOp::BitNot, rhs}, line);
+    }
     return parseComparison();
 }
 
 Expr *Parser::parseComparison() {
-    Expr *lhs = parseAdditive();
+    Expr *lhs = parseShift();
     if (checkWord("is")) {
         int line = peek().line;
         advance();
@@ -731,8 +770,21 @@ Expr *Parser::parseComparison() {
         else if (checkWord("equal") && checkWordAt(1, "to")) { op = BinOp::Eq; advance(); advance(); }
         else if (checkWord("not") && checkWordAt(1, "equal") && checkWordAt(2, "to")) { op = BinOp::Ne; advance(); advance(); advance(); }
         else error("expected \"greater than\", \"less than\", \"equal to\", \"not equal to\", \"greater than or equal to\", or \"less than or equal to\" after \"is\"");
-        Expr *rhs = parseAdditive();
+        Expr *rhs = parseShift();
         return arena_.makeExpr(BinaryExpr{op, lhs, rhs}, line);
+    }
+    return lhs;
+}
+
+Expr *Parser::parseShift() {
+    Expr *lhs = parseAdditive();
+    while (checkWord("shifted") &&
+           ((checkWordAt(1, "left") || checkWordAt(1, "right")) && checkWordAt(2, "by"))) {
+        int line = peek().line;
+        bool left = checkWordAt(1, "left");
+        advance(); advance(); advance();
+        Expr *rhs = parseAdditive();
+        lhs = arena_.makeExpr(BinaryExpr{left ? BinOp::ShiftLeft : BinOp::ShiftRight, lhs, rhs}, line);
     }
     return lhs;
 }
