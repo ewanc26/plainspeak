@@ -24,6 +24,9 @@ std::string printTypeSpec(const TypeSpec &type) {
         case TypeSpecKind::LongDecimal: return "long decimal";
         case TypeSpecKind::Pointer:
             return std::string("pointer to ") + (type.pointee ? printTypeSpec(*type.pointee) : "void");
+        case TypeSpecKind::Array:
+            return std::string("array of ") + (type.pointee ? printTypeSpec(*type.pointee) : "void") +
+                   " with length " + std::to_string(type.arrayBound);
     }
     return "<unknown type>";
 }
@@ -41,6 +44,7 @@ std::string printExpr(const Expr *e) {
         else if constexpr (std::is_same_v<T, VarRef>) return node.name;
         else if constexpr (std::is_same_v<T, AddressOfExpr>) return "Address of " + node.name;
         else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);
+        else if constexpr (std::is_same_v<T, ElementExpr>) return "Element at " + printExpr(node.index) + " in " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, ListExpr>) {
             std::string out = "List with ";
             for (size_t i = 0; i < node.items.size(); ++i) {
@@ -109,6 +113,8 @@ std::string printStmt(const Stmt *s) {
             return out + ". ";
         } else if constexpr (std::is_same_v<T, StoreThroughStmt>) {
             return "Set value at " + printExpr(node.pointer) + " to " + printExpr(node.expr) + ". ";
+        } else if constexpr (std::is_same_v<T, StoreElementStmt>) {
+            return "Set element at " + printExpr(node.index) + " in " + printExpr(node.base) + " to " + printExpr(node.expr) + ". ";
         } else if constexpr (std::is_same_v<T, AddStmt>) return "Add " + printExpr(node.expr) + " to " + node.varName + ". ";
         else if constexpr (std::is_same_v<T, SubStmt>) return "Subtract " + printExpr(node.expr) + " from " + node.varName + ". ";
         else if constexpr (std::is_same_v<T, ReadStmt>) return "Read " + node.varName + ". ";
