@@ -148,6 +148,11 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             result.diagnostics.push_back({20, s->line, "Union \"" + uni->name + "\" is already defined."});
             continue;
         }
+        if (structureTable_.count(uni->name)) {
+            result.diagnostics.push_back({20, s->line, "Tag \"" + uni->name +
+                                              "\" is already used by a Structure; C structure and union tags share one namespace."});
+            continue;
+        }
         unionTable_[uni->name] = StructureInfo{};
         result.unions[uni->name] = StructureInfo{};
     }
