@@ -1100,7 +1100,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 Type argType = inferExpr(node.args[i], line, diags);
                 if (signature.nativeTyped) {
                     if (i < signature.parameterTypes.size() && diags.size() == before &&
-                        !assignableTo(signature.parameterTypes[i], argType)) {
+                        !assignableExprTo(signature.parameterTypes[i], argType, node.args[i])) {
                         diags.push_back({18, line, "Argument " + std::to_string(i + 1) + " to typed Procedure \"" +
                                                  node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
                                                  " but got " + typeToString(argType) + "."});
@@ -1232,7 +1232,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                               "\" because its native type " + typeToString(existing->type) +
                                               " is not a modifiable C object type."});
                 }
-                bool ok = existing->nativeObject ? assignableTo(existing->type, exprType)
+                bool ok = existing->nativeObject ? assignableExprTo(existing->type, exprType, node.expr)
                                                  : existing->type == exprType;
                 if (modifiable && !ok) {
                     diags.push_back({3, s->line, "I can't set \"" + node.name + "\", which is a " +
@@ -1492,7 +1492,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     if (!initializerFailed) {
                         diags.push_back({17, s->line, "Whole-array assignment-style initialization is not supported; use with values or with elements."});
                     }
-                } else if (created && !initializerFailed && !assignableTo(declared, init)) {
+                } else if (created && !initializerFailed && !assignableExprTo(declared, init, node.initializer)) {
                     diags.push_back({13, s->line, "I can't initialize native object \"" + node.name +
                                               "\" of type " + typeToString(declared) + " with a " + typeToString(init) + "."});
                 }
@@ -1507,7 +1507,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                         if (diags.size() == before) {
                             diags.push_back({21, s->line, where + " is an array and needs its own aggregate initializer; nested aggregate initializers are not in this tranche."});
                         }
-                    } else if (diags.size() == before && !assignableTo(target, source)) {
+                    } else if (diags.size() == before && !assignableExprTo(target, source, expr)) {
                         diags.push_back({21, s->line, "I can't initialize " + where + ", which is a " +
                                                   typeToString(target) + ", with a " + typeToString(source) + "."});
                     }
@@ -1633,7 +1633,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             } else if (!isModifiableObjectType(*pointer.elementType)) {
                 diags.push_back({24, s->line, "I can't store through " + typeToString(pointer) +
                                           " because its pointed-to object type is not modifiable."});
-            } else if (!assignableTo(*pointer.elementType, value)) {
+            } else if (!assignableExprTo(*pointer.elementType, value, node.expr)) {
                 diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " through a " + typeToString(pointer) + "."});
             }
         }
@@ -1670,7 +1670,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                         diags.push_back({24, s->line, "I can't store in member \"" + node.name +
                                                   "\" because its effective type " + typeToString(effectiveField) +
                                                   " is not a modifiable C object type."});
-                    } else if (!assignableTo(effectiveField, value)) {
+                    } else if (!assignableExprTo(effectiveField, value, node.expr)) {
                         diags.push_back({code, s->line, "I can't store a " + typeToString(value) + " in member \"" +
                                                    node.name + "\", which is a " + typeToString(effectiveField) + "."});
                     }
@@ -1695,7 +1695,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             } else if (!isModifiableObjectType(*base.elementType)) {
                 diags.push_back({24, s->line, "I can't store an element through " + typeToString(base) +
                                           " because its element type is not modifiable."});
-            } else if (!assignableTo(*base.elementType, value)) {
+            } else if (!assignableExprTo(*base.elementType, value, node.expr)) {
                 diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " as an element of " + typeToString(base) + "."});
             }
         }
@@ -1851,7 +1851,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     Type argType = inferExpr(node.args[i], s->line, diags);
                     if (signature.nativeTyped) {
                         if (i < signature.parameterTypes.size() && diags.size() == before &&
-                            !assignableTo(signature.parameterTypes[i], argType)) {
+                            !assignableExprTo(signature.parameterTypes[i], argType, node.args[i])) {
                             diags.push_back({18, s->line, "Argument " + std::to_string(i + 1) + " to typed Procedure \"" +
                                                      node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
                                                      " but got " + typeToString(argType) + "."});
@@ -1898,7 +1898,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
 
             std::size_t before = diags.size();
             Type returned = inferExpr(node.expr, s->line, diags);
-            if (diags.size() == before && !assignableTo(signature.returnType, returned)) {
+            if (diags.size() == before && !assignableExprTo(signature.returnType, returned, node.expr)) {
                 diags.push_back({18, s->line, "This typed Procedure returns " + typeToString(signature.returnType) +
                                           " but Return provides " + typeToString(returned) + "."});
             }
