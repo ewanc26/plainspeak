@@ -290,6 +290,36 @@ bool isBitwiseIntegral(const Type &type) {
     return value.kind == TypeKind::Boolean || value.kind == TypeKind::Enumeration ||
            value.kind == TypeKind::Integer;
 }
+bool isCastInteger(const Type &type) {
+    Type value = stripTopQualifiers(type);
+    return value.kind == TypeKind::Boolean || value.kind == TypeKind::Enumeration ||
+           value.kind == TypeKind::Integer || value.kind == TypeKind::BitInt;
+}
+
+bool isCastArithmetic(const Type &type) {
+    Type value = stripTopQualifiers(type);
+    return isCastInteger(value) || value.kind == TypeKind::Floating;
+}
+
+bool isCastScalar(const Type &type) {
+    Type value = decayArray(type);
+    return isCastArithmetic(value) || value.kind == TypeKind::Pointer ||
+           value.kind == TypeKind::Nullptr;
+}
+
+bool canExplicitCast(const Type &target, const Type &source) {
+    Type to = stripTopQualifiers(target);
+    Type from = decayArray(source);
+
+    if (!isCastScalar(to) || !isCastScalar(from)) return false;
+    if (to.kind == TypeKind::Boolean) return true;
+    if (isCastArithmetic(to) && isCastArithmetic(from)) return true;
+    if (to.kind == TypeKind::Pointer && from.kind == TypeKind::Pointer) return true;
+    if (to.kind == TypeKind::Pointer && isCastInteger(from)) return true;
+    if (isCastInteger(to) && from.kind == TypeKind::Pointer) return true;
+    return false;
+}
+
 
 std::optional<std::size_t> bitFieldWidthLimit(const Type &type) {
     if (type.kind == TypeKind::Boolean) return 1;
@@ -666,6 +696,27 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return Type::number();
             }
             return *pointer.elementType;
+        }
+        else if constexpr (std::is_same_v<T, CastExpr>) {
+            Type source = inferExpr(node.operand, line, diags);
+            Type target = resolveTypeSpec(node.target);
+            validateTypeQualifiers(target, line, diags);
+
+            if (target.kind == TypeKind::Void) {
+                diags.push_back({26, line, "Convert to void is not available as a value expression yet; PlainSpeak needs a discard-expression statement surface first."});
+                return Type::voidType();
+            }
+            if (target.kind == TypeKind::Enumeration && !isCompleteObjectType(target)) {
+                diags.push_back({26, line, "Convert needs a complete enumeration target; " +
+                                          typeToString(target) + " is incomplete here."});
+                return target;
+            }
+            if (!canExplicitCast(target, source)) {
+                diags.push_back({26, line, "I can't explicitly convert " + typeToString(source) +
+                                          " to " + typeToString(target) +
+                                          "; C casts here require compatible scalar conversion categories."});
+            }
+            return target;
         }
         else if constexpr (std::is_same_v<T, MemberExpr>) {
             Type base = inferExpr(node.base, line, diags);
