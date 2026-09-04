@@ -39,7 +39,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | RepeatStmt | IfStmt | WhileStmt | ForEachStmt
-       | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt
+       | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
 SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
@@ -54,6 +54,8 @@ StoreMemberStmt ::= ("Set" | "Let" | "Make") "member" IDENT "of" Expr "to" Expr 
 StructureField ::= "Field" IDENT "as" CType "."
 StructureStmt ::= "Structure" IDENT ":" StructureField+ "End" "structure" "."
 UnionStmt ::= "Union" IDENT ":" StructureField+ "End" "union" "."
+EnumeratorDef ::= "Enumerator" IDENT ("as" ("minus")? NUMBER)? "."
+EnumerationStmt ::= "Enumeration" IDENT ":" EnumeratorDef+ "End" "enumeration" "."
 AddStmt ::= "Add" Expr "to" IDENT "."
 SubStmt ::= "Subtract" Expr "from" IDENT "."
 ReadStmt ::= "Read" IDENT "."
@@ -100,7 +102,7 @@ Set names to Empty list of strings. Append "Ada" to names. For each name in name
 
 ## C type spellings
 
-PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer, fixed-array, tagged structure, and tagged union types:
+PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer, fixed-array, tagged structure, tagged union, and tagged enumeration types:
 
 ```text
 CScalarType ::= "void"
@@ -125,6 +127,7 @@ CType ::= CScalarType
         | "array" "of" CType "with" "length" NUMBER
         | "structure" IDENT
         | "union" IDENT
+        | "enumeration" IDENT
 ```
 
 The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` remains distinct from both signed and unsigned character types, matching C.
@@ -191,7 +194,7 @@ A tagged structure definition creates real C aggregate layout:
 Structure point: Field x as integer. Field y as integer. End structure. Declare p as structure point. Set member x of p to 10. Say Member x of p.
 ```
 
-Structure and union tags use C's shared tag namespace and are pre-registered as incomplete before field checking. This permits self-referential and forward pointers such as `pointer to structure node`, while a recursive or forward structure used **by value** must already be complete at that definition point.
+Structure, union, and enumeration tags use C's shared tag namespace and are pre-registered as incomplete before definition checking. This permits self-referential and forward pointers such as `pointer to structure node`, while a recursive or forward structure used **by value** must already be complete at that definition point.
 
 `Member name of base` reads a field from either a structure object or a pointer to one. `Set member name of base to value.` writes a non-array field after normal native assignment checking. The compiler chooses C `.` or `->` from the semantic base type; the prose syntax does not expose that punctuation distinction.
 
@@ -214,6 +217,22 @@ Unions share C's tag namespace with structures, so `Structure value` and `Union 
 PlainSpeak does **not** add a runtime active-member discriminator. Writing one member and then reading another follows whatever semantics the generated C program has on the target/compiler; the language does not reinterpret C unions as tagged variants. The conformance tests therefore validate same-member reads/writes and layout, not type-punning assumptions.
 
 Unions can be initialized through their first member positionally or one named member designator. Compound literals, anonymous members and bit-fields remain separate work.
+
+## Native enumerations
+
+A tagged enumeration defines named integral constants and a real C `enum` type:
+
+```text
+Enumeration color: Enumerator red. Enumerator green as 5. Enumerator blue. End enumeration. Declare current as enumeration color with value Enumerator blue of color. Say current.
+```
+
+An implicit first Enumerator has value 0. Each later implicit Enumerator is one greater than the previous value; an explicit signed whole-number literal resets that sequence. Repeated **values** are permitted, but Enumerator names within one Enumeration must be unique.
+
+Enumerator expressions are qualified in PlainSpeak as `Enumerator name of enumeration`. This deliberately avoids copying C's global ordinary-identifier namespace for source enumerator constants. Generated C still uses a real `enum`; the compiler qualifies/mangles each generated enumerator name so separate PlainSpeak enumerations can safely reuse names.
+
+Enumeration objects are native integral scalar objects. They can be addressed, dereferenced, assigned from compatible arithmetic values, used in arithmetic/comparison, passed/returned through typed Procedures, and queried with `Size of` / `Alignment of type`. Enumerator expressions model the C99-C17 integer-constant behaviour and currently use the backend's C `int` range.
+
+This tranche intentionally limits explicit enumerator values to signed whole-number literals representable by C `int`. General integer constant expressions and C23 fixed underlying enumeration types / wider enumerator rules remain separate work.
 
 ## Aggregate initialization
 
@@ -318,6 +337,7 @@ Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
           | "Value" "at" Primary
           | ElementExpr
           | MemberExpr
+          | EnumeratorExpr
           | "Length" "of" Primary
           | SizeOfTypeExpr
           | SizeOfExpr
@@ -335,6 +355,7 @@ EmptyListExpr ::= "Empty" "list" "of" ("numbers" | "decimals" | "strings")
 ItemExpr ::= "Item" "at" Expr "in" Primary
 ElementExpr ::= "Element" "at" Expr "in" Primary
 MemberExpr ::= "Member" IDENT "of" Primary
+EnumeratorExpr ::= "Enumerator" IDENT "of" IDENT
 ```
 
 Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
@@ -356,7 +377,7 @@ The compiler's structural semantic type system also represents functions, qualif
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
-- Variable-length arrays, nested aggregate initializers, compound literals, bit-fields/flexible or anonymous aggregate members, enums, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Variable-length arrays, nested aggregate initializers, compound literals, bit-fields/flexible or anonymous aggregate members, enum constant-expression/underlying-type extensions, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.
