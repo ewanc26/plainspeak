@@ -1,0 +1,1 @@
+Procedure f returns integer: Declare x as integer with value 1. Declare p as constant pointer to integer with value Address of x. Set p to Address of x. Return Value at p. End procedure. Say Call f done.
