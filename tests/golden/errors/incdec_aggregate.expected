@@ -1,0 +1,1 @@
+error[E0027]: Increment/decrement needs a real arithmetic value or complete object pointer, not structure point.
