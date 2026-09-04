@@ -139,6 +139,8 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `concurrency.sync` | planned |
 | `concurrency.memory-model` | planned |
 
+Native `atomic` objects currently lower to real C11 `_Atomic` objects. Ordinary reads, simple assignments and stores through atomic-qualified pointers therefore use the C compiler's native default atomic semantics. This is only a foundation: explicit memory-order selection, the atomic RMW/API families, fences, lock-free queries, thread-local storage, threads/synchronization, and full happens-before/data-race conformance remain pending.
+
 ## Hosted C library
 
 Each header row ultimately expands into per-facility entries as bindings are implemented. A header is not considered complete because one or two functions happen to exist in the current runtime.
