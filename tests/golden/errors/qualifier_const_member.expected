@@ -1,0 +1,1 @@
+error[E0024]: I can't store in member "x" because its effective type constant integer is not a modifiable C object type.
