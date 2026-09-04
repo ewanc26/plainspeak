@@ -1,0 +1,1 @@
+error[E0021]: Element designator 1 appears more than once in the initializer for "a".
