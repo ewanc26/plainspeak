@@ -20,12 +20,19 @@ struct ProcedureSignature {
     bool nativeTyped = false;
 };
 
+struct StructureInfo {
+    std::vector<std::pair<std::string, Type>> fields;
+    bool complete = false;
+};
+
 struct AnalysisResult {
     std::vector<Diag> diagnostics;
     std::unordered_map<const Expr *, Type> exprTypes;
     std::unordered_map<const Expr *, Type> typeOperands;
     std::unordered_map<const Stmt *, Type> declarationTypes;
     std::unordered_map<std::string, ProcedureSignature> procedureSignatures;
+    std::unordered_map<std::string, StructureInfo> structures;
+    std::unordered_map<const Stmt *, std::vector<std::pair<std::string, Type>>> structureFields;
     std::unordered_set<const Expr *> nativeObjectRefs;
 
     // Existing Set/Add/Sub statements whose target is an explicitly declared
@@ -46,6 +53,7 @@ private:
 
     std::vector<std::unordered_map<std::string, Symbol>> scopes_;
     std::unordered_map<std::string, ProcedureSignature> procTable_;
+    std::unordered_map<std::string, StructureInfo> structureTable_;
     std::optional<ProcedureSignature> currentProcedure_;
     AnalysisResult *analysis_ = nullptr;
 
@@ -56,6 +64,8 @@ private:
     bool declareVar(const std::string &name, Type type, bool nativeObject,
                     int line, std::vector<Diag> &diags);
     Type resolveTypeSpec(const TypeSpec &spec) const;
+    bool isCompleteObjectType(const Type &type) const;
+    const Type *findStructureField(const Type &base, const std::string &name) const;
     Type inferExpr(const Expr *e, int line, std::vector<Diag> &diags);
     void checkStmt(const Stmt *s, std::vector<Diag> &diags);
 };
