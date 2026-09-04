@@ -452,10 +452,14 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
             bool created = declareVar(node.name, declared, true, s->line, diags);
             if (node.initializer) {
+                std::size_t diagnosticCount = diags.size();
                 Type init = inferExpr(node.initializer, s->line, diags);
+                bool initializerFailed = diags.size() != diagnosticCount;
                 if (declared.isArray()) {
-                    diags.push_back({17, s->line, "Whole-array initializers are not implemented yet; Declare the array and Set its elements individually."});
-                } else if (created && !assignableTo(declared, init)) {
+                    if (!initializerFailed) {
+                        diags.push_back({17, s->line, "Whole-array initializers are not implemented yet; Declare the array and Set its elements individually."});
+                    }
+                } else if (created && !initializerFailed && !assignableTo(declared, init)) {
                     diags.push_back({13, s->line, "I can't initialize native object \"" + node.name +
                                               "\" of type " + typeToString(declared) + " with a " + typeToString(init) + "."});
                 }
