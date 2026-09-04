@@ -50,7 +50,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.bitwise` | foundation |
 | `expr.shifts` | foundation |
 | `expr.assignment` | foundation |
-| `expr.increment-decrement` | planned |
+| `expr.increment-decrement` | foundation |
 | `expr.address-indirection` | foundation |
 | `expr.subscript-member` | foundation |
 | `expr.casts` | foundation |
@@ -64,6 +64,8 @@ An arbitrary-C escape hatch does **not** count as parity.
 Explicit native objects model C modifiable-lvalue constraints: const-qualified objects and aggregates containing const subobjects cannot be mutated; pointer dereference, fixed-array elements and structure/union members (including named bit-fields) preserve effective const/volatile qualification. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, null pointers, complete conversions, anonymous members, sequencing and the full usual arithmetic conversions are not complete.
 
 Native arithmetic expressions now apply C integer promotions and usual arithmetic conversions across the ordinary integer and real-floating families, and lower directly to C operators. Bitwise AND/XOR/OR/complement and shifts are source-spellable with promoted result types. This remains **foundation** because C23 `_BitInt` conversion rank interactions, complex arithmetic, full constant-expression overflow analysis, and exhaustive undefined/implementation-defined shift behavior are not yet covered.
+
+Prefix/postfix increment and decrement are now source-spellable over native modifiable arithmetic/pointer lvalues, including array elements, dereferences, named bit-fields and C11 atomic scalar objects. The operators lower directly to C, preserving prefix/postfix value timing and pointer scaling. This remains **foundation** because function-pointer operands are not yet source-spellable and the repository has not yet completed the broader C sequencing model.
 
 Explicit scalar conversions are now source-spellable and lower to native C casts across arithmetic↔arithmetic, object-pointer↔object-pointer, integer↔pointer and scalar→boolean categories. This remains **foundation** because cast-to-void discard expressions, function pointers, C23 nullptr-specific conversions, and exhaustive implementation-defined pointer/integer guarantees are still pending.
 
