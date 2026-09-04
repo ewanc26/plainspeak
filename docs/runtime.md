@@ -159,3 +159,10 @@ Semantic analysis performs C-style top-level lvalue conversion for reads while p
 Const/volatile aggregate qualification propagates to member expressions. Atomic scalar objects and pointers use the backend compiler's native C11 atomic load/store behavior for ordinary expressions and assignments; PlainSpeak does not emulate those accesses in its runtime. Atomic structure/union member access is rejected because the C11 semantics make direct member access undefined, and explicit memory-order operations/fences remain future concurrency work.
 
 Top-level native objects are still emitted as file-scope declarations with most PlainSpeak initializers executed later in `main`. Because a const object cannot be assigned after declaration, top-level const runtime initializers are intentionally rejected until constant-expression/file-scope initializer lowering lands. Current aggregate initializers are similarly post-store based and therefore reject const subobjects and atomic aggregate targets.
+
+
+## Native arithmetic conversions and bitwise lowering
+
+Arithmetic expressions over native C arithmetic types are no longer forced through `PsValue` arithmetic. Semantic analysis computes the C integer promotions/usual arithmetic conversion result type, and codegen emits direct C arithmetic for those operands. When such a result enters a legacy PlainSpeak surface such as `Say`, only the final result is boxed.
+
+The same raw path is used for bitwise `&`, `^`, `|`, unary `~`, and shifts. This preserves target integer width, rank and signedness during the operation rather than first narrowing through the runtime's signed `long` representation.
