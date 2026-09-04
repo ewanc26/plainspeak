@@ -145,14 +145,28 @@ bool pointersComparable(const Type &a, const Type &b) {
     return pointerBasesCompatible(stripTopQualifiers(a), stripTopQualifiers(b));
 }
 
+bool isNullPointerConstantExpr(const Expr *expr) {
+    if (!expr) return false;
+    if (std::holds_alternative<NullptrLit>(expr->node)) return true;
+    if (const auto *integer = std::get_if<IntLit>(&expr->node)) return integer->value == 0;
+    return false;
+}
+
 bool assignableTo(const Type &target, const Type &source) {
     if (target.isArray()) return false;
     Type valueTarget = stripTopQualifiers(target);
     Type valueSource = decayArray(source);
     if (valueTarget == valueSource) return true;
+    if (valueTarget.kind == TypeKind::Boolean && valueSource.kind == TypeKind::Nullptr) return true;
+    if (valueTarget.isPointer() && valueSource.kind == TypeKind::Nullptr) return true;
     if (isArithmeticScalar(valueTarget) && isArithmeticScalar(valueSource)) return true;
     if (pointersAssignable(valueTarget, valueSource)) return true;
     return false;
+}
+
+bool assignableExprTo(const Type &target, const Type &source, const Expr *expr) {
+    return assignableTo(target, source) ||
+           (stripTopQualifiers(target).isPointer() && isNullPointerConstantExpr(expr));
 }
 
 Type memberTypeWithAggregateQualifiers(Type member, const TypeQualifiers &aggregateQualifiers) {
@@ -312,9 +326,10 @@ bool canExplicitCast(const Type &target, const Type &source) {
     Type from = decayArray(source);
 
     if (!isCastScalar(to) || !isCastScalar(from)) return false;
+    if (to == from) return true;
     if (to.kind == TypeKind::Boolean) return true;
     if (isCastArithmetic(to) && isCastArithmetic(from)) return true;
-    if (to.kind == TypeKind::Pointer && from.kind == TypeKind::Pointer) return true;
+    if (to.kind == TypeKind::Pointer && (from.kind == TypeKind::Pointer || from.kind == TypeKind::Nullptr)) return true;
     if (to.kind == TypeKind::Pointer && isCastInteger(from)) return true;
     if (isCastInteger(to) && from.kind == TypeKind::Pointer) return true;
     return false;
@@ -359,7 +374,7 @@ std::optional<Type> conditionalPointerType(Type lhs, Type rhs) {
 
 bool isConditionalScalar(Type type) {
     type = decayArray(std::move(type));
-    return isArithmeticScalar(type) || type.isPointer();
+    return isArithmeticScalar(type) || type.isPointer() || type.kind == TypeKind::Nullptr;
 }
 
 
