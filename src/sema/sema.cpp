@@ -1,5 +1,6 @@
 #include "sema.h"
 #include <algorithm>
+#include <climits>
 #include <limits>
 #include <type_traits>
 #include <utility>
@@ -296,7 +297,9 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
 bool Sema::isCompleteObjectType(const Type &type) const {
     if (type.kind == TypeKind::Void || type.kind == TypeKind::Function) return false;
     if (type.isArray()) {
-        return type.arrayBound && type.elementType && isCompleteObjectType(*type.elementType);
+        return type.arrayBound && type.elementType &&
+               isCompleteObjectType(*type.elementType) &&
+               !containsFlexibleArray(*type.elementType);
     }
     if (type.kind == TypeKind::Structure) {
         auto it = structureTable_.find(type.tag);
@@ -315,7 +318,14 @@ bool Sema::isCompleteObjectType(const Type &type) const {
            type.kind == TypeKind::BitInt;
 }
 
-const Type *Sema::findAggregateField(const Type &base, const std::string &name) const {
+bool Sema::containsFlexibleArray(const Type &type) const {
+    if (type.isArray() && type.elementType) return containsFlexibleArray(*type.elementType);
+    if (type.kind != TypeKind::Structure) return false;
+    auto it = structureTable_.find(type.tag);
+    return it != structureTable_.end() && it->second.complete && it->second.hasFlexibleArray;
+}
+
+const AggregateFieldInfo *Sema::findAggregateField(const Type &base, const std::string &name) const {
     Type aggregate = base;
     if (aggregate.isPointer() && aggregate.elementType) aggregate = *aggregate.elementType;
 
@@ -329,7 +339,7 @@ const Type *Sema::findAggregateField(const Type &base, const std::string &name) 
     }
     if (!info || !info->complete) return nullptr;
     for (const auto &field : info->fields) {
-        if (field.first == name) return &field.second;
+        if (!field.name.empty() && field.name == name) return &field;
     }
     return nullptr;
 }
