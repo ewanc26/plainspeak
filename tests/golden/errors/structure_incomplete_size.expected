@@ -1,0 +1,1 @@
+error[E0012]: I can't ask for the size of structure missing because it is not a complete C object type.
