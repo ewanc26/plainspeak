@@ -320,6 +320,48 @@ bool canExplicitCast(const Type &target, const Type &source) {
     return false;
 }
 
+TypeQualifiers combinedQualifiers(const TypeQualifiers &a, const TypeQualifiers &b) {
+    return TypeQualifiers{
+        a.isConst || b.isConst,
+        a.isVolatile || b.isVolatile,
+        a.isRestrict || b.isRestrict,
+        a.isAtomic || b.isAtomic
+    };
+}
+
+std::optional<Type> conditionalPointerType(Type lhs, Type rhs) {
+    lhs = decayArray(std::move(lhs));
+    rhs = decayArray(std::move(rhs));
+    if (!lhs.isPointer() || !rhs.isPointer() || !lhs.elementType || !rhs.elementType ||
+        !pointersComparable(lhs, rhs)) {
+        return std::nullopt;
+    }
+
+    Type leftPointee = *lhs.elementType;
+    Type rightPointee = *rhs.elementType;
+    Type leftBase = stripTopQualifiers(leftPointee);
+    Type rightBase = stripTopQualifiers(rightPointee);
+    Type resultPointee;
+
+    if (leftBase.kind == TypeKind::Void && isObjectPointee(rightBase)) {
+        resultPointee = leftBase;
+    } else if (rightBase.kind == TypeKind::Void && isObjectPointee(leftBase)) {
+        resultPointee = rightBase;
+    } else if (leftBase == rightBase) {
+        resultPointee = leftBase;
+    } else {
+        return std::nullopt;
+    }
+
+    resultPointee.qualifiers = combinedQualifiers(leftPointee.qualifiers, rightPointee.qualifiers);
+    return Type::pointerTo(std::move(resultPointee));
+}
+
+bool isConditionalScalar(Type type) {
+    type = decayArray(std::move(type));
+    return isArithmeticScalar(type) || type.isPointer();
+}
+
 
 std::optional<std::size_t> bitFieldWidthLimit(const Type &type) {
     if (type.kind == TypeKind::Boolean) return 1;
@@ -739,6 +781,43 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return Type::number();
             }
             return target;
+        }
+        else if constexpr (std::is_same_v<T, ConditionalExpr>) {
+            const std::size_t before = diags.size();
+            Type condition = inferExpr(node.condition, line, diags);
+            Type whenTrue = inferExpr(node.whenTrue, line, diags);
+            Type whenFalse = inferExpr(node.whenFalse, line, diags);
+            if (diags.size() != before) return Type::number();
+
+            if (!isConditionalScalar(condition)) {
+                diags.push_back({28, line,
+                    "Choose condition must have C scalar type, not " + typeToString(condition) + "."});
+                return Type::number();
+            }
+
+            Type trueValue = decayArray(whenTrue);
+            Type falseValue = decayArray(whenFalse);
+            if (isArithmeticScalar(trueValue) && isArithmeticScalar(falseValue)) {
+                return usualArithmeticConversion(trueValue, falseValue);
+            }
+
+            if (trueValue.isPointer() && falseValue.isPointer()) {
+                if (auto pointer = conditionalPointerType(trueValue, falseValue)) return *pointer;
+                diags.push_back({28, line,
+                    "Choose pointer branches need compatible pointed-to types, not " +
+                    typeToString(whenTrue) + " and " + typeToString(whenFalse) + "."});
+                return Type::number();
+            }
+
+            if ((trueValue.kind == TypeKind::Structure || trueValue.kind == TypeKind::Union) &&
+                trueValue == falseValue) {
+                return trueValue;
+            }
+
+            diags.push_back({28, line,
+                "Choose branches do not have a supported common C type: " +
+                typeToString(whenTrue) + " and " + typeToString(whenFalse) + "."});
+            return Type::number();
         }
         else if constexpr (std::is_same_v<T, IncDecExpr>) {
             const std::size_t before = diags.size();
