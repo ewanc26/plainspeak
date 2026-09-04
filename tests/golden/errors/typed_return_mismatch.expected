@@ -1,0 +1,1 @@
+error[E0018]: This typed Procedure returns integer but Return provides string.

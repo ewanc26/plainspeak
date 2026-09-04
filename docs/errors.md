@@ -23,6 +23,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0015 | Dereference/store-through applied to a non-pointer or `void *` without a concrete pointee |
 | E0016 | Invalid or still-unsupported native pointer operation |
 | E0017 | Invalid fixed native array declaration, subscript, element store, or whole-array operation |
+| E0018 | Invalid typed Procedure signature, argument, return, prototype, or return placement |
 
 ## Parse-time errors
 

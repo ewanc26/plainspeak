@@ -153,16 +153,20 @@ std::string printStmt(const Stmt *s) {
                 }
             }
             return out + " done. ";
-        } else if constexpr (std::is_same_v<T, ReturnStmt>) return "Return " + printExpr(node.expr) + ". ";
+        } else if constexpr (std::is_same_v<T, ReturnStmt>) {
+            return node.expr ? "Return " + printExpr(node.expr) + ". " : "Return. ";
+        }
         else if constexpr (std::is_same_v<T, ProcedureStmt>) {
             std::string out = "Procedure " + node.name;
             if (!node.params.empty()) {
                 out += " takes ";
                 for (size_t i = 0; i < node.params.size(); ++i) {
                     if (i) out += ", ";
-                    out += node.params[i];
+                    out += node.params[i].name;
+                    if (node.params[i].type) out += " as " + printTypeSpec(*node.params[i].type);
                 }
             }
+            if (node.returnType) out += " returns " + printTypeSpec(*node.returnType);
             out += ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End procedure. ";

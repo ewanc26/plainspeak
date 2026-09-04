@@ -104,3 +104,10 @@ The keyword set includes C89/C90, C99, C11, and C23 spellings. Runtime bridge na
 ## Native fixed arrays
 
 Fixed native arrays do not add a runtime container ABI. They lower directly to C arrays, and native `Element at` lowers to C subscripting. Ordinary array expressions decay to element pointers in value contexts, while retained semantic types let `Size of arrayName` preserve the full array extent. The C declarator emitter is recursive so array-of-pointer and pointer-to-array types preserve C precedence.
+
+
+## Typed procedures
+
+Legacy Procedures keep the `PsValue` ABI. Procedures with explicit parameter types and a `returns` clause instead lower to native C function declarations/definitions. Their parameters are emitted with the semantic C types retained by sema, array parameters use C's array-to-pointer adjustment, and typed return values use raw/native lowering. Generated prototypes precede all procedure definitions, so forward and mutually recursive calls are valid generated C.
+
+Typed calls use raw arguments and native return values; when a typed arithmetic result re-enters a legacy PlainSpeak expression it is boxed through the existing numeric bridge. Pointer results stay on the native/raw path. Typed `void` procedures emit C `void` and bare `return;`.
