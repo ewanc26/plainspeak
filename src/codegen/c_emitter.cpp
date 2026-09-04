@@ -79,6 +79,9 @@ std::string emitCDeclaration(const Type &type, const std::string &name) {
     return emitCDeclarator(type, name);
 }
 
+std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis);
+std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
+
 void emitAggregateStores(const std::string &name, const Type &declared,
                          const AggregateInitializer &aggregate,
                          std::ostream &out, const std::string &indent,
