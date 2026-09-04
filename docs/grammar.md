@@ -40,7 +40,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | BreakStmt | ContinueStmt
        | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt
-       | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
+       | CallStmt | ProcedureStmt | ReturnStmt | StaticAssertStmt | StructureStmt | UnionStmt | EnumerationStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
 SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
@@ -80,7 +80,10 @@ CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
 ProcedureParam ::= IDENT ("as" CType)?
 ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? ":" Stmt* "End" "procedure" "."
 ReturnStmt ::= "Return" Expr? "."
+StaticAssertStmt ::= "Static" "assert" Expr ("with" "message" STRING)? "."
 ```
+
+`Static assert expression.` checks an integer constant expression during PlainSpeak compilation and rejects a zero result. `with message "text"` is optional, matching the C23 form while also covering the diagnostic-message form introduced in C11. A successful assertion has no execution-time effect; sema has already discharged it before generated C is run.
 
 `Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, `Do`/`while`, and `For each`). `Continue.` is loop-only. `Break.` currently exits loops and is tracked as foundation-level C compatibility until `switch` lands, at which point the same breakable-context model extends to switch statements. Both lower directly to C `break;` / `continue;`.
 

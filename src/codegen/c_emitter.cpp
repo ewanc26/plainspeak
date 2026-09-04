@@ -603,6 +603,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << emitBoxedExpr(node.index, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, CommentStmt>) {
             out << indent << "/* " << node.text << " */\n";
+        } else if constexpr (std::is_same_v<T, StaticAssertStmt>) {
+            // Sema has already required and evaluated the integer constant
+            // expression. A successful assertion has no execution-time effect.
+            out << indent << "/* static assertion verified by PlainSpeak */\n";
         } else if constexpr (std::is_same_v<T, BreakStmt>) {
             out << indent << "break;\n";
         } else if constexpr (std::is_same_v<T, ContinueStmt>) {

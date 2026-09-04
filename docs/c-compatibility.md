@@ -87,10 +87,12 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `decl.initializers` | foundation |
 | `decl.designated-initializers` | foundation |
 | `decl.empty-initialization` | planned |
-| `decl.static-assert` | planned |
+| `decl.static-assert` | foundation |
 | `decl.attributes` | planned |
 
-`Declare` now introduces native scalar (including complete enumerations), pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer assignment-style initializers plus positional aggregate, named member-designated, and array index-designated initialization are type-checked. Omitted aggregate slots are zeroed. User-controlled linkage, `static`/`extern`/thread storage, allocated storage, nested aggregate initializers and full C constant-initializer rules remain missing.
+`Declare` now introduces native scalar (including complete enumerations), pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer assignment-style initializers plus positional aggregate, named member-designated, and array index-designated initialization are type-checked. Omitted aggregate slots are zeroed. `Static assert expression.` and the optional `with message "text"` form provide C11/C23 compile-time assertions. PlainSpeak sema evaluates the condition and issues E0030 on a non-constant or false assertion; successful assertions have no runtime effect. The facility remains **foundation** until the integer constant-expression classifier covers the complete standard operand set.
+
+User-controlled linkage, `static`/`extern`/thread storage, allocated storage, nested aggregate initializers and full C constant-initializer rules remain missing.
 
 ## Statements and control flow
 

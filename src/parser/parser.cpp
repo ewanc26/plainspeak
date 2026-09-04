@@ -90,9 +90,10 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
+    if (t.text == "static" && checkWordAt(1, "assert")) return parseStaticAssert();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return, static assert (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -130,9 +131,10 @@ Stmt *Parser::parseStmt() {
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
+    if (t.text == "static" && checkWordAt(1, "assert")) return parseStaticAssert();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return, static assert (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -543,6 +545,26 @@ Stmt *Parser::parseForEach() {
     expectColon();
     auto body = parseBlockUntil("end", "for");
     return arena_.makeStmt(ForEachStmt{itemName, list, std::move(body)}, line);
+}
+
+Stmt *Parser::parseStaticAssert() {
+    int line = peek().line;
+    expectWord("static");
+    expectWord("assert");
+    Expr *condition = parseExpr();
+
+    std::optional<std::string> message;
+    if (checkWord("with") && checkWordAt(1, "message")) {
+        advance();
+        advance();
+        if (peek().kind != TokKind::String) {
+            error("Static assert with message needs a quoted string");
+        }
+        message = advance().text;
+    }
+
+    expectDot();
+    return arena_.makeStmt(StaticAssertStmt{condition, std::move(message)}, line);
 }
 
 Stmt *Parser::parseReturn() {

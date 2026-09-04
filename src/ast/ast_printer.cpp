@@ -223,6 +223,11 @@ std::string printStmt(const Stmt *s) {
         else if constexpr (std::is_same_v<T, ReplaceItemStmt>) return "Replace item at " + printExpr(node.index) + " in " + node.varName + " with " + printExpr(node.expr) + ". ";
         else if constexpr (std::is_same_v<T, RemoveItemStmt>) return "Remove item at " + printExpr(node.index) + " from " + node.varName + ". ";
         else if constexpr (std::is_same_v<T, CommentStmt>) return "(" + node.text + ") ";
+        else if constexpr (std::is_same_v<T, StaticAssertStmt>) {
+            std::string out = "Static assert " + printExpr(node.condition);
+            if (node.message) out += " with message \"" + *node.message + "\"";
+            return out + ". ";
+        }
         else if constexpr (std::is_same_v<T, BreakStmt>) return "Break. ";
         else if constexpr (std::is_same_v<T, ContinueStmt>) return "Continue. ";
         else if constexpr (std::is_same_v<T, RepeatStmt>) {
