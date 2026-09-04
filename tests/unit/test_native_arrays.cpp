@@ -66,3 +66,19 @@ TEST_CASE("sema resolves fixed arrays, decay and pointer arithmetic", "[sema][ar
     const auto &sayDifference = std::get<SayStmt>(program[4]->node);
     CHECK(analysis.exprTypes.at(sayDifference.expr) == Type::number());
 }
+
+
+TEST_CASE("invalid pointer initializer reports the root expression error once", "[sema][pointer][diagnostics]") {
+    Tokenizer tokenizer(
+        "Declare x as integer with value 1. "
+        "Declare p as pointer to integer with value Address of x. "
+        "Declare q as pointer to integer with value p plus p.");
+    Arena arena;
+    Parser parser(tokenizer.tokenize(), arena);
+    auto program = parser.parseProgram();
+
+    Sema sema;
+    auto diagnostics = sema.check(program);
+    REQUIRE(diagnostics.size() == 1);
+    CHECK(diagnostics[0].code == 16);
+}
