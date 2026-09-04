@@ -27,6 +27,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0019 | Invalid structure definition, completeness, member access, or member store |
 | E0020 | Invalid union definition, shared tag namespace, completeness, member access, or member store |
 | E0021 | Invalid positional or designated aggregate initializer |
+| E0022 | Invalid enumeration definition, tag, enumerator, value, or use |
 
 ## Parse-time errors
 
