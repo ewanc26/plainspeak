@@ -186,15 +186,15 @@ Semantic analysis requires a native modifiable lvalue and either a real arithmet
 
 `Choose A when C otherwise B` emits a native C conditional expression, `C ? A : B`. Because the branches remain inside the generated C operator, only the selected branch is evaluated and side effects in the unselected branch do not run.
 
-Sema computes the current common-result rules before emission: usual arithmetic conversion for arithmetic branches, compatible-pointer composition with pointed-to qualifier union and object-pointer/`void *` handling, or identical structure/union types. The condition is restricted to current C scalar values. Null-pointer-constant recognition, function pointers and void-valued conditionals remain later work.
+Sema computes the current common-result rules before emission: usual arithmetic conversion for arithmetic branches, compatible-pointer composition with pointed-to qualifier union and object-pointer/`void *` handling, current literal-zero/`nullptr_t` null-pointer rules, or identical structure/union types. Two `nullptr_t` branches produce a `nullptr_t` result; a pointer paired with a null pointer constant or `nullptr_t` produces the pointer type. The condition is restricted to current C scalar values. General integer constant-expression folding, function pointers and void-valued conditionals remain later work.
 
 
 ## Null pointer representation
 
 The semantic type `Nullptr` models C23 `nullptr_t` distinctly from `Pointer`. The generated C11-compatible translation unit defines `PsNullptr` as a `void *` typedef purely as a backend representation; semantic analysis prevents pointer-only operations and conversions that C23 does not permit for `nullptr_t`.
 
-`null pointer` lowers to the zero representation of `PsNullptr`. Native integer/boolean/floating literals now also use direct C literals on the raw path, so literal `0` remains an integer constant expression and can serve as a C99-style null pointer constant in pointer contexts.
+`null pointer` normally lowers as bare `0` on the C11 backend so it retains null-pointer-constant behaviour in pointer contexts. Stored `nullptr_t` objects use `PsNullptr`. Conditional lowering is type-directed where this representation would otherwise change C11's inferred type: two `nullptr_t` branches are cast back to `PsNullptr`, and a pointer/`nullptr_t` pair is cast to the semantic pointer result type. Automatic `nullptr_t` declarations without an explicit initializer emit `= 0`, matching C23's rule that default initialization is initialization by `nullptr`; file-scope objects already receive the equivalent static zero initialization.
 
-Pointer/null conditions and logical operations lower directly to C scalar operators instead of boxing pointer values into `PsValue`. This also removes the earlier limitation that rejected pointer conditions in `If` and `While`.
+Native integer/boolean/floating literals also use direct C literals on the raw path, so literal `0` remains an integer constant expression and can serve as a C99-style null pointer constant in pointer contexts. Pointer/null conditions and logical operations lower directly to C scalar operators instead of boxing pointer values into `PsValue`. This also removes the earlier limitation that rejected pointer conditions in `If` and `While`.
 
-`nullptr_t` is native-only in the current mixed representation model. Inferred legacy `Set`, homogeneous `PsValue` lists and untyped Procedures reject null-pointer values rather than collapsing the distinct C23 type to boxed numeric zero.
+`nullptr_t` is native-only in the current mixed representation model. Inferred legacy `Set`, homogeneous `PsValue` lists and both expression-form and statement-form untyped Procedure calls reject null-pointer values rather than collapsing the distinct C23 type to boxed numeric zero.
