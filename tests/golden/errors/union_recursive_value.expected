@@ -1,0 +1,1 @@
+error[E0020]: Union member "next" has incomplete by-value type union node; use a pointer for recursive or forward references.
