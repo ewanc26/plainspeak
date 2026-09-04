@@ -60,6 +60,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "declare") return parseDeclare();
+    if (t.text == "structure") return parseStructure();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
     if (t.text == "readfloat") return parseReadFloat();
@@ -135,6 +136,16 @@ Stmt *Parser::parseSet() {
         expectDot();
         return arena_.makeStmt(StoreElementStmt{index, base, expr}, line);
     }
+    if (checkWord("member")) {
+        advance();
+        std::string member = expectIdentName();
+        expectWord("of");
+        Expr *base = parseExpr();
+        expectWord("to");
+        Expr *expr = parseExpr();
+        expectDot();
+        return arena_.makeStmt(StoreMemberStmt{std::move(member), base, expr}, line);
+    }
     std::string name = expectIdentName();
     expectWord("to");
     Expr *expr = parseExpr();
@@ -156,6 +167,29 @@ Stmt *Parser::parseDeclare() {
     }
     expectDot();
     return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer}, line);
+}
+
+Stmt *Parser::parseStructure() {
+    int line = peek().line;
+    advance();
+    std::string name = expectIdentName();
+    expectColon();
+
+    std::vector<StructureField> fields;
+    while (!(checkWord("end") && checkWordAt(1, "structure"))) {
+        if (peek().kind == TokKind::Eof) {
+            error("reached end of file while looking for \"End structure.\"");
+        }
+        expectWord("field");
+        std::string fieldName = expectIdentName();
+        expectWord("as");
+        TypeSpec fieldType = parseTypeSpec();
+        expectDot();
+        fields.push_back(StructureField{std::move(fieldName), std::move(fieldType)});
+    }
+    advance(); advance();
+    expectDot();
+    return arena_.makeStmt(StructureStmt{std::move(name), std::move(fields)}, line);
 }
 
 Stmt *Parser::parseAdd() {
@@ -381,6 +415,13 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
 }
 
 TypeSpec Parser::parseTypeSpec() {
+    if (checkWord("structure")) {
+        advance();
+        std::string tag = expectIdentName();
+        TypeSpec type{TypeSpecKind::Structure};
+        type.tag = std::move(tag);
+        return type;
+    }
     if (checkWord("array") && checkWordAt(1, "of")) {
         advance(); advance();
         TypeSpec element = parseTypeSpec();
@@ -434,7 +475,7 @@ TypeSpec Parser::parseTypeSpec() {
         advance(); advance(); return TypeSpec{TypeSpecKind::LongDecimal};
     }
 
-    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
+    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"structure point\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }
@@ -596,6 +637,14 @@ Expr *Parser::parsePrimary() {
         else error("expected \"numbers\", \"decimals\", or \"strings\" after \"Empty list of\"");
         advance();
         return arena_.makeExpr(EmptyListExpr{elementKind}, line);
+    }
+    if (checkWord("member")) {
+        int line = peek().line;
+        advance();
+        std::string name = expectIdentName();
+        expectWord("of");
+        Expr *base = parsePrimary();
+        return arena_.makeExpr(MemberExpr{std::move(name), base}, line);
     }
     if (checkWord("element") && checkWordAt(1, "at")) {
         int line = peek().line;
