@@ -21,6 +21,10 @@ bool hasAnyQualifiers(const TypeQualifiers &q) {
     return q.isConst || q.isVolatile || q.isRestrict || q.isAtomic;
 }
 
+TypeQualifiers semanticQualifiers(const TypeSpecQualifiers &q) {
+    return TypeQualifiers{q.isConst, q.isVolatile, q.isRestrict, q.isAtomic};
+}
+
 Type stripTopQualifiers(Type t) {
     t.qualifiers = {};
     return t;
@@ -335,37 +339,90 @@ bool Sema::declareVar(const std::string &name, Type type, bool nativeObject,
 }
 
 Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
+    Type result;
     switch (spec.kind) {
-        case TypeSpecKind::Void: return Type::voidType();
-        case TypeSpecKind::Boolean: return Type::boolean();
-        case TypeSpecKind::Character: return Type::character();
-        case TypeSpecKind::SignedCharacter: return Type::integer(IntegerRank::Char, false);
-        case TypeSpecKind::UnsignedCharacter: return Type::integer(IntegerRank::Char, true);
-        case TypeSpecKind::ShortInteger: return Type::integer(IntegerRank::Short, false);
-        case TypeSpecKind::UnsignedShortInteger: return Type::integer(IntegerRank::Short, true);
-        case TypeSpecKind::Integer: return Type::integer(IntegerRank::Int, false);
-        case TypeSpecKind::UnsignedInteger: return Type::integer(IntegerRank::Int, true);
-        case TypeSpecKind::LongInteger: return Type::integer(IntegerRank::Long, false);
-        case TypeSpecKind::UnsignedLongInteger: return Type::integer(IntegerRank::Long, true);
-        case TypeSpecKind::LongLongInteger: return Type::integer(IntegerRank::LongLong, false);
-        case TypeSpecKind::UnsignedLongLongInteger: return Type::integer(IntegerRank::LongLong, true);
-        case TypeSpecKind::Float: return Type::floating(FloatingRank::Float);
-        case TypeSpecKind::Decimal: return Type::floating(FloatingRank::Double);
-        case TypeSpecKind::LongDecimal: return Type::floating(FloatingRank::LongDouble);
+        case TypeSpecKind::Void: result = Type::voidType(); break;
+        case TypeSpecKind::Boolean: result = Type::boolean(); break;
+        case TypeSpecKind::Character: result = Type::character(); break;
+        case TypeSpecKind::SignedCharacter: result = Type::integer(IntegerRank::Char, false); break;
+        case TypeSpecKind::UnsignedCharacter: result = Type::integer(IntegerRank::Char, true); break;
+        case TypeSpecKind::ShortInteger: result = Type::integer(IntegerRank::Short, false); break;
+        case TypeSpecKind::UnsignedShortInteger: result = Type::integer(IntegerRank::Short, true); break;
+        case TypeSpecKind::Integer: result = Type::integer(IntegerRank::Int, false); break;
+        case TypeSpecKind::UnsignedInteger: result = Type::integer(IntegerRank::Int, true); break;
+        case TypeSpecKind::LongInteger: result = Type::integer(IntegerRank::Long, false); break;
+        case TypeSpecKind::UnsignedLongInteger: result = Type::integer(IntegerRank::Long, true); break;
+        case TypeSpecKind::LongLongInteger: result = Type::integer(IntegerRank::LongLong, false); break;
+        case TypeSpecKind::UnsignedLongLongInteger: result = Type::integer(IntegerRank::LongLong, true); break;
+        case TypeSpecKind::Float: result = Type::floating(FloatingRank::Float); break;
+        case TypeSpecKind::Decimal: result = Type::floating(FloatingRank::Double); break;
+        case TypeSpecKind::LongDecimal: result = Type::floating(FloatingRank::LongDouble); break;
         case TypeSpecKind::Pointer:
-            if (spec.pointee) return Type::pointerTo(resolveTypeSpec(*spec.pointee));
-            return Type::pointerTo(Type::voidType());
+            result = Type::pointerTo(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType());
+            break;
         case TypeSpecKind::Array:
-            if (spec.pointee) return Type::arrayOf(resolveTypeSpec(*spec.pointee), spec.arrayBound);
-            return Type::arrayOf(Type::voidType(), spec.arrayBound);
-        case TypeSpecKind::Structure:
-            return Type::structure(spec.tag);
-        case TypeSpecKind::Union:
-            return Type::unionType(spec.tag);
-        case TypeSpecKind::Enumeration:
-            return Type::enumeration(spec.tag);
+            result = Type::arrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
+                                   spec.arrayBound);
+            break;
+        case TypeSpecKind::Structure: result = Type::structure(spec.tag); break;
+        case TypeSpecKind::Union: result = Type::unionType(spec.tag); break;
+        case TypeSpecKind::Enumeration: result = Type::enumeration(spec.tag); break;
     }
-    return Type::voidType();
+
+    TypeQualifiers q = semanticQualifiers(spec.qualifiers);
+    if (result.isArray() && result.elementType) {
+        // C's source-level const/volatile array declarations qualify the
+        // element type. Keep illegal restrict/_Atomic qualification visible
+        // on the array itself so validation can diagnose it.
+        Type element = *result.elementType;
+        if (q.isConst) element.qualifiers.isConst = true;
+        if (q.isVolatile) element.qualifiers.isVolatile = true;
+        result.elementType = std::make_shared<Type>(std::move(element));
+        result.qualifiers.isRestrict = q.isRestrict;
+        result.qualifiers.isAtomic = q.isAtomic;
+    } else {
+        result.qualifiers = q;
+    }
+    return result;
+}
+
+bool Sema::validateTypeQualifiers(const Type &type, int line, std::vector<Diag> &diags) const {
+    bool valid = true;
+
+    if (type.qualifiers.isRestrict) {
+        if (!type.isPointer() || !type.elementType ||
+            !isObjectPointee(stripTopQualifiers(*type.elementType))) {
+            diags.push_back({24, line,
+                "restricted may qualify only a pointer to an object type; " +
+                typeToString(type) + " does not satisfy that C constraint."});
+            valid = false;
+        }
+    }
+
+    if (type.qualifiers.isAtomic &&
+        (type.kind == TypeKind::Void || type.kind == TypeKind::Array ||
+         type.kind == TypeKind::Function)) {
+        diags.push_back({24, line,
+            "atomic cannot qualify " + typeToString(stripTopQualifiers(type)) +
+            " because C does not permit _Atomic on void, array, or function types in this source surface."});
+        valid = false;
+    }
+
+    if (type.isPointer() && type.elementType) {
+        valid = validateTypeQualifiers(*type.elementType, line, diags) && valid;
+    } else if (type.isArray() && type.elementType) {
+        valid = validateTypeQualifiers(*type.elementType, line, diags) && valid;
+    } else if (type.isFunction()) {
+        if (hasAnyQualifiers(type.qualifiers)) {
+            diags.push_back({24, line, "A function type cannot carry PlainSpeak type qualifiers."});
+            valid = false;
+        }
+        if (type.returnType) valid = validateTypeQualifiers(*type.returnType, line, diags) && valid;
+        for (const Type &param : type.parameterTypes) {
+            valid = validateTypeQualifiers(param, line, diags) && valid;
+        }
+    }
+    return valid;
 }
 
 bool Sema::isCompleteObjectType(const Type &type) const {
@@ -390,6 +447,33 @@ bool Sema::isCompleteObjectType(const Type &type) const {
     return type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
            type.kind == TypeKind::Floating || type.kind == TypeKind::Pointer ||
            type.kind == TypeKind::BitInt;
+}
+
+bool Sema::hasConstSubobject(const Type &type) const {
+    if (type.qualifiers.isConst) return true;
+    if (type.isArray() && type.elementType) return hasConstSubobject(*type.elementType);
+
+    const StructureInfo *info = nullptr;
+    if (type.kind == TypeKind::Structure) {
+        auto it = structureTable_.find(type.tag);
+        if (it != structureTable_.end()) info = &it->second;
+    } else if (type.kind == TypeKind::Union) {
+        auto it = unionTable_.find(type.tag);
+        if (it != unionTable_.end()) info = &it->second;
+    }
+    if (!info || !info->complete) return false;
+    for (const auto &field : info->fields) {
+        if (hasConstSubobject(field.type)) return true;
+    }
+    return false;
+}
+
+bool Sema::isModifiableObjectType(const Type &type) const {
+    if (type.isArray() || type.qualifiers.isConst) return false;
+    if (type.kind == TypeKind::Structure || type.kind == TypeKind::Union) {
+        return !hasConstSubobject(type);
+    }
+    return type.kind != TypeKind::Void && type.kind != TypeKind::Function;
 }
 
 bool Sema::containsFlexibleArray(const Type &type) const {
