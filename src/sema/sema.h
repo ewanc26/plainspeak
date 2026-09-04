@@ -86,7 +86,10 @@ private:
     bool declareVar(const std::string &name, Type type, bool nativeObject,
                     int line, std::vector<Diag> &diags);
     Type resolveTypeSpec(const TypeSpec &spec) const;
+    bool validateTypeQualifiers(const Type &type, int line, std::vector<Diag> &diags) const;
     bool isCompleteObjectType(const Type &type) const;
+    bool hasConstSubobject(const Type &type) const;
+    bool isModifiableObjectType(const Type &type) const;
     bool containsFlexibleArray(const Type &type) const;
     const AggregateFieldInfo *findAggregateField(const Type &base, const std::string &name) const;
     Type inferExpr(const Expr *e, int line, std::vector<Diag> &diags);

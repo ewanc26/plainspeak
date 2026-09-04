@@ -1,0 +1,1 @@
+error[E0024]: atomic cannot qualify array of integer with length 2 because C does not permit _Atomic on void, array, or function types in this source surface.

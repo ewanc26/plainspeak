@@ -25,8 +25,8 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.nullptr` | foundation | C23 null-pointer type can be represented; source literal/conversions remain pending. |
 | `types.object-representation` | foundation | Explicit scalar, pointer, fixed-array, tagged-structure, tagged-union and tagged-enumeration objects use real C storage, address, size and target layout; padding/effective-type rules and complete lifetime semantics remain pending. |
 | `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` preserve fixed-array extent and complete structure/union/enum layout as well as scalar/pointer layout; requested alignment and native `size_t` remain pending. |
-| `types.qualifiers` | foundation | const/volatile/restrict/atomic qualification is represented structurally but is not yet source-spellable. |
-| `types.pointers` | foundation | Recursive object pointers support address/dereference, array decay, element-scaled +/- arithmetic, pointer difference, compatible comparison and +=/-= offsets; null/function pointers and qualifiers remain pending. |
+| `types.qualifiers` | foundation | Recursive `constant`/`volatile`/`restricted`/`atomic` source qualifiers lower to native C const/volatile/restrict/_Atomic, preserve pointer placement, enforce const modifiability and directional pointee qualification; full typedef/array compatibility details and constant-initializer lowering remain pending. |
+| `types.pointers` | foundation | Recursive object pointers support address/dereference, array decay, element-scaled +/- arithmetic, pointer difference/comparison, +=/-= offsets, pointer-level qualifiers and qualifier-adding pointee conversions; null/function pointers and complete compatibility rules remain pending. |
 | `types.function-types` | foundation | Explicit typed Procedure parameters/returns now lower to native C function types; variadics, function pointers and the complete compatibility rules remain pending. |
 | `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; VLAs/incomplete source declarations and whole-array initialization remain pending. |
 | `types.vla` | planned | C99 variable-length and variably modified types. |
@@ -61,7 +61,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.generic-selection` | planned |
 | `expr.nullptr-conversions` | planned |
 
-Explicit native objects are modifiable lvalues, pointer dereference produces a modifiable lvalue for concrete pointees, fixed-array elements are addressable/subscriptable native lvalues, and structure/union members (including named bit-fields) are typed native lvalues. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, qualifiers, null pointers, complete conversions, anonymous members, sequencing and the full usual arithmetic conversions are not complete.
+Explicit native objects model C modifiable-lvalue constraints: const-qualified objects and aggregates containing const subobjects cannot be mutated; pointer dereference, fixed-array elements and structure/union members (including named bit-fields) preserve effective const/volatile qualification. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, null pointers, complete conversions, anonymous members, sequencing and the full usual arithmetic conversions are not complete.
 
 ## Declarations, storage and linkage
 
@@ -108,7 +108,7 @@ PlainSpeak's `Repeat` and `For each` remain useful language extensions, but they
 
 Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer.
 
-Typed Procedures now have explicit native parameter and return types, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. These rows remain **foundation** because variadic definitions/calls, function pointers, C's full compatible-type/prototype rules, qualifiers and complete path-sensitive return analysis are not finished.
+Typed Procedures now have explicit native parameter and return types, recursive native qualifiers, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. These rows remain **foundation** because variadic definitions/calls, function pointers, C's full compatible-type/prototype rules and complete path-sensitive return analysis are not finished.
 
 ## Translation and preprocessing capability
 
@@ -131,13 +131,15 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 
 | ID | Status |
 |---|---|
-| `concurrency.atomics` | planned |
+| `concurrency.atomics` | foundation |
 | `concurrency.fences` | planned |
 | `concurrency.lock-free` | planned |
 | `concurrency.threads` | planned |
 | `concurrency.thread-local` | planned |
 | `concurrency.sync` | planned |
 | `concurrency.memory-model` | planned |
+
+Native `atomic` objects currently lower to real C11 `_Atomic` objects. Ordinary reads, simple assignments and stores through atomic-qualified pointers therefore use the C compiler's native default atomic semantics. This is only a foundation: explicit memory-order selection, the atomic RMW/API families, fences, lock-free queries, thread-local storage, threads/synchronization, and full happens-before/data-race conformance remain pending.
 
 ## Hosted C library
 

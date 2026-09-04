@@ -1,0 +1,1 @@
+error[E0013]: I can't initialize native object "p" of type pointer to integer with a pointer to constant integer.

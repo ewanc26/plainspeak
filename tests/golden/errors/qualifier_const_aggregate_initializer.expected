@@ -1,0 +1,1 @@
+error[E0024]: This aggregate initializer requires post-declaration member stores, which are not valid for constant subobjects or atomic aggregate objects.

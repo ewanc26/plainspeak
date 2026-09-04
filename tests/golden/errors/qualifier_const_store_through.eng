@@ -1,0 +1,1 @@
+Declare x as integer. Declare p as pointer to constant integer with value Address of x. Set value at p to 2.

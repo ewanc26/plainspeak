@@ -17,9 +17,33 @@ bool isIntegralType(const Type &t) {
     return t.kind == TypeKind::Boolean || t.kind == TypeKind::Enumeration || t.isInteger();
 }
 
+bool hasAnyQualifiers(const TypeQualifiers &q) {
+    return q.isConst || q.isVolatile || q.isRestrict || q.isAtomic;
+}
+
+TypeQualifiers semanticQualifiers(const TypeSpecQualifiers &q) {
+    return TypeQualifiers{q.isConst, q.isVolatile, q.isRestrict, q.isAtomic};
+}
+
+Type stripTopQualifiers(Type t) {
+    t.qualifiers = {};
+    return t;
+}
+
 Type decayArray(Type t) {
     if (t.isArray() && t.elementType) return Type::pointerTo(*t.elementType);
-    return t;
+    return stripTopQualifiers(std::move(t));
+}
+
+bool qualifierSuperset(const TypeQualifiers &target, const TypeQualifiers &source) {
+    return (!source.isConst || target.isConst) &&
+           (!source.isVolatile || target.isVolatile) &&
+           (!source.isRestrict || target.isRestrict) &&
+           (!source.isAtomic || target.isAtomic);
+}
+
+bool isObjectPointee(const Type &t) {
+    return t.kind != TypeKind::Void && t.kind != TypeKind::Function;
 }
 
 bool hasCompletePointee(const Type &t) {
@@ -60,6 +84,14 @@ std::string integerName(const Type &t) {
 }
 
 std::string typeToString(const Type &t) {
+    if (hasAnyQualifiers(t.qualifiers)) {
+        std::string prefix;
+        if (t.qualifiers.isConst) prefix += "constant ";
+        if (t.qualifiers.isVolatile) prefix += "volatile ";
+        if (t.qualifiers.isRestrict) prefix += "restricted ";
+        if (t.qualifiers.isAtomic) prefix += "atomic ";
+        return prefix + typeToString(stripTopQualifiers(t));
+    }
     switch (t.kind) {
         case TypeKind::Void: return "void";
         case TypeKind::Boolean: return "boolean";
@@ -86,23 +118,54 @@ std::string typeToString(const Type &t) {
     return "unknown type";
 }
 
-bool isVoidPointer(const Type &t) {
-    return t.isPointer() && t.elementType && t.elementType->kind == TypeKind::Void;
+bool pointerBasesCompatible(const Type &a, const Type &b) {
+    if (!a.isPointer() || !b.isPointer() || !a.elementType || !b.elementType) return false;
+    Type aPointee = *a.elementType;
+    Type bPointee = *b.elementType;
+    Type aBase = stripTopQualifiers(aPointee);
+    Type bBase = stripTopQualifiers(bPointee);
+    if (aBase == bBase) return true;
+    if (aBase.kind == TypeKind::Void && isObjectPointee(bBase)) return true;
+    if (bBase.kind == TypeKind::Void && isObjectPointee(aBase)) return true;
+    return false;
 }
 
-bool pointersCompatible(const Type &target, const Type &source) {
-    if (!target.isPointer() || !source.isPointer()) return false;
-    if (target == source) return true;
-    return isVoidPointer(target) || isVoidPointer(source);
+bool pointersAssignable(const Type &target, const Type &source) {
+    Type valueTarget = stripTopQualifiers(target);
+    Type valueSource = stripTopQualifiers(source);
+    if (!pointerBasesCompatible(valueTarget, valueSource) ||
+        !valueTarget.elementType || !valueSource.elementType) {
+        return false;
+    }
+    return qualifierSuperset(valueTarget.elementType->qualifiers,
+                             valueSource.elementType->qualifiers);
+}
+
+bool pointersComparable(const Type &a, const Type &b) {
+    return pointerBasesCompatible(stripTopQualifiers(a), stripTopQualifiers(b));
 }
 
 bool assignableTo(const Type &target, const Type &source) {
     if (target.isArray()) return false;
+    Type valueTarget = stripTopQualifiers(target);
     Type valueSource = decayArray(source);
-    if (target == valueSource) return true;
-    if (isArithmeticScalar(target) && isArithmeticScalar(valueSource)) return true;
-    if (pointersCompatible(target, valueSource)) return true;
+    if (valueTarget == valueSource) return true;
+    if (isArithmeticScalar(valueTarget) && isArithmeticScalar(valueSource)) return true;
+    if (pointersAssignable(valueTarget, valueSource)) return true;
     return false;
+}
+
+Type memberTypeWithAggregateQualifiers(Type member, const TypeQualifiers &aggregateQualifiers) {
+    if (member.isArray() && member.elementType) {
+        Type element = *member.elementType;
+        if (aggregateQualifiers.isConst) element.qualifiers.isConst = true;
+        if (aggregateQualifiers.isVolatile) element.qualifiers.isVolatile = true;
+        member.elementType = std::make_shared<Type>(std::move(element));
+        return member;
+    }
+    if (aggregateQualifiers.isConst) member.qualifiers.isConst = true;
+    if (aggregateQualifiers.isVolatile) member.qualifiers.isVolatile = true;
+    return member;
 }
 
 bool supportsCObjectQuery(const Type &t) {
@@ -210,11 +273,13 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         ProcedureSignature signature;
         signature.nativeTyped = typed;
         signature.returnType = typed ? resolveTypeSpec(*proc->returnType) : Type::number();
+        if (typed) validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
 
         for (const auto &param : proc->params) {
             Type paramType = Type::number();
             if (typed && param.type) {
                 paramType = resolveTypeSpec(*param.type);
+                validateTypeQualifiers(paramType, s->line, result.diagnostics);
                 if (paramType.kind == TypeKind::Void) {
                     result.diagnostics.push_back({18, s->line, "Typed parameter \"" + param.name + "\" cannot have type void."});
                     paramType = Type::number();
@@ -276,37 +341,90 @@ bool Sema::declareVar(const std::string &name, Type type, bool nativeObject,
 }
 
 Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
+    Type result;
     switch (spec.kind) {
-        case TypeSpecKind::Void: return Type::voidType();
-        case TypeSpecKind::Boolean: return Type::boolean();
-        case TypeSpecKind::Character: return Type::character();
-        case TypeSpecKind::SignedCharacter: return Type::integer(IntegerRank::Char, false);
-        case TypeSpecKind::UnsignedCharacter: return Type::integer(IntegerRank::Char, true);
-        case TypeSpecKind::ShortInteger: return Type::integer(IntegerRank::Short, false);
-        case TypeSpecKind::UnsignedShortInteger: return Type::integer(IntegerRank::Short, true);
-        case TypeSpecKind::Integer: return Type::integer(IntegerRank::Int, false);
-        case TypeSpecKind::UnsignedInteger: return Type::integer(IntegerRank::Int, true);
-        case TypeSpecKind::LongInteger: return Type::integer(IntegerRank::Long, false);
-        case TypeSpecKind::UnsignedLongInteger: return Type::integer(IntegerRank::Long, true);
-        case TypeSpecKind::LongLongInteger: return Type::integer(IntegerRank::LongLong, false);
-        case TypeSpecKind::UnsignedLongLongInteger: return Type::integer(IntegerRank::LongLong, true);
-        case TypeSpecKind::Float: return Type::floating(FloatingRank::Float);
-        case TypeSpecKind::Decimal: return Type::floating(FloatingRank::Double);
-        case TypeSpecKind::LongDecimal: return Type::floating(FloatingRank::LongDouble);
+        case TypeSpecKind::Void: result = Type::voidType(); break;
+        case TypeSpecKind::Boolean: result = Type::boolean(); break;
+        case TypeSpecKind::Character: result = Type::character(); break;
+        case TypeSpecKind::SignedCharacter: result = Type::integer(IntegerRank::Char, false); break;
+        case TypeSpecKind::UnsignedCharacter: result = Type::integer(IntegerRank::Char, true); break;
+        case TypeSpecKind::ShortInteger: result = Type::integer(IntegerRank::Short, false); break;
+        case TypeSpecKind::UnsignedShortInteger: result = Type::integer(IntegerRank::Short, true); break;
+        case TypeSpecKind::Integer: result = Type::integer(IntegerRank::Int, false); break;
+        case TypeSpecKind::UnsignedInteger: result = Type::integer(IntegerRank::Int, true); break;
+        case TypeSpecKind::LongInteger: result = Type::integer(IntegerRank::Long, false); break;
+        case TypeSpecKind::UnsignedLongInteger: result = Type::integer(IntegerRank::Long, true); break;
+        case TypeSpecKind::LongLongInteger: result = Type::integer(IntegerRank::LongLong, false); break;
+        case TypeSpecKind::UnsignedLongLongInteger: result = Type::integer(IntegerRank::LongLong, true); break;
+        case TypeSpecKind::Float: result = Type::floating(FloatingRank::Float); break;
+        case TypeSpecKind::Decimal: result = Type::floating(FloatingRank::Double); break;
+        case TypeSpecKind::LongDecimal: result = Type::floating(FloatingRank::LongDouble); break;
         case TypeSpecKind::Pointer:
-            if (spec.pointee) return Type::pointerTo(resolveTypeSpec(*spec.pointee));
-            return Type::pointerTo(Type::voidType());
+            result = Type::pointerTo(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType());
+            break;
         case TypeSpecKind::Array:
-            if (spec.pointee) return Type::arrayOf(resolveTypeSpec(*spec.pointee), spec.arrayBound);
-            return Type::arrayOf(Type::voidType(), spec.arrayBound);
-        case TypeSpecKind::Structure:
-            return Type::structure(spec.tag);
-        case TypeSpecKind::Union:
-            return Type::unionType(spec.tag);
-        case TypeSpecKind::Enumeration:
-            return Type::enumeration(spec.tag);
+            result = Type::arrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
+                                   spec.arrayBound);
+            break;
+        case TypeSpecKind::Structure: result = Type::structure(spec.tag); break;
+        case TypeSpecKind::Union: result = Type::unionType(spec.tag); break;
+        case TypeSpecKind::Enumeration: result = Type::enumeration(spec.tag); break;
     }
-    return Type::voidType();
+
+    TypeQualifiers q = semanticQualifiers(spec.qualifiers);
+    if (result.isArray() && result.elementType) {
+        // C's source-level const/volatile array declarations qualify the
+        // element type. Keep illegal restrict/_Atomic qualification visible
+        // on the array itself so validation can diagnose it.
+        Type element = *result.elementType;
+        if (q.isConst) element.qualifiers.isConst = true;
+        if (q.isVolatile) element.qualifiers.isVolatile = true;
+        result.elementType = std::make_shared<Type>(std::move(element));
+        result.qualifiers.isRestrict = q.isRestrict;
+        result.qualifiers.isAtomic = q.isAtomic;
+    } else {
+        result.qualifiers = q;
+    }
+    return result;
+}
+
+bool Sema::validateTypeQualifiers(const Type &type, int line, std::vector<Diag> &diags) const {
+    bool valid = true;
+
+    if (type.qualifiers.isRestrict) {
+        if (!type.isPointer() || !type.elementType ||
+            !isObjectPointee(stripTopQualifiers(*type.elementType))) {
+            diags.push_back({24, line,
+                "restricted may qualify only a pointer to an object type; " +
+                typeToString(type) + " does not satisfy that C constraint."});
+            valid = false;
+        }
+    }
+
+    if (type.qualifiers.isAtomic &&
+        (type.kind == TypeKind::Void || type.kind == TypeKind::Array ||
+         type.kind == TypeKind::Function)) {
+        diags.push_back({24, line,
+            "atomic cannot qualify " + typeToString(stripTopQualifiers(type)) +
+            " because C does not permit _Atomic on void, array, or function types in this source surface."});
+        valid = false;
+    }
+
+    if (type.isPointer() && type.elementType) {
+        valid = validateTypeQualifiers(*type.elementType, line, diags) && valid;
+    } else if (type.isArray() && type.elementType) {
+        valid = validateTypeQualifiers(*type.elementType, line, diags) && valid;
+    } else if (type.isFunction()) {
+        if (hasAnyQualifiers(type.qualifiers)) {
+            diags.push_back({24, line, "A function type cannot carry PlainSpeak type qualifiers."});
+            valid = false;
+        }
+        if (type.returnType) valid = validateTypeQualifiers(*type.returnType, line, diags) && valid;
+        for (const Type &param : type.parameterTypes) {
+            valid = validateTypeQualifiers(param, line, diags) && valid;
+        }
+    }
+    return valid;
 }
 
 bool Sema::isCompleteObjectType(const Type &type) const {
@@ -331,6 +449,33 @@ bool Sema::isCompleteObjectType(const Type &type) const {
     return type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
            type.kind == TypeKind::Floating || type.kind == TypeKind::Pointer ||
            type.kind == TypeKind::BitInt;
+}
+
+bool Sema::hasConstSubobject(const Type &type) const {
+    if (type.qualifiers.isConst) return true;
+    if (type.isArray() && type.elementType) return hasConstSubobject(*type.elementType);
+
+    const StructureInfo *info = nullptr;
+    if (type.kind == TypeKind::Structure) {
+        auto it = structureTable_.find(type.tag);
+        if (it != structureTable_.end()) info = &it->second;
+    } else if (type.kind == TypeKind::Union) {
+        auto it = unionTable_.find(type.tag);
+        if (it != unionTable_.end()) info = &it->second;
+    }
+    if (!info || !info->complete) return false;
+    for (const auto &field : info->fields) {
+        if (hasConstSubobject(field.type)) return true;
+    }
+    return false;
+}
+
+bool Sema::isModifiableObjectType(const Type &type) const {
+    if (type.isArray() || type.qualifiers.isConst) return false;
+    if (type.kind == TypeKind::Structure || type.kind == TypeKind::Union) {
+        return !hasConstSubobject(type);
+    }
+    return type.kind != TypeKind::Void && type.kind != TypeKind::Function;
 }
 
 bool Sema::containsFlexibleArray(const Type &type) const {
@@ -439,8 +584,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({code, line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
                 return Type::number();
             }
+            if (aggregate.qualifiers.isAtomic) {
+                diags.push_back({24, line, "Member access on atomic " + kind + " \"" + aggregate.tag +
+                                           "\" is undefined in C; use whole-object atomic operations instead."});
+            }
             if (field->bitWidth && analysis_) analysis_->bitFieldExprs.insert(e);
-            return field->type;
+            return memberTypeWithAggregateQualifiers(field->type, aggregate.qualifiers);
         }
         else if constexpr (std::is_same_v<T, ElementExpr>) {
             Type index = inferExpr(node.index, line, diags);
@@ -513,7 +662,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 }
                 bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
                 bool relational = node.op == BinOp::Gt || node.op == BinOp::Lt || node.op == BinOp::Ge || node.op == BinOp::Le;
-                if (equality && lhsPointer && rhsPointer && pointersCompatible(lhsValue, rhsValue)) return Type::number();
+                if (equality && lhsPointer && rhsPointer && pointersComparable(lhsValue, rhsValue)) return Type::number();
                 if (relational && lhsPointer && rhsPointer && hasCompletePointee(lhsValue) && hasCompletePointee(rhsValue) &&
                     lhsValue.elementType && rhsValue.elementType && *lhsValue.elementType == *rhsValue.elementType) return Type::number();
                 diags.push_back({16, line, "This pointer operation needs compatible object-pointer operands."});
@@ -539,13 +688,14 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return Type::number();
             }
             if (node.op == BinOp::And || node.op == BinOp::Or) {
-                if (lhs != Type::number() || rhs != Type::number()) {
+                if (lhsValue != Type::number() || rhsValue != Type::number()) {
                     diags.push_back({2, line, "I can't do logical " + std::string(node.op == BinOp::And ? "and" : "or") +
                                              " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
                 }
                 return Type::number();
             }
-            if (isList(lhs) || isList(rhs) || (lhs != rhs && !(isNumeric(lhs) && isNumeric(rhs)))) {
+            if (isList(lhsValue) || isList(rhsValue) ||
+                (lhsValue != rhsValue && !(isNumeric(lhsValue) && isNumeric(rhsValue)))) {
                 diags.push_back({4, line, "I can't compare a " + typeToString(lhs) + " with a " + typeToString(rhs) +
                                          ". Both sides must be comparable scalar values."});
             }
@@ -553,11 +703,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, UnaryExpr>) {
             Type rhs = inferExpr(node.rhs, line, diags);
+            Type value = decayArray(rhs);
             if (node.op == UnaryOp::Neg) {
-                if (!isNumeric(rhs)) diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
-                return rhs;
+                if (!isNumeric(value)) diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
+                return value;
             }
-            if (rhs != Type::number()) {
+            if (value != Type::number()) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
             }
             return Type::number();
@@ -606,6 +757,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, SizeOfTypeExpr>) {
             Type queried = resolveTypeSpec(node.type);
+            validateTypeQualifiers(queried, line, diags);
             if (analysis_) analysis_->typeOperands[e] = queried;
             if (!isCompleteObjectType(queried)) {
                 diags.push_back({12, line, "I can't ask for the size of " + typeToString(queried) + " because it is not a complete C object type."});
@@ -624,6 +776,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
             Type queried = resolveTypeSpec(node.type);
+            validateTypeQualifiers(queried, line, diags);
             if (analysis_) analysis_->typeOperands[e] = queried;
             if (!isCompleteObjectType(queried)) {
                 diags.push_back({12, line, "I can't ask for the alignment of " + typeToString(queried) + " because it is not a complete C object type."});
@@ -662,13 +815,19 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, SetStmt>) {
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (Symbol *existing = findVar(node.name)) {
+                bool modifiable = !existing->nativeObject || isModifiableObjectType(existing->type);
+                if (existing->nativeObject && !modifiable) {
+                    diags.push_back({24, s->line, "I can't Set \"" + node.name +
+                                              "\" because its native type " + typeToString(existing->type) +
+                                              " is not a modifiable C object type."});
+                }
                 bool ok = existing->nativeObject ? assignableTo(existing->type, exprType)
                                                  : existing->type == exprType;
-                if (!ok) {
+                if (modifiable && !ok) {
                     diags.push_back({3, s->line, "I can't set \"" + node.name + "\", which is a " +
                                              typeToString(existing->type) + ", to a " + typeToString(exprType) + "."});
                 }
-                if (existing->nativeObject && analysis_) analysis_->nativeMutationTargets.insert(s);
+                if (existing->nativeObject && modifiable && analysis_) analysis_->nativeMutationTargets.insert(s);
             } else if (exprType.isPointer() || exprType.isArray() || exprType.isAggregate()) {
                 diags.push_back({13, s->line, "Native pointers, arrays, and aggregates need explicit declarations; inferred Set cannot create them."});
             } else {
@@ -699,6 +858,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
 
                 if (field.flexibleArray) {
                     Type elementType = resolveTypeSpec(field.type);
+                    if (!validateTypeQualifiers(elementType, s->line, diags)) valid = false;
                     if (field.name.empty()) {
                         diags.push_back({23, s->line, "A flexible array member must have a name."});
                         valid = false;
@@ -720,7 +880,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
 
                 Type fieldType = resolveTypeSpec(field.type);
+                if (!validateTypeQualifiers(fieldType, s->line, diags)) valid = false;
                 if (field.bitWidth) {
+                    if (fieldType.qualifiers.isAtomic) {
+                        diags.push_back({24, s->line, "Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object."});
+                        valid = false;
+                    }
                     auto limit = bitFieldWidthLimit(fieldType);
                     if (!limit) {
                         diags.push_back({23, s->line, "Bit-field \"" +
@@ -800,13 +965,19 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                               "\" is not allowed in a Union; C flexible array members are structure-only."});
                     valid = false;
                     Type elementType = resolveTypeSpec(field.type);
+                    if (!validateTypeQualifiers(elementType, s->line, diags)) valid = false;
                     fields.push_back(AggregateFieldInfo{
                         field.name, Type::incompleteArrayOf(std::move(elementType)), std::nullopt, true});
                     continue;
                 }
 
                 Type fieldType = resolveTypeSpec(field.type);
+                if (!validateTypeQualifiers(fieldType, s->line, diags)) valid = false;
                 if (field.bitWidth) {
+                    if (fieldType.qualifiers.isAtomic) {
+                        diags.push_back({24, s->line, "Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object."});
+                        valid = false;
+                    }
                     auto limit = bitFieldWidthLimit(fieldType);
                     if (!limit) {
                         diags.push_back({23, s->line, "Bit-field \"" +
@@ -922,6 +1093,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type declared = resolveTypeSpec(node.type);
             if (analysis_) analysis_->declarationTypes[s] = declared;
+            if (!validateTypeQualifiers(declared, s->line, diags)) return;
             if (declared.kind == TypeKind::Void) {
                 diags.push_back({13, s->line, "I can't Declare \"" + node.name + "\" as void because void is not an object type."});
                 return;
@@ -936,6 +1108,15 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 return;
             }
             bool created = declareVar(node.name, declared, true, s->line, diags);
+            if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer) {
+                diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
+                return;
+            }
+            if (node.aggregateInitializer &&
+                (hasConstSubobject(declared) || declared.qualifiers.isAtomic)) {
+                diags.push_back({24, s->line, "This aggregate initializer requires post-declaration member stores, which are not valid for constant subobjects or atomic aggregate objects."});
+                return;
+            }
             if (node.initializer) {
                 std::size_t diagnosticCount = diags.size();
                 Type init = inferExpr(node.initializer, s->line, diags);
@@ -1082,6 +1263,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({15, s->line, "Set value at needs a pointer target, not a " + typeToString(pointer) + "."});
             } else if (pointer.elementType->kind == TypeKind::Void) {
                 diags.push_back({15, s->line, "I can't store a value through a pointer to void without a concrete pointee type."});
+            } else if (!isModifiableObjectType(*pointer.elementType)) {
+                diags.push_back({24, s->line, "I can't store through " + typeToString(pointer) +
+                                          " because its pointed-to object type is not modifiable."});
             } else if (!assignableTo(*pointer.elementType, value)) {
                 diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " through a " + typeToString(pointer) + "."});
             }
@@ -1108,12 +1292,20 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 if (!info || !info->complete) {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag +
                                                 "\" is incomplete here, so its members cannot be stored."});
+                } else if (aggregate.qualifiers.isAtomic) {
+                    diags.push_back({24, s->line, "Member access on atomic " + kind + " \"" + aggregate.tag +
+                                              "\" is undefined in C; use whole-object atomic operations instead."});
                 } else if (const AggregateFieldInfo *field = findAggregateField(base, node.name)) {
-                    if (field->type.isArray()) {
+                    Type effectiveField = memberTypeWithAggregateQualifiers(field->type, aggregate.qualifiers);
+                    if (effectiveField.isArray()) {
                         diags.push_back({code, s->line, "Whole-array aggregate member assignment is not implemented yet."});
-                    } else if (!assignableTo(field->type, value)) {
+                    } else if (!isModifiableObjectType(effectiveField)) {
+                        diags.push_back({24, s->line, "I can't store in member \"" + node.name +
+                                                  "\" because its effective type " + typeToString(effectiveField) +
+                                                  " is not a modifiable C object type."});
+                    } else if (!assignableTo(effectiveField, value)) {
                         diags.push_back({code, s->line, "I can't store a " + typeToString(value) + " in member \"" +
-                                                   node.name + "\", which is a " + typeToString(field->type) + "."});
+                                                   node.name + "\", which is a " + typeToString(effectiveField) + "."});
                     }
                 } else {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
@@ -1133,6 +1325,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({17, s->line, "I can't store an element through a pointer to void."});
             } else if (base.elementType->isArray()) {
                 diags.push_back({17, s->line, "Whole-array element assignment is not implemented yet."});
+            } else if (!isModifiableObjectType(*base.elementType)) {
+                diags.push_back({24, s->line, "I can't store an element through " + typeToString(base) +
+                                          " because its element type is not modifiable."});
             } else if (!assignableTo(*base.elementType, value)) {
                 diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " as an element of " + typeToString(base) + "."});
             }
@@ -1141,7 +1336,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             auto [symbol, found] = lookupVar(node.varName, s->line, diags);
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (found && symbol.nativeObject) {
-                if (symbol.type.isPointer()) {
+                bool modifiable = isModifiableObjectType(symbol.type);
+                if (!modifiable) {
+                    diags.push_back({24, s->line, "I can't change \"" + node.varName +
+                                              "\" with Add/Subtract because its native type " +
+                                              typeToString(symbol.type) + " is not modifiable."});
+                } else if (symbol.type.isPointer()) {
                     if (!hasCompletePointee(symbol.type) || !isIntegralType(exprType)) {
                         diags.push_back({16, s->line, "Changing a pointer with Add/Subtract needs a complete object pointer and an integer offset."});
                     }
@@ -1149,7 +1349,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({3, s->line, "I can only change native arithmetic objects or object pointers with Add/Subtract; \"" +
                                              node.varName + "\" is a " + typeToString(symbol.type) + "."});
                 }
-                if (analysis_) analysis_->nativeMutationTargets.insert(s);
+                if (modifiable && analysis_) analysis_->nativeMutationTargets.insert(s);
             } else if (found && symbol.type != exprType) {
                 diags.push_back({3, s->line, std::string(std::is_same_v<T, AddStmt> ? "I can't add a " : "I can't subtract a ") +
                                          typeToString(exprType) + (std::is_same_v<T, AddStmt> ? " to \"" : " from \"") +

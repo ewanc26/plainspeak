@@ -583,26 +583,50 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
 }
 
 TypeSpec Parser::parseTypeSpec() {
+    TypeSpecQualifiers qualifiers;
+    while (true) {
+        if (checkWord("constant")) {
+            qualifiers.isConst = true;
+            advance();
+        } else if (checkWord("volatile")) {
+            qualifiers.isVolatile = true;
+            advance();
+        } else if (checkWord("restricted")) {
+            qualifiers.isRestrict = true;
+            advance();
+        } else if (checkWord("atomic")) {
+            qualifiers.isAtomic = true;
+            advance();
+        } else {
+            break;
+        }
+    }
+
+    auto finish = [&](TypeSpec type) {
+        type.qualifiers = qualifiers;
+        return type;
+    };
+
     if (checkWord("enumeration")) {
         advance();
         std::string tag = expectIdentName();
         TypeSpec type{TypeSpecKind::Enumeration};
         type.tag = std::move(tag);
-        return type;
+        return finish(std::move(type));
     }
     if (checkWord("union")) {
         advance();
         std::string tag = expectIdentName();
         TypeSpec type{TypeSpecKind::Union};
         type.tag = std::move(tag);
-        return type;
+        return finish(std::move(type));
     }
     if (checkWord("structure")) {
         advance();
         std::string tag = expectIdentName();
         TypeSpec type{TypeSpecKind::Structure};
         type.tag = std::move(tag);
-        return type;
+        return finish(std::move(type));
     }
     if (checkWord("array") && checkWordAt(1, "of")) {
         advance(); advance();
@@ -613,51 +637,51 @@ TypeSpec Parser::parseTypeSpec() {
             error("a fixed native array length must be a positive whole-number literal");
         }
         std::size_t bound = static_cast<std::size_t>(advance().num);
-        return TypeSpec{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element)), bound};
+        return finish(TypeSpec{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element)), bound});
     }
     if (checkWord("pointer") && checkWordAt(1, "to")) {
         advance(); advance();
         TypeSpec pointee = parseTypeSpec();
-        return TypeSpec{TypeSpecKind::Pointer, std::make_shared<TypeSpec>(std::move(pointee))};
+        return finish(TypeSpec{TypeSpecKind::Pointer, std::make_shared<TypeSpec>(std::move(pointee))});
     }
-    if (checkWord("void")) { advance(); return TypeSpec{TypeSpecKind::Void}; }
-    if (checkWord("boolean")) { advance(); return TypeSpec{TypeSpecKind::Boolean}; }
-    if (checkWord("character")) { advance(); return TypeSpec{TypeSpecKind::Character}; }
+    if (checkWord("void")) { advance(); return finish(TypeSpec{TypeSpecKind::Void}); }
+    if (checkWord("boolean")) { advance(); return finish(TypeSpec{TypeSpecKind::Boolean}); }
+    if (checkWord("character")) { advance(); return finish(TypeSpec{TypeSpecKind::Character}); }
     if (checkWord("signed") && checkWordAt(1, "character")) {
-        advance(); advance(); return TypeSpec{TypeSpecKind::SignedCharacter};
+        advance(); advance(); return finish(TypeSpec{TypeSpecKind::SignedCharacter});
     }
     if (checkWord("unsigned") && checkWordAt(1, "character")) {
-        advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedCharacter};
+        advance(); advance(); return finish(TypeSpec{TypeSpecKind::UnsignedCharacter});
     }
     if (checkWord("short") && checkWordAt(1, "integer")) {
-        advance(); advance(); return TypeSpec{TypeSpecKind::ShortInteger};
+        advance(); advance(); return finish(TypeSpec{TypeSpecKind::ShortInteger});
     }
     if (checkWord("unsigned") && checkWordAt(1, "short") && checkWordAt(2, "integer")) {
-        advance(); advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedShortInteger};
+        advance(); advance(); advance(); return finish(TypeSpec{TypeSpecKind::UnsignedShortInteger});
     }
-    if (checkWord("integer")) { advance(); return TypeSpec{TypeSpecKind::Integer}; }
+    if (checkWord("integer")) { advance(); return finish(TypeSpec{TypeSpecKind::Integer}); }
     if (checkWord("unsigned") && checkWordAt(1, "integer")) {
-        advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedInteger};
+        advance(); advance(); return finish(TypeSpec{TypeSpecKind::UnsignedInteger});
     }
     if (checkWord("long") && checkWordAt(1, "long") && checkWordAt(2, "integer")) {
-        advance(); advance(); advance(); return TypeSpec{TypeSpecKind::LongLongInteger};
+        advance(); advance(); advance(); return finish(TypeSpec{TypeSpecKind::LongLongInteger});
     }
     if (checkWord("unsigned") && checkWordAt(1, "long") && checkWordAt(2, "long") && checkWordAt(3, "integer")) {
-        advance(); advance(); advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedLongLongInteger};
+        advance(); advance(); advance(); advance(); return finish(TypeSpec{TypeSpecKind::UnsignedLongLongInteger});
     }
     if (checkWord("long") && checkWordAt(1, "integer")) {
-        advance(); advance(); return TypeSpec{TypeSpecKind::LongInteger};
+        advance(); advance(); return finish(TypeSpec{TypeSpecKind::LongInteger});
     }
     if (checkWord("unsigned") && checkWordAt(1, "long") && checkWordAt(2, "integer")) {
-        advance(); advance(); advance(); return TypeSpec{TypeSpecKind::UnsignedLongInteger};
+        advance(); advance(); advance(); return finish(TypeSpec{TypeSpecKind::UnsignedLongInteger});
     }
-    if (checkWord("float")) { advance(); return TypeSpec{TypeSpecKind::Float}; }
-    if (checkWord("decimal")) { advance(); return TypeSpec{TypeSpecKind::Decimal}; }
+    if (checkWord("float")) { advance(); return finish(TypeSpec{TypeSpecKind::Float}); }
+    if (checkWord("decimal")) { advance(); return finish(TypeSpec{TypeSpecKind::Decimal}); }
     if (checkWord("long") && checkWordAt(1, "decimal")) {
-        advance(); advance(); return TypeSpec{TypeSpecKind::LongDecimal};
+        advance(); advance(); return finish(TypeSpec{TypeSpecKind::LongDecimal});
     }
 
-    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"structure point\", \"union value\", \"enumeration color\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
+    error("expected a C type such as \"constant integer\", \"pointer to volatile integer\", \"restricted pointer to integer\", \"atomic integer\", \"array of integer with length 4\", \"structure point\", or \"enumeration color\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }

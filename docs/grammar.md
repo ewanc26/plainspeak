@@ -126,12 +126,14 @@ CScalarType ::= "void"
               | "decimal"
               | "long" "decimal"
 
-CType ::= CScalarType
-        | "pointer" "to" CType
-        | "array" "of" CType "with" "length" NUMBER
-        | "structure" IDENT
-        | "union" IDENT
-        | "enumeration" IDENT
+TypeQualifier ::= "constant" | "volatile" | "restricted" | "atomic"
+CType ::= TypeQualifier* CCoreType
+CCoreType ::= CScalarType
+            | "pointer" "to" CType
+            | "array" "of" CType "with" "length" NUMBER
+            | "structure" IDENT
+            | "union" IDENT
+            | "enumeration" IDENT
 ```
 
 The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` remains distinct from both signed and unsigned character types, matching C.
@@ -143,6 +145,31 @@ Declare p as pointer to integer. Declare pp as pointer to pointer to integer.
 ```
 
 A `void` type may be the pointee of a pointer, but a standalone object or array element cannot be `void`. Fixed array bounds are positive whole-number literals. Arrays and pointers may nest recursively, so `pointer to array of integer with length 4` and `array of pointer to integer with length 4` are distinct types and lower to distinct C declarators.
+
+## Native type qualifiers
+
+PlainSpeak exposes C's native type qualifiers with recursive prose spellings:
+
+```text
+Declare limit as constant integer.
+Declare observed as volatile integer.
+Declare cursor as restricted pointer to integer.
+Declare shared as atomic integer.
+Declare p as pointer to constant integer.
+Declare q as constant pointer to integer.
+```
+
+The words map directly to C `const`, `volatile`, `restrict`, and `_Atomic`. Qualifiers apply to the **type immediately following them**, so `constant pointer to integer` is a const-qualified pointer while `pointer to constant integer` is a mutable pointer to const-qualified integer. Multiple qualifiers may be combined; repeated qualifiers are idempotent and the AST printer uses the canonical order `constant volatile restricted atomic`.
+
+Reading a qualified scalar follows C value conversion: top-level qualifiers do not become qualifiers on arithmetic results. Pointer conversions may add pointee qualification, such as `pointer to integer` to `pointer to constant integer`, but may not discard it. Nested pointer qualification remains strict, so the unsafe C-style `T **` to `const T **` conversion is not accepted merely because the innermost object can be qualified.
+
+`constant` is enforced through every current native mutation surface: direct `Set`, `Add`/`Subtract`, pointer stores, array element stores and structure/union member stores. Qualifiers on an aggregate propagate to member access as C requires. A const pointer may still modify a mutable pointee; a pointer to const may not.
+
+`restricted` is accepted only on pointers to object types. `atomic` lowers to C11 `_Atomic` and is currently available for complete non-array object types and pointers. Ordinary scalar reads/writes therefore use the backend compiler's real C atomic semantics rather than a PlainSpeak lock or wrapper. Direct member access on an atomic structure/union is rejected because C defines that access as undefined; use whole-object atomic operations when that surface lands. Atomic bit-fields are also rejected by the portable backend.
+
+For array spellings, `constant array of T ...` and `volatile array of T ...` qualify the element type, matching C's array qualification rules.
+
+One lowering boundary remains: direct top-level native objects are declared at C file scope while most PlainSpeak initializers execute later in `main`. A top-level const object with a runtime `with value` initializer is therefore rejected until the constant-initializer tranche can emit that initializer at file scope. Likewise, aggregate initializer forms that currently lower as zero-initialize-then-member-store are rejected when const subobjects or atomic aggregate objects would make those post-declaration stores invalid. Local scalar/pointer const initialization is already emitted directly in the C declaration.
 
 ## Native objects and pointers
 
@@ -188,7 +215,7 @@ Declare values as array of integer with length 4. Declare p as pointer to intege
 
 `pointer plus integer`, `integer plus pointer`, and `pointer minus integer` use C element-scaled pointer arithmetic for complete object pointers. Subtracting two pointers to the same element type produces the current PlainSpeak whole-number result. Equality comparison accepts compatible object pointers (including the existing object-pointer/`void *` compatibility); relational comparison requires the same complete element type. `Add` and `Subtract` on an explicitly declared object pointer lower to C `+=` and `-=` with an integer offset.
 
-Whole-array assignment remains intentionally unavailable. Fixed arrays can now be initialized positionally or with zero-based element designators at declaration time. Variable-length arrays, pointer truthiness, null pointers, function pointers, qualifiers and allocated storage remain later work.
+Whole-array assignment remains intentionally unavailable. Fixed arrays can now be initialized positionally or with zero-based element designators at declaration time. Variable-length arrays, pointer truthiness, null pointers, function pointers and allocated storage remain later work.
 
 ## Native structures and members
 
@@ -397,13 +424,13 @@ Legacy PlainSpeak values remain:
 
 Explicit `Declare` objects instead use native C storage for the `CType` written in source. These two representations are intentionally distinct. Reading a native arithmetic object in a legacy expression boxes its current value; assigning a legacy numeric expression into a native arithmetic object converts it back to that object's C type.
 
-The compiler's structural semantic type system also represents functions, qualifiers, aggregates, enums, C23 bit-precise integers and null pointers as foundations for later syntax. Fixed arrays are now source-spellable native objects; variable-length and incomplete-array source forms remain pending. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
+The compiler's structural semantic type system also represents functions, qualified recursive native types, aggregates, enums, C23 bit-precise integers and null pointers. Qualifiers are now source-spellable; representation of the remaining shapes is still only a foundation until their syntax/lowering lands. Fixed arrays are now source-spellable native objects; variable-length and incomplete-array source forms remain pending. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
 
 ## Known gaps
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
-- Variable-length arrays, nested aggregate initializers, compound literals, anonymous aggregate members, enum constant-expression/underlying-type extensions, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Variable-length arrays, nested aggregate initializers, compound literals, anonymous aggregate members, enum constant-expression/underlying-type extensions, storage/linkage specifiers, allocation and C23 pointer additions remain pending. Atomic memory-order APIs, fences and lock-free queries are also still pending beyond the native `atomic` object foundation.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.

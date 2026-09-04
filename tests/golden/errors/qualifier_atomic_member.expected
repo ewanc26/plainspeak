@@ -1,0 +1,1 @@
+error[E0024]: Member access on atomic Structure "point" is undefined in C; use whole-object atomic operations instead.

@@ -20,7 +20,20 @@ Type typeOperand(const Expr *e, const AnalysisResult &analysis) {
     return it == analysis.typeOperands.end() ? Type::number() : it->second;
 }
 
-std::string emitCBaseType(const Type &type) {
+std::string emitQualifierWords(const TypeQualifiers &q) {
+    std::string out;
+    auto add = [&](const char *word) {
+        if (!out.empty()) out += " ";
+        out += word;
+    };
+    if (q.isConst) add("const");
+    if (q.isVolatile) add("volatile");
+    if (q.isRestrict) add("restrict");
+    if (q.isAtomic) add("_Atomic");
+    return out;
+}
+
+std::string emitCUnqualifiedBaseType(const Type &type) {
     if (type.kind == TypeKind::Boolean) return "_Bool";
     if (type.kind == TypeKind::Integer) {
         if (type.integerRank == IntegerRank::Char) {
@@ -49,17 +62,33 @@ std::string emitCBaseType(const Type &type) {
     return "long";
 }
 
+std::string emitCBaseType(const Type &type) {
+    Type unqualified = type;
+    unqualified.qualifiers = {};
+    std::string base = emitCUnqualifiedBaseType(unqualified);
+    std::string qualifiers = emitQualifierWords(type.qualifiers);
+    return qualifiers.empty() ? base : qualifiers + " " + base;
+}
+
 std::string emitCDeclarator(const Type &type, const std::string &name) {
     if (type.kind == TypeKind::Array && type.elementType) {
         std::string bound = type.arrayBound ? std::to_string(*type.arrayBound) : "";
         return emitCDeclarator(*type.elementType, name + "[" + bound + "]");
     }
     if (type.kind == TypeKind::Pointer && type.elementType) {
+        std::string pointerPart = "*";
+        std::string qualifiers = emitQualifierWords(type.qualifiers);
+        if (!qualifiers.empty()) pointerPart += " " + qualifiers;
+        if (!name.empty()) {
+            if (!qualifiers.empty()) pointerPart += " ";
+            pointerPart += name;
+        }
+
         std::string pointerName;
         if (type.elementType->kind == TypeKind::Array || type.elementType->kind == TypeKind::Function) {
-            pointerName = "(*" + name + ")";
+            pointerName = "(" + pointerPart + ")";
         } else {
-            pointerName = "*" + name;
+            pointerName = pointerPart;
         }
         return emitCDeclarator(*type.elementType, pointerName);
     }

@@ -1,0 +1,1 @@
+error[E0024]: Atomic bit-fields are not supported by the portable C backend; use a non-atomic bit-field or a separate atomic object.

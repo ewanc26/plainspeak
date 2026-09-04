@@ -1,0 +1,1 @@
+Structure point: Field x as integer. End structure. Declare p as constant structure point with members x as 1 done.

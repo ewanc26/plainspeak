@@ -5,36 +5,46 @@
 namespace {
 
 std::string printTypeSpec(const TypeSpec &type) {
+    std::string prefix;
+    if (type.qualifiers.isConst) prefix += "constant ";
+    if (type.qualifiers.isVolatile) prefix += "volatile ";
+    if (type.qualifiers.isRestrict) prefix += "restricted ";
+    if (type.qualifiers.isAtomic) prefix += "atomic ";
+
+    std::string body;
     switch (type.kind) {
-        case TypeSpecKind::Void: return "void";
-        case TypeSpecKind::Boolean: return "boolean";
-        case TypeSpecKind::Character: return "character";
-        case TypeSpecKind::SignedCharacter: return "signed character";
-        case TypeSpecKind::UnsignedCharacter: return "unsigned character";
-        case TypeSpecKind::ShortInteger: return "short integer";
-        case TypeSpecKind::UnsignedShortInteger: return "unsigned short integer";
-        case TypeSpecKind::Integer: return "integer";
-        case TypeSpecKind::UnsignedInteger: return "unsigned integer";
-        case TypeSpecKind::LongInteger: return "long integer";
-        case TypeSpecKind::UnsignedLongInteger: return "unsigned long integer";
-        case TypeSpecKind::LongLongInteger: return "long long integer";
-        case TypeSpecKind::UnsignedLongLongInteger: return "unsigned long long integer";
-        case TypeSpecKind::Float: return "float";
-        case TypeSpecKind::Decimal: return "decimal";
-        case TypeSpecKind::LongDecimal: return "long decimal";
+        case TypeSpecKind::Void: body = "void"; break;
+        case TypeSpecKind::Boolean: body = "boolean"; break;
+        case TypeSpecKind::Character: body = "character"; break;
+        case TypeSpecKind::SignedCharacter: body = "signed character"; break;
+        case TypeSpecKind::UnsignedCharacter: body = "unsigned character"; break;
+        case TypeSpecKind::ShortInteger: body = "short integer"; break;
+        case TypeSpecKind::UnsignedShortInteger: body = "unsigned short integer"; break;
+        case TypeSpecKind::Integer: body = "integer"; break;
+        case TypeSpecKind::UnsignedInteger: body = "unsigned integer"; break;
+        case TypeSpecKind::LongInteger: body = "long integer"; break;
+        case TypeSpecKind::UnsignedLongInteger: body = "unsigned long integer"; break;
+        case TypeSpecKind::LongLongInteger: body = "long long integer"; break;
+        case TypeSpecKind::UnsignedLongLongInteger: body = "unsigned long long integer"; break;
+        case TypeSpecKind::Float: body = "float"; break;
+        case TypeSpecKind::Decimal: body = "decimal"; break;
+        case TypeSpecKind::LongDecimal: body = "long decimal"; break;
         case TypeSpecKind::Pointer:
-            return std::string("pointer to ") + (type.pointee ? printTypeSpec(*type.pointee) : "void");
+            body = std::string("pointer to ") + (type.pointee ? printTypeSpec(*type.pointee) : "void");
+            break;
         case TypeSpecKind::Array:
-            return std::string("array of ") + (type.pointee ? printTypeSpec(*type.pointee) : "void") +
+            body = std::string("array of ") + (type.pointee ? printTypeSpec(*type.pointee) : "void") +
                    " with length " + std::to_string(type.arrayBound);
+            break;
         case TypeSpecKind::Structure:
-            return "structure " + type.tag;
+            body = "structure " + type.tag; break;
         case TypeSpecKind::Union:
-            return "union " + type.tag;
+            body = "union " + type.tag; break;
         case TypeSpecKind::Enumeration:
-            return "enumeration " + type.tag;
+            body = "enumeration " + type.tag; break;
     }
-    return "<unknown type>";
+    if (body.empty()) body = "<unknown type>";
+    return prefix + body;
 }
 
 std::string printExpr(const Expr *e) {

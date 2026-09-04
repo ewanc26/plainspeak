@@ -1,0 +1,1 @@
+error[E0024]: A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first.
