@@ -125,6 +125,16 @@ Stmt *Parser::parseSet() {
         expectDot();
         return arena_.makeStmt(StoreThroughStmt{pointer, expr}, line);
     }
+    if (checkWord("element") && checkWordAt(1, "at")) {
+        advance(); advance();
+        Expr *index = parseExpr();
+        expectWord("in");
+        Expr *base = parseExpr();
+        expectWord("to");
+        Expr *expr = parseExpr();
+        expectDot();
+        return arena_.makeStmt(StoreElementStmt{index, base, expr}, line);
+    }
     std::string name = expectIdentName();
     expectWord("to");
     Expr *expr = parseExpr();
@@ -341,6 +351,17 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
 }
 
 TypeSpec Parser::parseTypeSpec() {
+    if (checkWord("array") && checkWordAt(1, "of")) {
+        advance(); advance();
+        TypeSpec element = parseTypeSpec();
+        expectWord("with");
+        expectWord("length");
+        if (peek().kind != TokKind::Number || peek().num <= 0) {
+            error("a fixed native array length must be a positive whole-number literal");
+        }
+        std::size_t bound = static_cast<std::size_t>(advance().num);
+        return TypeSpec{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element)), bound};
+    }
     if (checkWord("pointer") && checkWordAt(1, "to")) {
         advance(); advance();
         TypeSpec pointee = parseTypeSpec();
@@ -383,7 +404,7 @@ TypeSpec Parser::parseTypeSpec() {
         advance(); advance(); return TypeSpec{TypeSpecKind::LongDecimal};
     }
 
-    error("expected a C type such as \"integer\", \"pointer to integer\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
+    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }
@@ -545,6 +566,14 @@ Expr *Parser::parsePrimary() {
         else error("expected \"numbers\", \"decimals\", or \"strings\" after \"Empty list of\"");
         advance();
         return arena_.makeExpr(EmptyListExpr{elementKind}, line);
+    }
+    if (checkWord("element") && checkWordAt(1, "at")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *index = parseExpr();
+        expectWord("in");
+        Expr *base = parsePrimary();
+        return arena_.makeExpr(ElementExpr{index, base}, line);
     }
     if (checkWord("item") && checkWordAt(1, "at")) {
         int line = peek().line;
