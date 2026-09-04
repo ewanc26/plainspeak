@@ -1,0 +1,1 @@
+error[E0016]: Legacy Procedure parameters cannot carry native pointers, null pointer values, or arrays yet.

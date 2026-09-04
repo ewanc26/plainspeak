@@ -22,7 +22,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.floating-model` | foundation | Float/double/long-double ranks are structurally represented and native objects can use all three; the full C floating environment/model is still incomplete. |
 | `types.complex` | planned | Complex objects and arithmetic. |
 | `types.boolean` | foundation | Native `_Bool` objects are spellable; legacy true/false literals still preserve numeric compatibility. |
-| `types.nullptr` | foundation | C23 `null pointer` and `null pointer type` are source-spellable; the distinct scalar type has void-pointer size/alignment and native object storage, with pointer/bool conversions enforced semantically. |
+| `types.nullptr` | foundation | C23 `null pointer` and `null pointer type` are source-spellable; the distinct scalar type has void-pointer/character-pointer-compatible layout, C23 default initialization, native object storage, and supported null-constant/pointer/bool conversions enforced semantically. |
 | `types.object-representation` | foundation | Explicit scalar, pointer, fixed-array, tagged-structure, tagged-union and tagged-enumeration objects use real C storage, address, size and target layout; padding/effective-type rules and complete lifetime semantics remain pending. |
 | `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` preserve fixed-array extent and complete structure/union/enum layout as well as scalar/pointer layout; requested alignment and native `size_t` remain pending. |
 | `types.qualifiers` | foundation | Recursive `constant`/`volatile`/`restricted`/`atomic` source qualifiers lower to native C const/volatile/restrict/_Atomic, preserve pointer placement, enforce const modifiability and directional pointee qualification; full typedef/array compatibility details and constant-initializer lowering remain pending. |
@@ -71,7 +71,7 @@ Prefix/postfix increment and decrement are now source-spellable over native modi
 
 C99-style literal-zero null pointer constants and C23 `nullptr_t` values now participate in object-pointer initialization/assignment, typed calls/returns, equality, scalar conditions and conditional expressions. C23 `nullptr_t` remains a distinct semantic scalar type and lowers through a C11-compatible pointer-sized backend representation. This remains **foundation** because arbitrary zero-valued integer constant expressions and function-pointer null conversions await the constant-expression and function-pointer tranches.
 
-Explicit scalar conversions are now source-spellable and lower to native C casts across arithmetic↔arithmetic, object-pointer↔object-pointer, integer↔pointer and scalar→boolean categories. This remains **foundation** because cast-to-void discard expressions, function pointers, C23 nullptr-specific conversions, and exhaustive implementation-defined pointer/integer guarantees are still pending.
+Explicit scalar conversions are now source-spellable and lower to native C casts across arithmetic↔arithmetic, object-pointer↔object-pointer, integer↔pointer and scalar→boolean categories. C23 null-pointer constants may also explicitly convert to `null pointer type`, while `nullptr_t` converts to supported object pointers and boolean. This remains **foundation** because cast-to-void discard expressions, function pointers, general zero-valued integer constant-expression recognition, and exhaustive implementation-defined pointer/integer guarantees are still pending.
 
 ## Declarations, storage and linkage
 

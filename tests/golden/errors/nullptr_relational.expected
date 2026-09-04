@@ -1,0 +1,1 @@
+error[E0004]: Relational comparison cannot use null pointer values; C23 permits nullptr_t only in equality comparisons.

@@ -268,9 +268,22 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             if (prefix) return "(" + std::string(increment ? "++" : "--") + operand + ")";
             return "(" + operand + std::string(increment ? "++" : "--") + ")";
         } else if constexpr (std::is_same_v<T, ConditionalExpr>) {
-            return "((" + emitRawExpr(node.condition, analysis) + ") ? (" +
-                   emitRawExpr(node.whenTrue, analysis) + ") : (" +
-                   emitRawExpr(node.whenFalse, analysis) + "))";
+            std::string conditional = "((" + emitRawExpr(node.condition, analysis) + ") ? (" +
+                                      emitRawExpr(node.whenTrue, analysis) + ") : (" +
+                                      emitRawExpr(node.whenFalse, analysis) + "))";
+            // Two source nullptr_t branches have nullptr_t result type in C23.
+            // Keep bare zero for pointer-context null constants, but preserve
+            // the result type when the conditional itself is nullptr_t.
+            Type resultType = exprType(e, analysis);
+            if (resultType.kind == TypeKind::Nullptr) {
+                return "((PsNullptr)(" + conditional + "))";
+            }
+            if (resultType.isPointer() &&
+                (exprType(node.whenTrue, analysis).kind == TypeKind::Nullptr ||
+                 exprType(node.whenFalse, analysis).kind == TypeKind::Nullptr)) {
+                return "((" + emitCType(resultType) + ")(" + conditional + "))";
+            }
+            return conditional;
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return "((" + emitRawExpr(node.base, analysis) + ")[(" + emitRawExpr(node.index, analysis) + ")])";
         } else if constexpr (std::is_same_v<T, MemberExpr>) {
@@ -463,6 +476,9 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return std::string(fn) + "(" + emitBoxedExpr(node.lhs, analysis) + ", " +
                    emitBoxedExpr(node.rhs, analysis) + ")";
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            if (node.op == UnaryOp::Not && isCScalarType(exprType(node.rhs, analysis))) {
+                return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+            }
             if (node.op == UnaryOp::BitNot && isCArithmeticType(exprType(node.rhs, analysis))) {
                 return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
             }
@@ -533,6 +549,11 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 out << " = " << emitRawExpr(node.initializer, analysis);
             } else if (node.aggregateInitializer) {
                 out << " = {0}";
+            } else if (type.kind == TypeKind::Nullptr) {
+                // C23 default initialization of nullptr_t is initialization by
+                // nullptr. Static objects are already zero-initialized; this
+                // handles automatic declarations.
+                out << " = 0";
             }
             out << ";\n";
             if (node.aggregateInitializer) {

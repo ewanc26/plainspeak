@@ -169,8 +169,10 @@ bool isNullPointerLike(const Type &type, const Expr *expr) {
 }
 
 bool assignableExprTo(const Type &target, const Type &source, const Expr *expr) {
+    Type valueTarget = stripTopQualifiers(target);
     return assignableTo(target, source) ||
-           (stripTopQualifiers(target).isPointer() && isNullPointerLike(source, expr));
+           (valueTarget.isPointer() && isNullPointerLike(source, expr)) ||
+           (valueTarget.kind == TypeKind::Nullptr && isNullPointerConstantExpr(expr));
 }
 
 Type memberTypeWithAggregateQualifiers(Type member, const TypeQualifiers &aggregateQualifiers) {
@@ -326,12 +328,13 @@ bool isCastScalar(const Type &type) {
            value.kind == TypeKind::Nullptr;
 }
 
-bool canExplicitCast(const Type &target, const Type &source) {
+bool canExplicitCast(const Type &target, const Type &source, const Expr *sourceExpr) {
     Type to = stripTopQualifiers(target);
     Type from = decayArray(source);
 
     if (!isCastScalar(to) || !isCastScalar(from)) return false;
     if (to == from) return true;
+    if (to.kind == TypeKind::Nullptr) return isNullPointerConstantExpr(sourceExpr);
     if (to.kind == TypeKind::Boolean) return true;
     if (isCastArithmetic(to) && isCastArithmetic(from)) return true;
     if (to.kind == TypeKind::Pointer && (from.kind == TypeKind::Pointer || from.kind == TypeKind::Nullptr)) return true;
@@ -804,7 +807,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                                           typeToString(target) + " is incomplete here."});
                 return Type::number();
             }
-            if (!canExplicitCast(target, source)) {
+            if (!canExplicitCast(target, source, node.operand)) {
                 diags.push_back({26, line, "I can't explicitly convert " + typeToString(source) +
                                           " to " + typeToString(target) +
                                           "; C casts here require compatible scalar conversion categories."});
@@ -981,8 +984,17 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             bool lhsPointer = lhsValue.isPointer();
             bool rhsPointer = rhsValue.isPointer();
             bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
+            bool relational = node.op == BinOp::Gt || node.op == BinOp::Lt ||
+                              node.op == BinOp::Ge || node.op == BinOp::Le;
+            if (relational && (lhsValue.kind == TypeKind::Nullptr || rhsValue.kind == TypeKind::Nullptr)) {
+                diags.push_back({4, line,
+                    "Relational comparison cannot use null pointer values; C23 permits nullptr_t only in equality comparisons."});
+                return Type::integer(IntegerRank::Int);
+            }
             if (equality && lhsPointer && isNullPointerLike(rhsValue, node.rhs)) return Type::integer(IntegerRank::Int);
             if (equality && rhsPointer && isNullPointerLike(lhsValue, node.lhs)) return Type::integer(IntegerRank::Int);
+            if (equality && lhsValue.kind == TypeKind::Nullptr && isNullPointerConstantExpr(node.rhs)) return Type::integer(IntegerRank::Int);
+            if (equality && rhsValue.kind == TypeKind::Nullptr && isNullPointerConstantExpr(node.lhs)) return Type::integer(IntegerRank::Int);
             if (equality && lhsValue.kind == TypeKind::Nullptr && rhsValue.kind == TypeKind::Nullptr) return Type::integer(IntegerRank::Int);
             if (lhsPointer || rhsPointer) {
                 if (node.op == BinOp::Add) {
@@ -1000,7 +1012,6 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                     diags.push_back({16, line, "Pointer subtraction needs a complete object pointer minus an integer, or two pointers to the same element type."});
                     return Type::number();
                 }
-                bool relational = node.op == BinOp::Gt || node.op == BinOp::Lt || node.op == BinOp::Ge || node.op == BinOp::Le;
                 if (equality && lhsPointer && rhsPointer && pointersComparable(lhsValue, rhsValue)) return Type::number();
                 if (relational && lhsPointer && rhsPointer && hasCompletePointee(lhsValue) && hasCompletePointee(rhsValue) &&
                     lhsValue.elementType && rhsValue.elementType && *lhsValue.elementType == *rhsValue.elementType) return Type::number();
@@ -1226,7 +1237,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         if constexpr (std::is_same_v<T, SayStmt>) {
             Type type = inferExpr(node.expr, s->line, diags);
             if (type.isPointer() || type.kind == TypeKind::Nullptr || type.isArray() || type.isAggregate()) {
-                diags.push_back({16, s->line, "Say does not format native pointers, whole arrays, or aggregates; say a scalar Member, Element, or Value instead."});
+                diags.push_back({16, s->line, "Say does not format native pointers, null pointer values, whole arrays, or aggregates; say a scalar Member, Element, or Value instead."});
             }
         }
         else if constexpr (std::is_same_v<T, SetStmt>) {
@@ -1863,8 +1874,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                                      node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
                                                      " but got " + typeToString(argType) + "."});
                         }
-                    } else if (argType.isPointer() || argType.isArray()) {
-                        diags.push_back({16, s->line, "Legacy Procedure parameters cannot carry native pointers or arrays yet."});
+                    } else if (argType.isPointer() || argType.kind == TypeKind::Nullptr || argType.isArray()) {
+                        diags.push_back({16, s->line, "Legacy Procedure parameters cannot carry native pointers, null pointer values, or arrays yet."});
                     }
                 }
             }

@@ -182,7 +182,7 @@ Declare p as pointer to integer with value null pointer.
 Say Convert n to type boolean.
 ```
 
-`null pointer type` is semantically distinct from every pointer type. Its only valid value is `null pointer`; values of that type convert implicitly to any supported object-pointer type and to `boolean` (as false), but no other type converts to `null pointer type`. Its size and alignment follow `void *`, matching C23's `nullptr_t` requirements.
+`null pointer type` is semantically distinct from every pointer type and has exactly one value, `null pointer`. Values of that type convert implicitly to any supported object-pointer type and to `boolean` (as false). A supported null pointer constant — currently the literal integer `0` or `null pointer` — may also initialize, assign, explicitly convert, pass, or return as `null pointer type`; arbitrary integers and pointer values may not. A declaration of `null pointer type` without an initializer defaults to `null pointer`, including automatic objects. Its size and alignment follow `void *`, which C requires to match a character pointer and therefore satisfies C23's `nullptr_t` layout requirement.
 
 For the older C99-C17 null-pointer-constant rule, the literal integer `0` is accepted implicitly in pointer initialization, assignment, typed Procedure arguments/returns, equality comparison and conditional-expression branches. Nonzero integers are not implicit pointer conversions; use an explicit `Convert ... to type pointer to ...` where C permits an implementation-defined integer/pointer cast.
 
@@ -234,7 +234,7 @@ Declare values as array of integer with length 4. Declare p as pointer to intege
 
 `pointer plus integer`, `integer plus pointer`, and `pointer minus integer` use C element-scaled pointer arithmetic for complete object pointers. Subtracting two pointers to the same element type produces the current PlainSpeak whole-number result. Equality comparison accepts compatible object pointers (including the existing object-pointer/`void *` compatibility); relational comparison requires the same complete element type. `Add` and `Subtract` on an explicitly declared object pointer lower to C `+=` and `-=` with an integer offset.
 
-Whole-array assignment remains intentionally unavailable. Fixed arrays can now be initialized positionally or with zero-based element designators at declaration time. Variable-length arrays, pointer truthiness, null pointers, function pointers and allocated storage remain later work.
+Whole-array assignment remains intentionally unavailable. Fixed arrays can now be initialized positionally or with zero-based element designators at declaration time. Pointer/null scalar conditions and the current null-pointer conversions are implemented; variable-length arrays, function pointers and allocated storage remain later work.
 
 ## Native structures and members
 
@@ -456,9 +456,9 @@ Say Choose 10 when ready otherwise 20.
 Declare selected as pointer to constant integer with value Choose p when flag otherwise cp.
 ```
 
-The condition must currently have a C scalar type: an arithmetic value or object pointer. As with C's `?:`, only the selected branch is evaluated by the generated program.
+The condition must currently have a C scalar type: an arithmetic value, object pointer, or `null pointer type` value. As with C's `?:`, only the selected branch is evaluated by the generated program.
 
-When both branches are arithmetic, the usual arithmetic conversions determine the result type. Compatible pointer branches produce a composite pointer type: pointed-to qualifiers are combined, and an object pointer paired with `void *` produces the appropriately qualified `void *` result. Two identical structure or union branch types produce that aggregate type by value.
+When both branches are arithmetic, the usual arithmetic conversions determine the result type. Compatible pointer branches produce a composite pointer type: pointed-to qualifiers are combined, and an object pointer paired with `void *` produces the appropriately qualified `void *` result. A pointer paired with the supported literal-zero null pointer constant or a `null pointer type` value produces that pointer type, while two `null pointer type` branches produce `null pointer type`. C23 deliberately does not permit `null pointer type` and bare integer `0` as peer branches when neither branch is a pointer. Two identical structure or union branch types produce that aggregate type by value.
 
 This is still a foundation rather than complete C conditional-expression parity. Integer null-pointer constants are not yet tracked as constant-expression metadata, function pointers are not source-spellable, and void-valued branch expressions need the future discard/void-expression surface.
 
