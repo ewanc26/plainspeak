@@ -1,0 +1,1 @@
+error[E0021]: Member designator "x" appears more than once in the initializer for "p".
