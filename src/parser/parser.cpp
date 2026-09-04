@@ -240,12 +240,37 @@ Stmt *Parser::parseStructure() {
         if (peek().kind == TokKind::Eof) {
             error("reached end of file while looking for \"End structure.\"");
         }
+        if (checkWord("bit") && checkWordAt(1, "field")) {
+            advance(); advance();
+            std::string fieldName;
+            if (!checkWord("as")) fieldName = expectIdentName();
+            expectWord("as");
+            TypeSpec fieldType = parseTypeSpec();
+            expectWord("with");
+            expectWord("width");
+            if (peek().kind != TokKind::Number || peek().num < 0) {
+                error("a Bit field width must be a non-negative whole-number literal");
+            }
+            std::size_t width = static_cast<std::size_t>(advance().num);
+            expectDot();
+            fields.push_back(StructureField{std::move(fieldName), std::move(fieldType), width, false});
+            continue;
+        }
+        if (checkWord("flexible") && checkWordAt(1, "field")) {
+            advance(); advance();
+            std::string fieldName = expectIdentName();
+            expectWord("as");
+            TypeSpec elementType = parseTypeSpec();
+            expectDot();
+            fields.push_back(StructureField{std::move(fieldName), std::move(elementType), std::nullopt, true});
+            continue;
+        }
         expectWord("field");
         std::string fieldName = expectIdentName();
         expectWord("as");
         TypeSpec fieldType = parseTypeSpec();
         expectDot();
-        fields.push_back(StructureField{std::move(fieldName), std::move(fieldType)});
+        fields.push_back(StructureField{std::move(fieldName), std::move(fieldType), std::nullopt, false});
     }
     advance(); advance();
     expectDot();
@@ -263,12 +288,37 @@ Stmt *Parser::parseUnion() {
         if (peek().kind == TokKind::Eof) {
             error("reached end of file while looking for \"End union.\"");
         }
+        if (checkWord("bit") && checkWordAt(1, "field")) {
+            advance(); advance();
+            std::string fieldName;
+            if (!checkWord("as")) fieldName = expectIdentName();
+            expectWord("as");
+            TypeSpec fieldType = parseTypeSpec();
+            expectWord("with");
+            expectWord("width");
+            if (peek().kind != TokKind::Number || peek().num < 0) {
+                error("a Bit field width must be a non-negative whole-number literal");
+            }
+            std::size_t width = static_cast<std::size_t>(advance().num);
+            expectDot();
+            fields.push_back(StructureField{std::move(fieldName), std::move(fieldType), width, false});
+            continue;
+        }
+        if (checkWord("flexible") && checkWordAt(1, "field")) {
+            advance(); advance();
+            std::string fieldName = expectIdentName();
+            expectWord("as");
+            TypeSpec elementType = parseTypeSpec();
+            expectDot();
+            fields.push_back(StructureField{std::move(fieldName), std::move(elementType), std::nullopt, true});
+            continue;
+        }
         expectWord("field");
         std::string fieldName = expectIdentName();
         expectWord("as");
         TypeSpec fieldType = parseTypeSpec();
         expectDot();
-        fields.push_back(StructureField{std::move(fieldName), std::move(fieldType)});
+        fields.push_back(StructureField{std::move(fieldName), std::move(fieldType), std::nullopt, false});
     }
     advance(); advance();
     expectDot();
