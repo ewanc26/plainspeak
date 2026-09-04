@@ -1,0 +1,1 @@
+error[E0023]: A named bit-field cannot have width 0; zero width is reserved for unnamed alignment fields.
