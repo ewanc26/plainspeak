@@ -190,7 +190,8 @@ bool supportsCObjectQuery(const Type &t) {
     return t.kind == TypeKind::Boolean || t.kind == TypeKind::Integer ||
            t.kind == TypeKind::Floating || t.kind == TypeKind::Pointer ||
            t.kind == TypeKind::Enumeration || t.kind == TypeKind::BitInt ||
-           t.kind == TypeKind::Structure || t.kind == TypeKind::Union;
+           t.kind == TypeKind::Structure || t.kind == TypeKind::Union ||
+           t.kind == TypeKind::Nullptr;
 }
 
 Type signedInteger(IntegerRank rank) { return Type::integer(rank, false); }
@@ -568,6 +569,7 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::Structure: result = Type::structure(spec.tag); break;
         case TypeSpecKind::Union: result = Type::unionType(spec.tag); break;
         case TypeSpecKind::Enumeration: result = Type::enumeration(spec.tag); break;
+        case TypeSpecKind::Nullptr: result = Type::nullptrType(); break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);
@@ -647,7 +649,7 @@ bool Sema::isCompleteObjectType(const Type &type) const {
     }
     return type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
            type.kind == TypeKind::Floating || type.kind == TypeKind::Pointer ||
-           type.kind == TypeKind::BitInt;
+           type.kind == TypeKind::BitInt || type.kind == TypeKind::Nullptr;
 }
 
 bool Sema::hasConstSubobject(const Type &type) const {
@@ -736,6 +738,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, BoolLit>) return Type::number();
         else if constexpr (std::is_same_v<T, FloatLit>) return Type::decimal();
         else if constexpr (std::is_same_v<T, StringLit>) return Type::string();
+        else if constexpr (std::is_same_v<T, NullptrLit>) return Type::nullptrType();
         else if constexpr (std::is_same_v<T, VarRef>) {
             auto [symbol, found] = lookupVar(node.name, line, diags);
             if (found && symbol.nativeObject && analysis_) analysis_->nativeObjectRefs.insert(e);
