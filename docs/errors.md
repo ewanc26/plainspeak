@@ -32,6 +32,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0024 | Invalid native type qualifier, forbidden const mutation, or unsupported qualified-object lowering |
 | E0025 | Invalid bitwise or shift operand |
 | E0026 | Invalid explicit C conversion/cast |
+| E0027 | Invalid prefix/postfix increment or decrement operand |
 
 ## Parse-time errors
 
