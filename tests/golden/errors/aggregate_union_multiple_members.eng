@@ -1,0 +1,1 @@
+Union value: Field whole as integer. Field fraction as decimal. End union. Declare u as union value with members whole as 1 followed by fraction as 2.5 done.

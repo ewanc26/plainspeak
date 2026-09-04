@@ -1,4 +1,5 @@
 #include "c_emitter.h"
+#include <algorithm>
 #include <cstdio>
 #include <set>
 #include <sstream>
@@ -76,6 +77,54 @@ std::string emitCType(const Type &type) {
 
 std::string emitCDeclaration(const Type &type, const std::string &name) {
     return emitCDeclarator(type, name);
+}
+
+std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis);
+std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
+
+void emitAggregateStores(const std::string &name, const Type &declared,
+                         const AggregateInitializer &aggregate,
+                         std::ostream &out, const std::string &indent,
+                         const AnalysisResult &analysis) {
+    auto emitStore = [&](const std::string &target, Expr *expr) {
+        out << indent << target << " = " << emitRawExpr(expr, analysis) << ";\n";
+    };
+
+    if (aggregate.kind == AggregateInitKind::Positional) {
+        if (declared.isArray()) {
+            for (std::size_t i = 0; i < aggregate.entries.size(); ++i) {
+                emitStore(name + "[" + std::to_string(i) + "]", aggregate.entries[i].expr);
+            }
+            return;
+        }
+
+        const StructureInfo *info = nullptr;
+        if (declared.kind == TypeKind::Structure) {
+            auto it = analysis.structures.find(declared.tag);
+            if (it != analysis.structures.end()) info = &it->second;
+        } else if (declared.kind == TypeKind::Union) {
+            auto it = analysis.unions.find(declared.tag);
+            if (it != analysis.unions.end()) info = &it->second;
+        }
+        if (!info) return;
+        std::size_t count = std::min(aggregate.entries.size(), info->fields.size());
+        if (declared.kind == TypeKind::Union) count = std::min<std::size_t>(count, 1);
+        for (std::size_t i = 0; i < count; ++i) {
+            emitStore("(" + name + ")." + mangle(info->fields[i].first), aggregate.entries[i].expr);
+        }
+        return;
+    }
+
+    if (aggregate.kind == AggregateInitKind::Members) {
+        for (const auto &entry : aggregate.entries) {
+            emitStore("(" + name + ")." + mangle(entry.memberName), entry.expr);
+        }
+        return;
+    }
+
+    for (const auto &entry : aggregate.entries) {
+        emitStore(name + "[" + std::to_string(entry.elementIndex) + "]", entry.expr);
+    }
 }
 
 bool isNativeRef(const Expr *e, const AnalysisResult &analysis) {
@@ -330,8 +379,16 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
             out << indent << emitCDeclaration(type, mangle(node.name));
-            if (node.initializer) out << " = " << emitRawExpr(node.initializer, analysis);
+            if (node.initializer) {
+                out << " = " << emitRawExpr(node.initializer, analysis);
+            } else if (node.aggregateInitializer) {
+                out << " = {0}";
+            }
             out << ";\n";
+            if (node.aggregateInitializer) {
+                emitAggregateStores(mangle(node.name), type, *node.aggregateInitializer,
+                                    out, indent, analysis);
+            }
         } else if constexpr (std::is_same_v<T, StoreThroughStmt>) {
             out << indent << "*(" << emitRawExpr(node.pointer, analysis) << ") = "
                 << emitRawExpr(node.expr, analysis) << ";\n";
@@ -564,6 +621,9 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             if (decl->initializer) {
                 out << "    " << mangle(decl->name) << " = "
                     << emitRawExpr(decl->initializer, analysis) << ";\n";
+            } else if (decl->aggregateInitializer) {
+                emitAggregateStores(mangle(decl->name), analysis.declarationTypes.at(s),
+                                    *decl->aggregateInitializer, out, "    ", analysis);
             }
             continue;
         }

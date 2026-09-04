@@ -161,13 +161,71 @@ Stmt *Parser::parseDeclare() {
     expectWord("as");
     TypeSpec type = parseTypeSpec();
     Expr *initializer = nullptr;
+    std::optional<AggregateInitializer> aggregateInitializer;
     if (checkWord("with")) {
         advance();
-        expectWord("value");
-        initializer = parseExpr();
+        if (checkWord("value")) {
+            advance();
+            initializer = parseExpr();
+        } else if (checkWord("values")) {
+            advance();
+            AggregateInitializer aggregate;
+            aggregate.kind = AggregateInitKind::Positional;
+            if (checkWord("done")) error("with values needs at least one initializer value");
+            for (;;) {
+                aggregate.entries.push_back(AggregateInitEntry{"", 0, parseExpr()});
+                if (checkWord("followed") && checkWordAt(1, "by")) {
+                    advance(); advance();
+                    continue;
+                }
+                break;
+            }
+            expectWord("done");
+            aggregateInitializer = std::move(aggregate);
+        } else if (checkWord("members")) {
+            advance();
+            AggregateInitializer aggregate;
+            aggregate.kind = AggregateInitKind::Members;
+            if (checkWord("done")) error("with members needs at least one member initializer");
+            for (;;) {
+                std::string member = expectIdentName();
+                expectWord("as");
+                aggregate.entries.push_back(AggregateInitEntry{std::move(member), 0, parseExpr()});
+                if (checkWord("followed") && checkWordAt(1, "by")) {
+                    advance(); advance();
+                    continue;
+                }
+                break;
+            }
+            expectWord("done");
+            aggregateInitializer = std::move(aggregate);
+        } else if (checkWord("elements")) {
+            advance();
+            AggregateInitializer aggregate;
+            aggregate.kind = AggregateInitKind::Elements;
+            if (checkWord("done")) error("with elements needs at least one element initializer");
+            for (;;) {
+                expectWord("at");
+                if (peek().kind != TokKind::Number || peek().num < 0) {
+                    error("an aggregate element designator needs a non-negative whole-number literal index");
+                }
+                std::size_t index = static_cast<std::size_t>(advance().num);
+                expectWord("as");
+                aggregate.entries.push_back(AggregateInitEntry{"", index, parseExpr()});
+                if (checkWord("followed") && checkWordAt(1, "by")) {
+                    advance(); advance();
+                    continue;
+                }
+                break;
+            }
+            expectWord("done");
+            aggregateInitializer = std::move(aggregate);
+        } else {
+            error("expected value, values, members, or elements after with");
+        }
     }
     expectDot();
-    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer}, line);
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer)}, line);
 }
 
 Stmt *Parser::parseStructure() {

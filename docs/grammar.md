@@ -43,7 +43,11 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
 SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
-DeclareStmt ::= "Declare" IDENT "as" CType ("with" "value" Expr)? "."
+DeclareStmt ::= "Declare" IDENT "as" CType NativeInitializer? "."
+NativeInitializer ::= "with" "value" Expr
+                    | "with" "values" Expr ("followed" "by" Expr)* "done"
+                    | "with" "members" IDENT "as" Expr ("followed" "by" IDENT "as" Expr)* "done"
+                    | "with" "elements" "at" NUMBER "as" Expr ("followed" "by" "at" NUMBER "as" Expr)* "done"
 StoreThroughStmt ::= ("Set" | "Let" | "Make") "value" "at" Expr "to" Expr "."
 StoreElementStmt ::= ("Set" | "Let" | "Make") "element" "at" Expr "in" Expr "to" Expr "."
 StoreMemberStmt ::= ("Set" | "Let" | "Make") "member" IDENT "of" Expr "to" Expr "."
@@ -177,7 +181,7 @@ Declare values as array of integer with length 4. Declare p as pointer to intege
 
 `pointer plus integer`, `integer plus pointer`, and `pointer minus integer` use C element-scaled pointer arithmetic for complete object pointers. Subtracting two pointers to the same element type produces the current PlainSpeak whole-number result. Equality comparison accepts compatible object pointers (including the existing object-pointer/`void *` compatibility); relational comparison requires the same complete element type. `Add` and `Subtract` on an explicitly declared object pointer lower to C `+=` and `-=` with an integer offset.
 
-Whole-array assignment and whole-array initializers are intentionally not invented. Declare an array, then set elements individually. Variable-length arrays, pointer truthiness, null pointers, function pointers, qualifiers and allocated storage remain later work.
+Whole-array assignment remains intentionally unavailable. Fixed arrays can now be initialized positionally or with zero-based element designators at declaration time. Variable-length arrays, pointer truthiness, null pointers, function pointers, qualifiers and allocated storage remain later work.
 
 ## Native structures and members
 
@@ -193,7 +197,7 @@ Structure and union tags use C's shared tag namespace and are pre-registered as 
 
 Fixed arrays and already-complete structures may be fields. Array fields can be reached with native `Element at`, including nested expressions. Whole-array member assignment is still intentionally rejected.
 
-Native structures can be copied by assignment and transported by value through typed Procedures when their tags match, using the generated C ABI. Structure initializers/literals, designated initializers, anonymous members, flexible array members and bit-fields remain separate work.
+Native structures can be copied by assignment, initialized positionally or with named member designators, and transported by value through typed Procedures when their tags match. Compound literals, anonymous members, flexible array members and bit-fields remain separate work.
 
 ## Native unions
 
@@ -209,7 +213,35 @@ Unions share C's tag namespace with structures, so `Structure value` and `Union 
 
 PlainSpeak does **not** add a runtime active-member discriminator. Writing one member and then reading another follows whatever semantics the generated C program has on the target/compiler; the language does not reinterpret C unions as tagged variants. The conformance tests therefore validate same-member reads/writes and layout, not type-punning assumptions.
 
-Union aggregate/designated initializers, anonymous members and bit-fields remain separate work.
+Unions can be initialized through their first member positionally or one named member designator. Compound literals, anonymous members and bit-fields remain separate work.
+
+## Aggregate initialization
+
+Explicit native declarations support positional and designated aggregate initialization without exposing C brace syntax.
+
+Positional initialization uses declaration order:
+
+```text
+Structure point: Field x as integer. Field y as integer. End structure. Declare p as structure point with values 3 followed by 4 done. Declare a as array of integer with length 4 with values 1 followed by 2 done.
+```
+
+For structures, positional values map to fields in definition order. For arrays, they map from zero-based element 0 upward. A positional union initializer may supply at most one value and therefore initializes its first member.
+
+Named member designators are available for structures and unions:
+
+```text
+Declare p as structure point with members y as 8 done. Union value: Field whole as integer. Field fraction as decimal. End union. Declare u as union value with members fraction as 2.5 done.
+```
+
+Array index designators use the same zero-based native indexing convention:
+
+```text
+Declare a as array of integer with length 4 with elements at 3 as 9 followed by at 1 as 7 done.
+```
+
+Omitted structure members and array elements are zero-initialized. Automatic aggregate objects use an explicit generated C zero-initializer before the selected member/element stores; file-scope native objects already have C static zero initialization. This keeps PlainSpeak initializer expressions free to use runtime expressions instead of pretending they are all C translation-time constants.
+
+Designators must be unique in this tranche, array indexes must be in range, and a union initializer selects exactly one member. Nested array aggregate initialization is not yet recursive: an array-valued field/element needs a later nested-initializer facility rather than assignment syntax. Ordinary `with value` remains the scalar/native assignment-style initializer and can still copy compatible complete structures/unions or consume typed Procedure results; arrays use the aggregate forms instead.
 
 ## Procedures and typed signatures
 
@@ -324,7 +356,7 @@ The compiler's structural semantic type system also represents functions, qualif
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
-- Variable-length arrays, whole-array initializers, bit-fields/flexible or anonymous aggregate members, enums, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Variable-length arrays, nested aggregate initializers, compound literals, bit-fields/flexible or anonymous aggregate members, enums, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.

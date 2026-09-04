@@ -125,3 +125,10 @@ Structure definitions lower directly to C `struct` definitions before native obj
 Union definitions lower directly to C `union` definitions alongside structures before native object declarations and procedure prototypes. Structure and union tags share C's single tag namespace. Semantic analysis tracks union completeness, ordered members and recursive/forward pointers independently from structures while preserving that namespace collision rule.
 
 Member access uses the same `.` / `->` lowering as structures. No active-member metadata is added to the runtime: union representation and any cross-member interpretation remain properties of generated C and the target implementation.
+
+
+## Aggregate initialization
+
+Aggregate declaration syntax does not add a runtime container. For file-scope native aggregates, C static storage supplies the initial all-zero state and generated startup code writes the selected initializer entries in source order. For automatic aggregates, codegen emits a native declaration with `= {0}` and then the validated member/element stores.
+
+Positional structure initializers use the semantically retained field order. Positional array initializers use indexes from zero. Named structure/union designators and numeric array designators lower to ordinary native field/element assignments after zero initialization. This design deliberately supports dynamic PlainSpeak expressions while preserving omitted-member zero semantics; it is not a claim that every initializer is a C constant expression.

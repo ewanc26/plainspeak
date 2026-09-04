@@ -49,6 +49,7 @@ add_executable(unit_tests
     tests/unit/test_typed_procedures.cpp
     tests/unit/test_native_structures.cpp
     tests/unit/test_native_unions.cpp
+    tests/unit/test_aggregate_initializers.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp

@@ -1,1 +1,1 @@
-error[E0017]: Whole-array initializers are not implemented yet; Declare the array and Set its elements individually.
+error[E0017]: Whole-array assignment-style initialization is not supported; use with values or with elements.
