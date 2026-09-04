@@ -1,0 +1,1 @@
+error[E0032]: Switch needs an integer controlling expression, not a decimal.

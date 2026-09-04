@@ -39,7 +39,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | BreakStmt | ContinueStmt
-       | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt
+       | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | SwitchStmt | ForEachStmt
        | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
@@ -75,6 +75,8 @@ RepeatStmt ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
 IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
 WhileStmt ::= "While" Expr ":" Stmt* "End" "while" "."
 DoWhileStmt ::= "Do" ":" Stmt* "End" "do" "while" Expr "."
+SwitchStmt ::= "Switch" Expr ":" SwitchCase* "End" "switch" "."
+SwitchCase ::= "Case" Expr ":" Stmt* | "Default" ":" Stmt*
 ForEachStmt ::= "For" "each" IDENT "in" Expr ":" Stmt* "End" "for" "."
 CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
 ProcedureParam ::= IDENT ("as" CType)?
@@ -103,6 +105,8 @@ Do: Add 1 to total. End do while total is less than 10.
 ```
 
 The body runs before the first condition test, and `Continue.` transfers control to that trailing condition just as C `continue` does in a `do ... while` loop.
+
+`Switch value:` accepts an integer controlling expression. `Case expression:` labels require integer constant expressions and are checked for duplicate converted values; `Default:` is optional and unique. Cases deliberately fall through unless `Break.` executes. A `Continue.` inside a switch is valid only when an enclosing loop exists and continues that loop, matching C. This first switch tranche keeps Case/Default labels directly in the switch body; labels nested inside subsidiary blocks await the general label/control-flow model.
 
 ## Lists
 

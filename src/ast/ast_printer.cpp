@@ -245,6 +245,14 @@ std::string printStmt(const Stmt *s) {
             std::string out = "Do: ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End do while " + printExpr(node.cond) + ". ";
+        } else if constexpr (std::is_same_v<T, SwitchStmt>) {
+            std::string out = "Switch " + printExpr(node.control) + ": ";
+            for (const auto &branch : node.cases) {
+                if (branch.isDefault) out += "Default: ";
+                else out += "Case " + printExpr(branch.value) + ": ";
+                for (Stmt *inner : branch.body) out += printStmt(inner);
+            }
+            return out + "End switch. ";
         } else if constexpr (std::is_same_v<T, ForEachStmt>) {
             std::string out = "For each " + node.itemName + " in " + printExpr(node.list) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);

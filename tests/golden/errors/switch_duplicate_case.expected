@@ -1,0 +1,1 @@
+error[E0032]: Switch Case values must be unique after conversion to the controlling type.

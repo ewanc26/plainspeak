@@ -100,13 +100,13 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `control.while` | implemented |
 | `control.do-while` | implemented |
 | `control.for` | planned |
-| `control.switch` | planned |
+| `control.switch` | foundation |
 | `control.break` | foundation |
 | `control.continue` | foundation |
 | `control.goto-labels` | planned |
 | `control.return` | foundation |
 
-`Do: ... End do while condition.` now supplies C's post-test loop semantics with native scalar conditions, one guaranteed first iteration, and direct C `do { ... } while (...);` lowering. `Break.` and `Continue.` lower directly to C in every current PlainSpeak loop form, including when nested inside conditional blocks. Semantic analysis rejects either statement outside an allowed context and maintains loop context through nested scopes. `control.break` remains **foundation** because C `break` also applies to `switch`, which is still pending; `control.continue` will gain further coverage as general `for` and do-while loops land.
+`Do: ... End do while condition.` supplies C's post-test loop semantics with native scalar conditions, one guaranteed first iteration, and direct C `do { ... } while (...);` lowering. `Switch` now provides integer selection with translation-time Case validation, a unique optional Default, native C fall-through, and the correct Break/Continue context split. The switch row remains **foundation** because general C labels nested within subsidiary statements and the still-incomplete integer constant-expression set are pending. `Break.` and `Continue.` lower directly to C in every current PlainSpeak loop form, including when nested inside conditional blocks. Semantic analysis rejects either statement outside an allowed context and maintains loop context through nested scopes. `control.break` remains **foundation** because C `break` also applies to `switch`, which is still pending; `control.continue` will gain further coverage as general `for` and do-while loops land.
 
 PlainSpeak's `Repeat` and `For each` remain useful language extensions, but they are not counted as replacements for every general C `for` loop.
 

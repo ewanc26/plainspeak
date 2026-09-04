@@ -55,7 +55,7 @@ std::vector<Stmt *> Parser::parseProgram() {
 Stmt *Parser::parseTopLevelStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call, Procedure)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Break, Continue, Repeat, If, While, Do, Switch, For, Call, Procedure)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
@@ -98,7 +98,7 @@ Stmt *Parser::parseTopLevelStmt() {
 Stmt *Parser::parseStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Break, Continue, Repeat, If, While, Do, Switch, For, Call)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
