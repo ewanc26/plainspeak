@@ -273,11 +273,13 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         ProcedureSignature signature;
         signature.nativeTyped = typed;
         signature.returnType = typed ? resolveTypeSpec(*proc->returnType) : Type::number();
+        if (typed) validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
 
         for (const auto &param : proc->params) {
             Type paramType = Type::number();
             if (typed && param.type) {
                 paramType = resolveTypeSpec(*param.type);
+                validateTypeQualifiers(paramType, s->line, result.diagnostics);
                 if (paramType.kind == TypeKind::Void) {
                     result.diagnostics.push_back({18, s->line, "Typed parameter \"" + param.name + "\" cannot have type void."});
                     paramType = Type::number();
@@ -582,8 +584,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({code, line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
                 return Type::number();
             }
+            if (aggregate.qualifiers.isAtomic) {
+                diags.push_back({24, line, "Member access on atomic " + kind + " \"" + aggregate.tag +
+                                           "\" is undefined in C; use whole-object atomic operations instead."});
+            }
             if (field->bitWidth && analysis_) analysis_->bitFieldExprs.insert(e);
-            return field->type;
+            return memberTypeWithAggregateQualifiers(field->type, aggregate.qualifiers);
         }
         else if constexpr (std::is_same_v<T, ElementExpr>) {
             Type index = inferExpr(node.index, line, diags);
@@ -749,6 +755,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, SizeOfTypeExpr>) {
             Type queried = resolveTypeSpec(node.type);
+            validateTypeQualifiers(queried, line, diags);
             if (analysis_) analysis_->typeOperands[e] = queried;
             if (!isCompleteObjectType(queried)) {
                 diags.push_back({12, line, "I can't ask for the size of " + typeToString(queried) + " because it is not a complete C object type."});
@@ -767,6 +774,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
             Type queried = resolveTypeSpec(node.type);
+            validateTypeQualifiers(queried, line, diags);
             if (analysis_) analysis_->typeOperands[e] = queried;
             if (!isCompleteObjectType(queried)) {
                 diags.push_back({12, line, "I can't ask for the alignment of " + typeToString(queried) + " because it is not a complete C object type."});
@@ -805,13 +813,19 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, SetStmt>) {
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (Symbol *existing = findVar(node.name)) {
+                bool modifiable = !existing->nativeObject || isModifiableObjectType(existing->type);
+                if (existing->nativeObject && !modifiable) {
+                    diags.push_back({24, s->line, "I can't Set \"" + node.name +
+                                              "\" because its native type " + typeToString(existing->type) +
+                                              " is not a modifiable C object type."});
+                }
                 bool ok = existing->nativeObject ? assignableTo(existing->type, exprType)
                                                  : existing->type == exprType;
-                if (!ok) {
+                if (modifiable && !ok) {
                     diags.push_back({3, s->line, "I can't set \"" + node.name + "\", which is a " +
                                              typeToString(existing->type) + ", to a " + typeToString(exprType) + "."});
                 }
-                if (existing->nativeObject && analysis_) analysis_->nativeMutationTargets.insert(s);
+                if (existing->nativeObject && modifiable && analysis_) analysis_->nativeMutationTargets.insert(s);
             } else if (exprType.isPointer() || exprType.isArray() || exprType.isAggregate()) {
                 diags.push_back({13, s->line, "Native pointers, arrays, and aggregates need explicit declarations; inferred Set cannot create them."});
             } else {
