@@ -23,15 +23,15 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.complex` | planned | Complex objects and arithmetic. |
 | `types.boolean` | foundation | Native `_Bool` objects are spellable; legacy true/false literals still preserve numeric compatibility. |
 | `types.nullptr` | foundation | C23 null-pointer type can be represented; source literal/conversions remain pending. |
-| `types.object-representation` | foundation | Explicit scalar, pointer, fixed-array and tagged-structure objects use real C storage, address, size and target layout; padding/effective-type rules and complete lifetime semantics remain pending. |
-| `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` preserve fixed-array extent and complete structure layout as well as scalar/pointer layout; requested alignment and native `size_t` remain pending. |
+| `types.object-representation` | foundation | Explicit scalar, pointer, fixed-array, tagged-structure and tagged-union objects use real C storage, address, size and target layout; padding/effective-type rules and complete lifetime semantics remain pending. |
+| `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` preserve fixed-array extent and complete structure/union layout as well as scalar/pointer layout; requested alignment and native `size_t` remain pending. |
 | `types.qualifiers` | foundation | const/volatile/restrict/atomic qualification is represented structurally but is not yet source-spellable. |
 | `types.pointers` | foundation | Recursive object pointers support address/dereference, array decay, element-scaled +/- arithmetic, pointer difference, compatible comparison and +=/-= offsets; null/function pointers and qualifiers remain pending. |
 | `types.function-types` | foundation | Explicit typed Procedure parameters/returns now lower to native C function types; variadics, function pointers and the complete compatibility rules remain pending. |
 | `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; VLAs/incomplete source declarations and whole-array initialization remain pending. |
 | `types.vla` | planned | C99 variable-length and variably modified types. |
 | `types.structures` | foundation | Tagged structures have source definitions, completeness checking, native layout, self/forward pointers, by-value transport and member access; anonymous/flexible members and bit-fields remain pending. |
-| `types.unions` | foundation | Tagged union identity is represented; members/layout/access pending. |
+| `types.unions` | foundation | Tagged unions have source definitions, completeness checking, native layout, self/forward pointers, by-value transport and member access; anonymous members and bit-fields remain pending. |
 | `types.enumerations` | foundation | Enum identity is represented; enumerators/underlying rules pending. |
 | `types.aliases` | planned | typedef-equivalent aliases. |
 | `types.typeof` | planned | C23 `typeof` / `typeof_unqual` capability. |
@@ -59,7 +59,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.generic-selection` | planned |
 | `expr.nullptr-conversions` | planned |
 
-Explicit native objects are modifiable lvalues, pointer dereference produces a modifiable lvalue for concrete pointees, fixed-array elements are addressable/subscriptable native lvalues, and structure members are typed native lvalues. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, qualifiers, null pointers, complete conversions, union/member variants, sequencing and the full usual arithmetic conversions are not complete.
+Explicit native objects are modifiable lvalues, pointer dereference produces a modifiable lvalue for concrete pointees, fixed-array elements are addressable/subscriptable native lvalues, and structure/union members are typed native lvalues. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, qualifiers, null pointers, complete conversions, anonymous/bit-field members, sequencing and the full usual arithmetic conversions are not complete.
 
 ## Declarations, storage and linkage
 
@@ -75,7 +75,7 @@ Explicit native objects are modifiable lvalues, pointer dereference produces a m
 | `decl.static-assert` | planned |
 | `decl.attributes` | planned |
 
-`Declare` now introduces native scalar, pointer, fixed-array and complete tagged-structure objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer initializers exist and are type-checked. User-controlled linkage, `static`/`extern`/thread storage, allocated storage, aggregate/designated initialization and full constant-initializer rules remain missing.
+`Declare` now introduces native scalar, pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer initializers exist and are type-checked. User-controlled linkage, `static`/`extern`/thread storage, allocated storage, aggregate/designated initialization and full constant-initializer rules remain missing.
 
 ## Statements and control flow
 
