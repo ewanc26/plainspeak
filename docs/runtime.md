@@ -95,7 +95,7 @@ The keyword set includes C89/C90, C99, C11, and C23 spellings. Runtime bridge na
 
 ## Current object-model boundaries
 
-- Native scalar (including tagged enums), object-pointer, fixed-array, tagged-structure and tagged-union storage are first-class. Qualifiers, atomics, requested alignment, allocated storage, flexible members and bit-fields have not landed yet.
+- Native scalar (including tagged enums), object-pointer, fixed-array, tagged-structure and tagged-union storage are first-class, including native bit-fields and C99 flexible-array tails. Qualifiers, atomics, requested alignment and allocated extended storage have not landed yet.
 - Pointer arithmetic/comparison are native, while pointer/aggregate transport through legacy untyped Procedures remains deliberately rejected; typed Procedures carry native values instead.
 - `sizeof`/`_Alignof` results are currently boxed into legacy signed `number`; a native `size_t`-equivalent is pending.
 - String-concatenation buffers, list allocations, and iteration snapshots live until process exit; the legacy runtime has no language-level ownership/GC.
@@ -139,3 +139,12 @@ Positional structure initializers use the semantically retained field order. Pos
 Enumeration definitions lower to real C `enum` definitions before aggregate definitions, objects and function prototypes. Semantic analysis computes implicit values, checks explicit values against the current C99-C17 `int` range, enforces the shared C tag namespace, and retains the completed enumeration for object/layout queries.
 
 PlainSpeak Enumerator expressions are source-qualified, but generated C enumerator identifiers are built from both the enumeration tag and enumerator name. This keeps generated identifiers unique even when separate PlainSpeak enumerations reuse the same member name. Enum objects remain native C enum objects; only the existing boxing bridge is used when an enum value enters a legacy operation such as `Say`.
+
+
+## Bit-fields and flexible array members
+
+Aggregate semantic metadata retains each member's ordinary type plus optional bit width or flexible-array marker. Code generation emits bit-fields directly as C `type name : width` declarations and flexible tails as incomplete arrays `type name[]`; neither feature is emulated by the runtime.
+
+Unnamed bit-fields have no PlainSpeak member identity and are omitted from positional initializer slots. Named bit-fields use ordinary native member reads/stores, but semantic analysis records bit-field expressions so `Size of` can reject them before C compilation.
+
+A structure with a flexible tail remains a complete structure type for direct objects and `sizeof`, while the flexible member itself is an incomplete array. Sema prevents that structure from being embedded by value or used as a fixed-array element, forbids flexible union members, requires the tail to be last with another named member before it, and excludes it from aggregate initialization.
