@@ -1,4 +1,5 @@
 #include "sema.h"
+#include <algorithm>
 #include <type_traits>
 #include <utility>
 
@@ -771,6 +772,10 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                         for (const auto &entry : aggregate.entries) inferExpr(entry.expr, s->line, diags);
                     }
                 } else if (aggregate.kind == AggregateInitKind::Members) {
+                    if (declared.kind == TypeKind::Union && aggregate.entries.size() > 1) {
+                        diags.push_back({21, s->line, "A union initializer selects exactly one member; \"" + node.name +
+                                                  "\" received " + std::to_string(aggregate.entries.size()) + " member designators."});
+                    }
                     if (declared.kind != TypeKind::Structure && declared.kind != TypeKind::Union) {
                         diags.push_back({21, s->line, "with members requires a structure or union target, not " +
                                                   typeToString(declared) + "."});
