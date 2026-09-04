@@ -62,8 +62,12 @@ private:
     Expr *parseExpr();
     Expr *parseOr();
     Expr *parseAnd();
+    Expr *parseBitwiseOr();
+    Expr *parseBitwiseXor();
+    Expr *parseBitwiseAnd();
     Expr *parseNot();
     Expr *parseComparison();
+    Expr *parseShift();
     Expr *parseAdditive();
     Expr *parseMultiplicative();
     Expr *parsePower();
