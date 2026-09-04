@@ -95,7 +95,7 @@ The keyword set includes C89/C90, C99, C11, and C23 spellings. Runtime bridge na
 
 ## Current object-model boundaries
 
-- Native scalar (including tagged enums), object-pointer, fixed-array, tagged-structure and tagged-union storage are first-class, including native bit-fields and C99 flexible-array tails. Qualifiers, atomics, requested alignment and allocated extended storage have not landed yet.
+- Native scalar (including tagged enums), object-pointer, fixed-array, tagged-structure and tagged-union storage are first-class, including native bit-fields, C99 flexible-array tails and recursive const/volatile/restrict/_Atomic qualification. Requested alignment, allocated extended storage and the broader atomic API/memory-order surface remain pending.
 - Pointer arithmetic/comparison are native, while pointer/aggregate transport through legacy untyped Procedures remains deliberately rejected; typed Procedures carry native values instead.
 - `sizeof`/`_Alignof` results are currently boxed into legacy signed `number`; a native `size_t`-equivalent is pending.
 - String-concatenation buffers, list allocations, and iteration snapshots live until process exit; the legacy runtime has no language-level ownership/GC.
@@ -148,3 +148,14 @@ Aggregate semantic metadata retains each member's ordinary type plus optional bi
 Unnamed bit-fields have no PlainSpeak member identity and are omitted from positional initializer slots. Named bit-fields use ordinary native member reads/stores, but semantic analysis records bit-field expressions so `Size of` can reject them before C compilation.
 
 A structure with a flexible tail remains a complete structure type for direct objects and `sizeof`, while the flexible member itself is an incomplete array. Sema prevents that structure from being embedded by value or used as a fixed-array element, forbids flexible union members, requires the tail to be last with another named member before it, and excludes it from aggregate initialization.
+
+
+## Native type qualifiers
+
+Type qualifiers are retained structurally at every recursive type node and emitted directly into C declarators. `constant`, `volatile`, `restricted`, and `atomic` lower to `const`, `volatile`, `restrict`, and `_Atomic`. Pointer qualifiers are emitted after the corresponding `*`, so a const pointer and a pointer to const remain distinct generated C types.
+
+Semantic analysis performs C-style top-level lvalue conversion for reads while preserving nested pointee qualification. It allows pointer assignment to add immediate pointee qualifiers and rejects qualifier-discarding or unsafe nested-pointer conversions. Const modifiability is checked before code generation across direct assignment, compound Add/Subtract, dereference stores, array element stores, and aggregate member stores.
+
+Const/volatile aggregate qualification propagates to member expressions. Atomic scalar objects and pointers use the backend compiler's native C11 atomic load/store behavior for ordinary expressions and assignments; PlainSpeak does not emulate those accesses in its runtime. Atomic structure/union member access is rejected because the C11 semantics make direct member access undefined, and explicit memory-order operations/fences remain future concurrency work.
+
+Top-level native objects are still emitted as file-scope declarations with most PlainSpeak initializers executed later in `main`. Because a const object cannot be assigned after declaration, top-level const runtime initializers are intentionally rejected until constant-expression/file-scope initializer lowering lands. Current aggregate initializers are similarly post-store based and therefore reject const subobjects and atomic aggregate targets.
