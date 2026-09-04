@@ -1,0 +1,1 @@
+error[E0013]: I can't initialize native object "n" of type null pointer with a number.
