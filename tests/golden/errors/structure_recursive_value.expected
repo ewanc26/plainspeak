@@ -1,0 +1,1 @@
+error[E0019]: Structure member "next" has incomplete by-value type structure node; use a pointer for recursive or forward references.
