@@ -128,7 +128,22 @@ std::string printStmt(const Stmt *s) {
         }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             std::string out = "Declare " + node.name + " as " + printTypeSpec(node.type);
-            if (node.initializer) out += " with value " + printExpr(node.initializer);
+            if (node.initializer) {
+                out += " with value " + printExpr(node.initializer);
+            } else if (node.aggregateInitializer) {
+                const auto &aggregate = *node.aggregateInitializer;
+                if (aggregate.kind == AggregateInitKind::Positional) out += " with values ";
+                else if (aggregate.kind == AggregateInitKind::Members) out += " with members ";
+                else out += " with elements ";
+                for (size_t i = 0; i < aggregate.entries.size(); ++i) {
+                    if (i) out += " followed by ";
+                    const auto &entry = aggregate.entries[i];
+                    if (aggregate.kind == AggregateInitKind::Members) out += entry.memberName + " as ";
+                    else if (aggregate.kind == AggregateInitKind::Elements) out += "at " + std::to_string(entry.elementIndex) + " as ";
+                    out += printExpr(entry.expr);
+                }
+                out += " done";
+            }
             return out + ". ";
         } else if constexpr (std::is_same_v<T, StoreThroughStmt>) {
             return "Set value at " + printExpr(node.pointer) + " to " + printExpr(node.expr) + ". ";
