@@ -1,0 +1,1 @@
+Structure point: Field x as integer. End structure. Declare p as structure point. Declare cp as pointer to constant structure point with value Address of p. Set member x of cp to 2.
