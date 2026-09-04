@@ -70,12 +70,12 @@ Explicit native objects are modifiable lvalues, pointer dereference produces a m
 | `decl.linkage` | planned |
 | `decl.storage-specifiers` | planned |
 | `decl.initializers` | foundation |
-| `decl.designated-initializers` | planned |
+| `decl.designated-initializers` | foundation |
 | `decl.empty-initialization` | planned |
 | `decl.static-assert` | planned |
 | `decl.attributes` | planned |
 
-`Declare` now introduces native scalar, pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer initializers exist and are type-checked. User-controlled linkage, `static`/`extern`/thread storage, allocated storage, aggregate/designated initialization and full constant-initializer rules remain missing.
+`Declare` now introduces native scalar, pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer assignment-style initializers plus positional aggregate, named member-designated, and array index-designated initialization are type-checked. Omitted aggregate slots are zeroed. User-controlled linkage, `static`/`extern`/thread storage, allocated storage, nested aggregate initializers and full C constant-initializer rules remain missing.
 
 ## Statements and control flow
 
