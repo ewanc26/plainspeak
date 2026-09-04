@@ -1,0 +1,1 @@
+Static assert 2 plus 2 is equal to 4 with message "arithmetic". Static assert true or 1 divided by 0. Procedure check returns integer: Static assert 3 times 3 is equal to 9. Return 7. End procedure. Say Call check done.

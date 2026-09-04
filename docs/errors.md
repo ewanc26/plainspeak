@@ -35,6 +35,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0027 | Invalid prefix/postfix increment or decrement operand |
 | E0028 | Invalid C conditional expression condition or branch types |
 | E0029 | Invalid Break/Continue placement outside an allowed control-flow context |
+| E0030 | Invalid or failed compile-time static assertion |
 
 ## Parse-time errors
 

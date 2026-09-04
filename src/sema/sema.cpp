@@ -1901,6 +1901,19 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({10, s->line, "I can only remove an item from a list; \"" + node.varName + "\" is a " + typeToString(symbol.type) + "."});
             }
         }
+        else if constexpr (std::is_same_v<T, StaticAssertStmt>) {
+            Type conditionType = inferExpr(node.condition, s->line, diags);
+            auto value = integerConstantValue(node.condition);
+            if (!isIntegralType(decayArray(conditionType)) || !value) {
+                diags.push_back({30, s->line,
+                    "Static assert requires an integer constant expression."});
+            } else if (*value == 0) {
+                std::string message = "Static assertion failed";
+                if (node.message && !node.message->empty()) message += ": " + *node.message;
+                message += ".";
+                diags.push_back({30, s->line, std::move(message)});
+            }
+        }
         else if constexpr (std::is_same_v<T, BreakStmt>) {
             if (breakableDepth_ == 0) {
                 diags.push_back({29, s->line, "Break can only appear inside a loop or another C breakable construct."});
