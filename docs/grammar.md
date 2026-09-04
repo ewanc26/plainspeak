@@ -368,9 +368,12 @@ Results are currently boxed back into PlainSpeak `number`, so native `size_t` is
 ```text
 Expr ::= OrExpr
 OrExpr ::= AndExpr ("or" AndExpr)*
-AndExpr ::= NotExpr ("and" NotExpr)*
-NotExpr ::= "not" NotExpr | Comparison
-Comparison ::= Additive ("is" Comparator Additive)?
+AndExpr ::= BitwiseOrExpr ("and" BitwiseOrExpr)*
+BitwiseOrExpr ::= BitwiseXorExpr ("bitwise" "or" BitwiseXorExpr)*
+BitwiseXorExpr ::= BitwiseAndExpr ("bitwise" "xor" BitwiseAndExpr)*
+BitwiseAndExpr ::= NotExpr ("bitwise" "and" NotExpr)*
+NotExpr ::= "not" NotExpr | "bitwise" "not" NotExpr | Comparison
+Comparison ::= ShiftExpr ("is" Comparator ShiftExpr)?
 
 Comparator ::= "greater" "than"
              | "less" "than"
@@ -379,6 +382,7 @@ Comparator ::= "greater" "than"
              | "greater" "than" "or" "equal" "to"
              | "less" "than" "or" "equal" "to"
 
+ShiftExpr ::= Additive (("shifted" ("left" | "right") "by") Additive)*
 Additive ::= Multiplicative (("plus" | "minus") Multiplicative)*
 Multiplicative ::= Power (("times" | "divided by" | "mod" | "modulo") Power)*
 Power ::= Primary ("to" "the" "power" "of" Primary)*
@@ -411,7 +415,15 @@ MemberExpr ::= "Member" IDENT "of" Primary
 EnumeratorExpr ::= "Enumerator" IDENT "of" IDENT
 ```
 
-Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
+Precedence, low to high: `or` → `and` → `bitwise or` → `bitwise xor` → `bitwise and` → `not` / `bitwise not` → comparison → shifts → additive → multiplicative → power → primary. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
+
+## C arithmetic conversions and bitwise operators
+
+For native arithmetic expressions, PlainSpeak now follows C's integer promotions and usual arithmetic conversions instead of collapsing every operation through the legacy boxed `long`/`double` runtime. `boolean`, character, short integer and current enumeration values promote as C requires; mixed signed/unsigned integer operands use rank and representable-range rules, and floating operands preserve `float` / `double` / `long double` rank.
+
+The bitwise forms are `bitwise and`, `bitwise xor`, `bitwise or`, and unary `bitwise not`. Shift expressions use `shifted left by` and `shifted right by`. Bitwise operands must be integer types, and each shift operand undergoes integer promotion; the result type of a shift is the promoted left operand. Modulo is likewise restricted to integer operands.
+
+These expressions lower directly to C `&`, `^`, `|`, `~`, `<<`, `>>`, and the ordinary arithmetic operators, so the backend compiler performs the same target-specific conversion and execution rules represented by sema. PlainSpeak does not currently promise to diagnose every run-time undefined or implementation-defined shift case (for example, a negative or excessive shift count); those remain part of the broader C execution-semantics conformance work.
 
 ## Types and representation boundary
 
