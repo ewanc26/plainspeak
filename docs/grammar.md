@@ -390,6 +390,7 @@ Power ::= Primary ("to" "the" "power" "of" Primary)*
 Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
           | "minus" Primary
           | "(" Expr ")"
+          | "Choose" Expr "when" Expr "otherwise" Expr
           | ("Increment" | "Decrement") ("before" | "after") Primary
           | "Convert" Primary "to" "type" CType
           | "Address" "of" IDENT
@@ -417,7 +418,7 @@ MemberExpr ::= "Member" IDENT "of" Primary
 EnumeratorExpr ::= "Enumerator" IDENT "of" IDENT
 ```
 
-Precedence, low to high: `or` → `and` → `bitwise or` → `bitwise xor` → `bitwise and` → `not` / `bitwise not` → comparison → shifts → additive → multiplicative → power → primary. `Increment/Decrement before/after` and `Convert` are primary forms; convert a parenthesized expression when the operand should include lower-precedence operators. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
+Precedence, low to high: `or` → `and` → `bitwise or` → `bitwise xor` → `bitwise and` → `not` / `bitwise not` → comparison → shifts → additive → multiplicative → power → primary. `Choose`, `Increment/Decrement before/after`, and `Convert` are explicit expression forms; convert a parenthesized expression when the operand should include lower-precedence operators. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
 
 ## C arithmetic conversions and bitwise operators
 
@@ -426,6 +427,21 @@ For native arithmetic expressions, PlainSpeak now follows C's integer promotions
 The bitwise forms are `bitwise and`, `bitwise xor`, `bitwise or`, and unary `bitwise not`. Shift expressions use `shifted left by` and `shifted right by`. Bitwise operands must be integer types, and each shift operand undergoes integer promotion; the result type of a shift is the promoted left operand. Modulo is likewise restricted to integer operands.
 
 These expressions lower directly to C `&`, `^`, `|`, `~`, `<<`, `>>`, and the ordinary arithmetic operators, so the backend compiler performs the same target-specific conversion and execution rules represented by sema. PlainSpeak does not currently promise to diagnose every run-time undefined or implementation-defined shift case (for example, a negative or excessive shift count); those remain part of the broader C execution-semantics conformance work.
+
+## Conditional expressions
+
+`Choose A when C otherwise B` provides C's conditional-expression capability and lowers directly to `C ? A : B`:
+
+```text
+Say Choose 10 when ready otherwise 20.
+Declare selected as pointer to constant integer with value Choose p when flag otherwise cp.
+```
+
+The condition must currently have a C scalar type: an arithmetic value or object pointer. As with C's `?:`, only the selected branch is evaluated by the generated program.
+
+When both branches are arithmetic, the usual arithmetic conversions determine the result type. Compatible pointer branches produce a composite pointer type: pointed-to qualifiers are combined, and an object pointer paired with `void *` produces the appropriately qualified `void *` result. Two identical structure or union branch types produce that aggregate type by value.
+
+This is still a foundation rather than complete C conditional-expression parity. Integer null-pointer constants are not yet tracked as constant-expression metadata, function pointers are not source-spellable, and void-valued branch expressions need the future discard/void-expression surface.
 
 ## Prefix and postfix increment/decrement
 
