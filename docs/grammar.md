@@ -35,7 +35,7 @@ Resolved by exact, case-insensitive lookup — never fuzzy matching:
 ## Statements
 
 ```text
-Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt
+Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | RepeatStmt | IfStmt | WhileStmt | ForEachStmt
@@ -45,6 +45,7 @@ SayStmt ::= ("Say" | "Print") Expr "."
 SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
 DeclareStmt ::= "Declare" IDENT "as" CType ("with" "value" Expr)? "."
 StoreThroughStmt ::= ("Set" | "Let" | "Make") "value" "at" Expr "to" Expr "."
+StoreElementStmt ::= ("Set" | "Let" | "Make") "element" "at" Expr "in" Expr "to" Expr "."
 AddStmt ::= "Add" Expr "to" IDENT "."
 SubStmt ::= "Subtract" Expr "from" IDENT "."
 ReadStmt ::= "Read" IDENT "."
@@ -90,7 +91,7 @@ Set names to Empty list of strings. Append "Ada" to names. For each name in name
 
 ## C type spellings
 
-PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer types:
+PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer and fixed-array types:
 
 ```text
 CScalarType ::= "void"
@@ -110,7 +111,9 @@ CScalarType ::= "void"
               | "decimal"
               | "long" "decimal"
 
-CType ::= CScalarType | "pointer" "to" CType
+CType ::= CScalarType
+        | "pointer" "to" CType
+        | "array" "of" CType "with" "length" NUMBER
 ```
 
 The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` remains distinct from both signed and unsigned character types, matching C.
@@ -121,7 +124,7 @@ The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `
 Declare p as pointer to integer. Declare pp as pointer to pointer to integer.
 ```
 
-A `void` type may be the pointee of a pointer, but a standalone object cannot be declared as `void`.
+A `void` type may be the pointee of a pointer, but a standalone object or array element cannot be `void`. Fixed array bounds are positive whole-number literals. Arrays and pointers may nest recursively, so `pointer to array of integer with length 4` and `array of pointer to integer with length 4` are distinct types and lower to distinct C declarators.
 
 ## Native objects and pointers
 
@@ -149,7 +152,25 @@ Declare x as integer with value 7. Declare p as pointer to integer with value Ad
 
 Native arithmetic scalar declarations accept arithmetic initializers and assignments using C assignment conversion at the generated-C boundary. Compatible object pointers may be assigned directly; object-pointer/`void *` compatibility is recognised. Full integer promotions and the complete usual-arithmetic-conversion model remain separate conformance work.
 
-Pointer arithmetic, relational/equality pointer comparison, pointer truthiness, function pointers, pointer-valued legacy procedure parameters/returns, qualifiers, arrays, and allocation are **not** enabled by this tranche.
+## Native fixed arrays and pointer arithmetic
+
+Fixed native arrays use real C array storage:
+
+```text
+Declare values as array of integer with length 4. Set element at 0 in values to 10. Set element at 1 in values to 20. Say Element at 1 in values.
+```
+
+Native `Element at` is deliberately **zero-based**, matching C subscripting. It is separate from one-based mutable-list `Item at`. `Element at index in base` accepts a fixed native array or an object pointer; `Set element at index in base to value.` writes through that subscript.
+
+An array expression keeps its full array type when used by `Size of` or `Address of`. In ordinary value contexts it decays to a pointer to its first element, so this is valid:
+
+```text
+Declare values as array of integer with length 4. Declare p as pointer to integer with value values. Declare q as pointer to integer with value p plus 2. Say Value at q. Say q minus p.
+```
+
+`pointer plus integer`, `integer plus pointer`, and `pointer minus integer` use C element-scaled pointer arithmetic for complete object pointers. Subtracting two pointers to the same element type produces the current PlainSpeak whole-number result. Equality comparison accepts compatible object pointers (including the existing object-pointer/`void *` compatibility); relational comparison requires the same complete element type. `Add` and `Subtract` on an explicitly declared object pointer lower to C `+=` and `-=` with an integer offset.
+
+Whole-array assignment and whole-array initializers are intentionally not invented. Declare an array, then set elements individually. Variable-length arrays, pointer truthiness, null pointers, function pointers, qualifiers, allocated storage and aggregate members remain later work.
 
 ## Size and alignment queries
 
@@ -194,6 +215,7 @@ Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
           | "(" Expr ")"
           | "Address" "of" IDENT
           | "Value" "at" Primary
+          | ElementExpr
           | "Length" "of" Primary
           | SizeOfTypeExpr
           | SizeOfExpr
@@ -209,9 +231,10 @@ Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
 ListExpr ::= "List" "with" Expr ("followed" "by" Expr)* "done"
 EmptyListExpr ::= "Empty" "list" "of" ("numbers" | "decimals" | "strings")
 ItemExpr ::= "Item" "at" Expr "in" Primary
+ElementExpr ::= "Element" "at" Expr "in" Primary
 ```
 
-Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Addressing, indirection, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
+Precedence, low to high: `or` → `and` → `not` → comparison → additive → multiplicative → power → primary. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
 
 ## Types and representation boundary
 
@@ -224,15 +247,15 @@ Legacy PlainSpeak values remain:
 
 Explicit `Declare` objects instead use native C storage for the `CType` written in source. These two representations are intentionally distinct. Reading a native arithmetic object in a legacy expression boxes its current value; assigning a legacy numeric expression into a native arithmetic object converts it back to that object's C type.
 
-The compiler's structural semantic type system also represents arrays, functions, qualifiers, aggregates, enums, C23 bit-precise integers and null pointers as foundations for later syntax. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
+The compiler's structural semantic type system also represents functions, qualifiers, aggregates, enums, C23 bit-precise integers and null pointers as foundations for later syntax. Fixed arrays are now source-spellable native objects; variable-length and incomplete-array source forms remain pending. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
 
 ## Known gaps
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
-- Pointer arithmetic/comparison and pointer conditions are pending.
-- Arrays/VLAs, structs/unions/bit-fields, enums, qualifiers, atomics, function pointers, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
+- Variable-length arrays, whole-array initializers, structs/unions/bit-fields, enums, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
 - Procedure parameter and return type declarations remain implicit and cannot transport native pointers yet.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
-- Lists cannot contain lists or native pointers.
+- Lists cannot contain lists, native pointers, or native arrays.
 
 Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, parser, semantic analysis, code generation, runtime behaviour, documentation, and tests must land together.
