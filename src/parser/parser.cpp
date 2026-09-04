@@ -300,7 +300,8 @@ Stmt *Parser::parseForEach() {
 Stmt *Parser::parseReturn() {
     int line = peek().line;
     advance();
-    Expr *expr = parseExpr();
+    Expr *expr = nullptr;
+    if (peek().kind != TokKind::Dot) expr = parseExpr();
     expectDot();
     return arena_.makeStmt(ReturnStmt{expr}, line);
 }
@@ -326,15 +327,44 @@ Stmt *Parser::parseProcedure() {
     int line = peek().line;
     advance();
     std::string name = expectIdentName();
-    std::vector<std::string> params;
+    std::vector<ProcedureParam> params;
+    bool sawTypedParam = false;
+    bool sawUntypedParam = false;
+
     if (checkWord("takes")) {
         advance();
-        params.push_back(expectIdentName());
-        while (peek().kind == TokKind::Ident) params.push_back(expectIdentName());
+        while (peek().kind != TokKind::Colon && !checkWord("returns")) {
+            std::string paramName = expectIdentName();
+            std::optional<TypeSpec> paramType;
+            if (checkWord("as")) {
+                advance();
+                paramType = parseTypeSpec();
+                sawTypedParam = true;
+            } else {
+                sawUntypedParam = true;
+            }
+            if (sawTypedParam && sawUntypedParam) {
+                error("a Procedure cannot mix typed and untyped parameters; give every parameter an \"as <type>\" or none of them");
+            }
+            params.push_back(ProcedureParam{std::move(paramName), std::move(paramType)});
+        }
     }
+
+    std::optional<TypeSpec> returnType;
+    if (checkWord("returns")) {
+        advance();
+        returnType = parseTypeSpec();
+    }
+    if (sawTypedParam && !returnType) {
+        error("a Procedure with typed parameters must say what it returns, including \"returns void\"");
+    }
+    if (sawUntypedParam && returnType) {
+        error("a typed Procedure return requires typed parameters; either add \"as <type>\" to every parameter or remove \"returns\"");
+    }
+
     expectColon();
     auto body = parseBlockUntil("end", "procedure");
-    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(body)}, line);
+    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body)}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {
