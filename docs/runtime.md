@@ -5,7 +5,7 @@ PlainSpeak currently emits portable C11 and links against `plainspeak_runtime.h`
 There are now two deliberately separate generated representations:
 
 1. **Legacy PlainSpeak values** use the tagged `PsValue` runtime.
-2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer/fixed-array/structure/union type and therefore have C address, size, alignment, storage, indirection, subscript and member semantics.
+2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer/fixed-array/structure/union/enumeration type and therefore have C address, size, alignment, storage, indirection, subscript and member semantics.
 
 The compiler's semantic analysis records which representation every relevant expression/object uses. Code generation consumes that result rather than re-inferring types.
 
@@ -95,7 +95,7 @@ The keyword set includes C89/C90, C99, C11, and C23 spellings. Runtime bridge na
 
 ## Current object-model boundaries
 
-- Native scalar, object-pointer, fixed-array, tagged-structure and tagged-union storage are first-class. Qualifiers, atomics, requested alignment, allocated storage, flexible members and bit-fields have not landed yet.
+- Native scalar (including tagged enums), object-pointer, fixed-array, tagged-structure and tagged-union storage are first-class. Qualifiers, atomics, requested alignment, allocated storage, flexible members and bit-fields have not landed yet.
 - Pointer arithmetic/comparison are native, while pointer/aggregate transport through legacy untyped Procedures remains deliberately rejected; typed Procedures carry native values instead.
 - `sizeof`/`_Alignof` results are currently boxed into legacy signed `number`; a native `size_t`-equivalent is pending.
 - String-concatenation buffers, list allocations, and iteration snapshots live until process exit; the legacy runtime has no language-level ownership/GC.
@@ -132,3 +132,10 @@ Member access uses the same `.` / `->` lowering as structures. No active-member 
 Aggregate declaration syntax does not add a runtime container. For file-scope native aggregates, C static storage supplies the initial all-zero state and generated startup code writes the selected initializer entries in source order. For automatic aggregates, codegen emits a native declaration with `= {0}` and then the validated member/element stores.
 
 Positional structure initializers use the semantically retained field order. Positional array initializers use indexes from zero. Named structure/union designators and numeric array designators lower to ordinary native field/element assignments after zero initialization. This design deliberately supports dynamic PlainSpeak expressions while preserving omitted-member zero semantics; it is not a claim that every initializer is a C constant expression.
+
+
+## Native enumerations
+
+Enumeration definitions lower to real C `enum` definitions before aggregate definitions, objects and function prototypes. Semantic analysis computes implicit values, checks explicit values against the current C99-C17 `int` range, enforces the shared C tag namespace, and retains the completed enumeration for object/layout queries.
+
+PlainSpeak Enumerator expressions are source-qualified, but generated C enumerator identifiers are built from both the enumeration tag and enumerator name. This keeps generated identifiers unique even when separate PlainSpeak enumerations reuse the same member name. Enum objects remain native C enum objects; only the existing boxing bridge is used when an enum value enters a legacy operation such as `Say`.
