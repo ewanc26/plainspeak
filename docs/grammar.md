@@ -390,6 +390,7 @@ Power ::= Primary ("to" "the" "power" "of" Primary)*
 Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
           | "minus" Primary
           | "(" Expr ")"
+          | "Convert" Primary "to" "type" CType
           | "Address" "of" IDENT
           | "Value" "at" Primary
           | ElementExpr
@@ -415,7 +416,7 @@ MemberExpr ::= "Member" IDENT "of" Primary
 EnumeratorExpr ::= "Enumerator" IDENT "of" IDENT
 ```
 
-Precedence, low to high: `or` → `and` → `bitwise or` → `bitwise xor` → `bitwise and` → `not` / `bitwise not` → comparison → shifts → additive → multiplicative → power → primary. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
+Precedence, low to high: `or` → `and` → `bitwise or` → `bitwise xor` → `bitwise and` → `not` / `bitwise not` → comparison → shifts → additive → multiplicative → power → primary. `Convert` is a primary form; convert a parenthesized expression when the operand should include lower-precedence operators. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
 
 ## C arithmetic conversions and bitwise operators
 
@@ -424,6 +425,22 @@ For native arithmetic expressions, PlainSpeak now follows C's integer promotions
 The bitwise forms are `bitwise and`, `bitwise xor`, `bitwise or`, and unary `bitwise not`. Shift expressions use `shifted left by` and `shifted right by`. Bitwise operands must be integer types, and each shift operand undergoes integer promotion; the result type of a shift is the promoted left operand. Modulo is likewise restricted to integer operands.
 
 These expressions lower directly to C `&`, `^`, `|`, `~`, `<<`, `>>`, and the ordinary arithmetic operators, so the backend compiler performs the same target-specific conversion and execution rules represented by sema. PlainSpeak does not currently promise to diagnose every run-time undefined or implementation-defined shift case (for example, a negative or excessive shift count); those remain part of the broader C execution-semantics conformance work.
+
+## Explicit C conversions
+
+`Convert value to type CType` is PlainSpeak's explicit C cast capability:
+
+```text
+Say Convert 3.75 to type integer.
+Declare vp as pointer to void with value Convert Address of x to type pointer to void.
+Declare p as pointer to integer with value Convert vp to type pointer to integer.
+```
+
+The target must currently be a scalar C type. Arithmetic-to-arithmetic conversions lower directly to C casts. Object pointers may be explicitly converted to other object-pointer types, integers may be explicitly converted to pointers, and pointers may be explicitly converted to integer types; the implementation-defined details of pointer/integer representation remain properties of the target C implementation. Any scalar value may be converted to `boolean`, matching C's zero/nonzero scalar conversion.
+
+Floating-point values cannot be converted directly to pointers, and arrays, functions, structures, unions, strings and lists are not scalar cast targets/operands. Casts to a completed enumeration type are accepted; incomplete enum targets are rejected before code generation.
+
+`Convert ... to type void` is not exposed as a value expression yet because PlainSpeak currently has no standalone discard-expression statement. That specific C use remains pending rather than pretending a void value can flow through `Say` or assignment.
 
 ## Types and representation boundary
 
