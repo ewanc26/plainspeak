@@ -179,6 +179,118 @@ bool supportsCObjectQuery(const Type &t) {
            t.kind == TypeKind::Structure || t.kind == TypeKind::Union;
 }
 
+Type signedInteger(IntegerRank rank) { return Type::integer(rank, false); }
+Type unsignedInteger(IntegerRank rank) { return Type::integer(rank, true); }
+
+int integerRankOrder(IntegerRank rank) {
+    switch (rank) {
+        case IntegerRank::Char: return 0;
+        case IntegerRank::Short: return 1;
+        case IntegerRank::Int: return 2;
+        case IntegerRank::Long: return 3;
+        case IntegerRank::LongLong: return 4;
+    }
+    return 0;
+}
+
+unsigned long long unsignedMaxForRank(IntegerRank rank) {
+    switch (rank) {
+        case IntegerRank::Char: return std::numeric_limits<unsigned char>::max();
+        case IntegerRank::Short: return std::numeric_limits<unsigned short>::max();
+        case IntegerRank::Int: return std::numeric_limits<unsigned int>::max();
+        case IntegerRank::Long: return std::numeric_limits<unsigned long>::max();
+        case IntegerRank::LongLong: return std::numeric_limits<unsigned long long>::max();
+    }
+    return 0;
+}
+
+unsigned long long signedMaxForRank(IntegerRank rank) {
+    switch (rank) {
+        case IntegerRank::Char: return static_cast<unsigned long long>(std::numeric_limits<signed char>::max());
+        case IntegerRank::Short: return static_cast<unsigned long long>(std::numeric_limits<short>::max());
+        case IntegerRank::Int: return static_cast<unsigned long long>(std::numeric_limits<int>::max());
+        case IntegerRank::Long: return static_cast<unsigned long long>(std::numeric_limits<long>::max());
+        case IntegerRank::LongLong: return static_cast<unsigned long long>(std::numeric_limits<long long>::max());
+    }
+    return 0;
+}
+
+Type integerPromotion(Type type) {
+    type = stripTopQualifiers(std::move(type));
+    if (type.kind == TypeKind::Boolean || type.kind == TypeKind::Enumeration) {
+        return signedInteger(IntegerRank::Int);
+    }
+    if (type.kind != TypeKind::Integer) return type;
+
+    if (integerRankOrder(type.integerRank) >= integerRankOrder(IntegerRank::Int)) {
+        return type;
+    }
+
+    if (type.integerRank == IntegerRank::Char && type.charSignedness == CharSignedness::Plain) {
+        if (std::numeric_limits<char>::lowest() >= std::numeric_limits<int>::lowest() &&
+            std::numeric_limits<char>::max() <= std::numeric_limits<int>::max()) {
+            return signedInteger(IntegerRank::Int);
+        }
+        return unsignedInteger(IntegerRank::Int);
+    }
+
+    const bool unsignedSource = type.isUnsigned || type.charSignedness == CharSignedness::Unsigned;
+    if (!unsignedSource || unsignedMaxForRank(type.integerRank) <= signedMaxForRank(IntegerRank::Int)) {
+        return signedInteger(IntegerRank::Int);
+    }
+    return unsignedInteger(IntegerRank::Int);
+}
+
+Type usualIntegerConversion(Type lhs, Type rhs) {
+    lhs = integerPromotion(std::move(lhs));
+    rhs = integerPromotion(std::move(rhs));
+    if (lhs == rhs) return lhs;
+
+    if (lhs.kind != TypeKind::Integer || rhs.kind != TypeKind::Integer) {
+        return Type::number();
+    }
+
+    const int lhsRank = integerRankOrder(lhs.integerRank);
+    const int rhsRank = integerRankOrder(rhs.integerRank);
+    if (lhs.isUnsigned == rhs.isUnsigned) return lhsRank >= rhsRank ? lhs : rhs;
+
+    Type unsignedType = lhs.isUnsigned ? lhs : rhs;
+    Type signedType = lhs.isUnsigned ? rhs : lhs;
+    const int unsignedRank = integerRankOrder(unsignedType.integerRank);
+    const int signedRank = integerRankOrder(signedType.integerRank);
+
+    if (unsignedRank >= signedRank) return unsignedType;
+    if (signedMaxForRank(signedType.integerRank) >= unsignedMaxForRank(unsignedType.integerRank)) {
+        return signedType;
+    }
+    return unsignedInteger(signedType.integerRank);
+}
+
+Type usualArithmeticConversion(Type lhs, Type rhs) {
+    lhs = decayArray(std::move(lhs));
+    rhs = decayArray(std::move(rhs));
+
+    if (lhs.kind == TypeKind::Floating || rhs.kind == TypeKind::Floating) {
+        FloatingRank rank = FloatingRank::Float;
+        auto raise = [&](const Type &t) {
+            if (t.kind != TypeKind::Floating) return;
+            if (t.floatingRank == FloatingRank::LongDouble) rank = FloatingRank::LongDouble;
+            else if (t.floatingRank == FloatingRank::Double && rank != FloatingRank::LongDouble)
+                rank = FloatingRank::Double;
+        };
+        raise(lhs);
+        raise(rhs);
+        return Type::floating(rank);
+    }
+    return usualIntegerConversion(std::move(lhs), std::move(rhs));
+}
+
+bool isBitwiseIntegral(const Type &type) {
+    Type value = stripTopQualifiers(type);
+    return value.kind == TypeKind::Boolean || value.kind == TypeKind::Enumeration ||
+           value.kind == TypeKind::Integer;
+}
+
 std::optional<std::size_t> bitFieldWidthLimit(const Type &type) {
     if (type.kind == TypeKind::Boolean) return 1;
     if (type.kind == TypeKind::Enumeration) return sizeof(int) * CHAR_BIT;
