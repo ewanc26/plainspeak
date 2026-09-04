@@ -42,9 +42,9 @@ std::string emitCBaseType(const Type &type) {
         return "double";
     }
     if (type.kind == TypeKind::Void) return "void";
-    if (type.kind == TypeKind::Structure) return "struct " + type.tag;
-    if (type.kind == TypeKind::Union) return "union " + type.tag;
-    if (type.kind == TypeKind::Enumeration) return "enum " + type.tag;
+    if (type.kind == TypeKind::Structure) return "struct " + mangle(type.tag);
+    if (type.kind == TypeKind::Union) return "union " + mangle(type.tag);
+    if (type.kind == TypeKind::Enumeration) return "enum " + mangle(type.tag);
     return "long";
 }
 
@@ -114,6 +114,10 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return "(*(" + emitRawExpr(node.pointer, analysis) + "))";
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return "((" + emitRawExpr(node.base, analysis) + ")[(" + emitRawExpr(node.index, analysis) + ")])";
+        } else if constexpr (std::is_same_v<T, MemberExpr>) {
+            Type baseType = exprType(node.base, analysis);
+            std::string op = baseType.isPointer() ? "->" : ".";
+            return "((" + emitRawExpr(node.base, analysis) + ")" + op + mangle(node.name) + ")";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) return mangle(node.name);
         } else if constexpr (std::is_same_v<T, CallExpr>) {
@@ -186,6 +190,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+        } else if constexpr (std::is_same_v<T, MemberExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, ListExpr>) {
             std::string result = "ps_list_from((PsValue[]){";
@@ -318,6 +324,9 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             } else {
                 out << indent << mangle(node.name) << " = " << emitBoxedExpr(node.expr, analysis) << ";\n";
             }
+        } else if constexpr (std::is_same_v<T, StructureStmt>) {
+            // Top-level structure definitions are emitted before declarations
+            // and procedure prototypes by emitProgram.
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
             out << indent << emitCDeclaration(type, mangle(node.name));
@@ -330,6 +339,11 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "(" << emitRawExpr(node.base, analysis) << ")[("
                 << emitRawExpr(node.index, analysis) << ")] = "
                 << emitRawExpr(node.expr, analysis) << ";\n";
+        } else if constexpr (std::is_same_v<T, StoreMemberStmt>) {
+            Type baseType = exprType(node.base, analysis);
+            out << indent << "(" << emitRawExpr(node.base, analysis) << ")"
+                << (baseType.isPointer() ? "->" : ".") << mangle(node.name)
+                << " = " << emitRawExpr(node.expr, analysis) << ";\n";
         } else if constexpr (std::is_same_v<T, AddStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
                 out << indent << mangle(node.varName) << " += " << emitRawExpr(node.expr, analysis) << ";\n";
@@ -481,6 +495,26 @@ std::string emitProgram(const std::vector<Stmt *> &program,
 
     for (const auto &v : vars) out << "PsValue " << mangle(v) << ";\n";
 
+    // Emit complete native structure definitions before objects and function
+    // prototypes so by-value uses have real C layout. Pointer fields may
+    // mention later tags because C permits incomplete pointed-to structures.
+    for (Stmt *s : program) {
+        auto *structure = std::get_if<StructureStmt>(&s->node);
+        if (!structure) continue;
+        auto fieldsIt = analysis.structureFields.find(s);
+        if (fieldsIt == analysis.structureFields.end()) continue;
+        out << "struct " << mangle(structure->name) << " {\n";
+        for (const auto &field : fieldsIt->second) {
+            out << "    " << emitCDeclaration(field.second, mangle(field.first)) << ";\n";
+        }
+        out << "};\n";
+    }
+    bool hasStructures = false;
+    for (Stmt *s : program) {
+        if (analysis.structureFields.count(s)) { hasStructures = true; break; }
+    }
+    if (hasStructures) out << "\n";
+
     // Direct top-level native declarations are real file-scope C objects so
     // procedures can take their address or access them. Their possibly-dynamic
     // PlainSpeak initializers are executed in main below.
@@ -512,7 +546,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
     out << "int main(void) {\n";
     int loopCounter = 0;
     for (Stmt *s : program) {
-        if (std::holds_alternative<ProcedureStmt>(s->node)) continue;
+        if (std::holds_alternative<ProcedureStmt>(s->node) ||
+            std::holds_alternative<StructureStmt>(s->node)) continue;
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
             if (decl->initializer) {
                 out << "    " << mangle(decl->name) << " = "
