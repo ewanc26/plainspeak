@@ -72,6 +72,23 @@ std::string emitCBaseType(const Type &type) {
 }
 
 std::string emitCDeclarator(const Type &type, const std::string &name) {
+    if (type.kind == TypeKind::Function && type.returnType) {
+        std::string parameters;
+        if (type.parameterTypes.empty()) {
+            parameters = "void";
+        } else {
+            for (std::size_t i = 0; i < type.parameterTypes.size(); ++i) {
+                if (i) parameters += ", ";
+                parameters += emitCDeclarator(type.parameterTypes[i], "");
+            }
+        }
+        if (type.variadic) {
+            if (!parameters.empty() && parameters != "void") parameters += ", ";
+            else parameters.clear();
+            parameters += "...";
+        }
+        return emitCDeclarator(*type.returnType, name + "(" + parameters + ")");
+    }
     if (type.kind == TypeKind::Array && type.elementType) {
         std::string bound = type.arrayBound ? std::to_string(*type.arrayBound) : "";
         return emitCDeclarator(*type.elementType, name + "[" + bound + "]");
@@ -254,6 +271,8 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return "0";
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "(&" + mangle(node.name) + ")";
+        } else if constexpr (std::is_same_v<T, ProcedureAddressExpr>) {
+            return "(&" + mangle(node.name) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return "(*(" + emitRawExpr(node.pointer, analysis) + "))";
         } else if constexpr (std::is_same_v<T, CastExpr>) {
@@ -281,6 +300,13 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) return mangle(node.name);
+        } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            std::string result = "(" + emitRawExpr(node.callee, analysis) + ")(";
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                if (i) result += ", ";
+                result += emitRawExpr(node.args[i], analysis);
+            }
+            return result + ")";
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             if (signature && signature->nativeTyped) {
@@ -409,6 +435,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             auto it = mathFn.find(node.func);
             std::string fn = it != mathFn.end() ? it->second : "ps_" + node.func;
             return fn + "(" + emitBoxedExpr(node.arg, analysis) + ")";
+        } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             if (signature && signature->nativeTyped) {
@@ -629,6 +657,13 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "    }\n";
             out << indent << "}\n";
+        } else if constexpr (std::is_same_v<T, IndirectCallStmt>) {
+            out << indent << "(void)(" << emitRawExpr(node.callee, analysis) << ")(";
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                if (i) out << ", ";
+                out << emitRawExpr(node.args[i], analysis);
+            }
+            out << ");\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             out << indent << "(void)" << mangle(node.name) << "(";
