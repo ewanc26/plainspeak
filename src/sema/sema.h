@@ -92,6 +92,7 @@ private:
     bool isModifiableObjectType(const Type &type) const;
     bool containsFlexibleArray(const Type &type) const;
     const AggregateFieldInfo *findAggregateField(const Type &base, const std::string &name) const;
+    bool isNativeLvalueExpr(const Expr *e) const;
     Type inferExpr(const Expr *e, int line, std::vector<Diag> &diags);
     void checkStmt(const Stmt *s, std::vector<Diag> &diags);
 };

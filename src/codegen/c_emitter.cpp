@@ -238,6 +238,14 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, CastExpr>) {
             return "((" + emitCType(exprType(e, analysis)) + ")(" +
                    emitRawExpr(node.operand, analysis) + "))";
+        } else if constexpr (std::is_same_v<T, IncDecExpr>) {
+            const bool increment = node.kind == IncDecKind::PrefixIncrement ||
+                                   node.kind == IncDecKind::PostfixIncrement;
+            const bool prefix = node.kind == IncDecKind::PrefixIncrement ||
+                                node.kind == IncDecKind::PrefixDecrement;
+            std::string operand = "(" + emitRawExpr(node.operand, analysis) + ")";
+            if (prefix) return "(" + std::string(increment ? "++" : "--") + operand + ")";
+            return "(" + operand + std::string(increment ? "++" : "--") + ")";
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return "((" + emitRawExpr(node.base, analysis) + ")[(" + emitRawExpr(node.index, analysis) + ")])";
         } else if constexpr (std::is_same_v<T, MemberExpr>) {
@@ -322,6 +330,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, CastExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+        } else if constexpr (std::is_same_v<T, IncDecExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, ElementExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));

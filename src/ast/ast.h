@@ -75,6 +75,8 @@ struct AlignOfTypeExpr { TypeSpec type; };
 struct AddressOfExpr   { std::string name; };
 struct DerefExpr       { Expr *pointer; };
 struct CastExpr        { Expr *operand; TypeSpec target; };
+enum class IncDecKind { PrefixIncrement, PrefixDecrement, PostfixIncrement, PostfixDecrement };
+struct IncDecExpr      { IncDecKind kind; Expr *operand; };
 struct ElementExpr     { Expr *index; Expr *base; };
 struct MemberExpr      { std::string name; Expr *base; };
 struct EnumeratorExpr  { std::string name; std::string enumeration; };
@@ -88,7 +90,7 @@ struct ItemExpr        { Expr *index; Expr *list; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
-                              AlignOfTypeExpr, AddressOfExpr, DerefExpr, CastExpr,
+                              AlignOfTypeExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr,
                               ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
