@@ -27,7 +27,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` preserve fixed-array extent as well as scalar/pointer layout; requested alignment, native `size_t` and aggregate layouts remain pending. |
 | `types.qualifiers` | foundation | const/volatile/restrict/atomic qualification is represented structurally but is not yet source-spellable. |
 | `types.pointers` | foundation | Recursive object pointers support address/dereference, array decay, element-scaled +/- arithmetic, pointer difference, compatible comparison and +=/-= offsets; null/function pointers and qualifiers remain pending. |
-| `types.function-types` | foundation | Return/parameter/variadic function shapes are represented; procedures still use legacy implicit number signatures. |
+| `types.function-types` | foundation | Explicit typed Procedure parameters/returns now lower to native C function types; variadics, function pointers and the complete compatibility rules remain pending. |
 | `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; VLAs/incomplete source declarations and whole-array initialization remain pending. |
 | `types.vla` | planned | C99 variable-length and variably modified types. |
 | `types.structures` | foundation | Tagged structure identity is represented; members/layout/bit-fields/flexible members pending. |
@@ -98,13 +98,15 @@ PlainSpeak's `Repeat` and `For each` remain useful language extensions, but they
 | ID | Status |
 |---|---|
 | `func.typed-signatures` | foundation |
-| `func.prototypes` | planned |
+| `func.prototypes` | foundation |
 | `func.variadic` | foundation |
 | `func.recursion` | foundation |
 | `func.inline` | planned |
 | `func.noreturn` | planned |
 
 Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer.
+
+Typed Procedures now have explicit native parameter and return types, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. These rows remain **foundation** because variadic definitions/calls, function pointers, C's full compatible-type/prototype rules, qualifiers and complete path-sensitive return analysis are not finished.
 
 ## Translation and preprocessing capability
 
