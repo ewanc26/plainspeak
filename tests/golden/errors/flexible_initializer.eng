@@ -1,0 +1,1 @@
+Structure packet: Field length as integer. Flexible field data as character. End structure. Declare p as structure packet with members data as 1 done.
