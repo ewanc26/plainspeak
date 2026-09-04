@@ -33,6 +33,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0025 | Invalid bitwise or shift operand |
 | E0026 | Invalid explicit C conversion/cast |
 | E0027 | Invalid prefix/postfix increment or decrement operand |
+| E0028 | Invalid C conditional expression condition or branch types |
 
 ## Parse-time errors
 
