@@ -521,8 +521,9 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             signature.parameterTypes.push_back(std::move(paramType));
         }
 
-        if (typed && signature.returnType.isArray()) {
-            result.diagnostics.push_back({18, s->line, "A typed Procedure cannot return an array directly; return a pointer to the array instead."});
+        if (typed && (signature.returnType.isArray() || signature.returnType.isFunction())) {
+            result.diagnostics.push_back({18, s->line,
+                "A typed Procedure cannot return an array or function directly; return a pointer instead."});
         }
 
         procTable_[proc->name] = signature;
@@ -661,8 +662,23 @@ bool Sema::validateTypeQualifiers(const Type &type, int line, std::vector<Diag> 
             diags.push_back({24, line, "A function type cannot carry PlainSpeak type qualifiers."});
             valid = false;
         }
-        if (type.returnType) valid = validateTypeQualifiers(*type.returnType, line, diags) && valid;
+        if (!type.returnType) {
+            diags.push_back({29, line, "A function type needs an explicit return type."});
+            valid = false;
+        } else {
+            if (type.returnType->isArray() || type.returnType->isFunction()) {
+                diags.push_back({29, line,
+                    "A C function cannot return an array or function type directly; return a pointer instead."});
+                valid = false;
+            }
+            valid = validateTypeQualifiers(*type.returnType, line, diags) && valid;
+        }
         for (const Type &param : type.parameterTypes) {
+            if (param.kind == TypeKind::Void) {
+                diags.push_back({29, line,
+                    "Use 'function taking nothing' for a zero-parameter prototype; void is not a named parameter type here."});
+                valid = false;
+            }
             valid = validateTypeQualifiers(param, line, diags) && valid;
         }
     }
@@ -803,6 +819,22 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             diags.push_back({22, line, "Enumeration \"" + node.enumeration +
                                        "\" has no Enumerator \"" + node.name + "\"."});
             return Type::integer(IntegerRank::Int);
+        }
+        else if constexpr (std::is_same_v<T, ProcedureAddressExpr>) {
+            auto found = procTable_.find(node.name);
+            if (found == procTable_.end()) {
+                diags.push_back({29, line, "I don't know typed Procedure \"" + node.name +
+                                          "\" for Address of Procedure."});
+                return Type::pointerTo(Type::function(Type::number(), {}));
+            }
+            if (!found->second.nativeTyped) {
+                diags.push_back({29, line, "Address of Procedure requires an explicitly typed Procedure; \"" +
+                                          node.name + "\" uses the legacy PsValue calling convention."});
+                return Type::pointerTo(Type::function(Type::number(), {}));
+            }
+            Type function = Type::function(found->second.returnType,
+                                           found->second.parameterTypes);
+            return Type::pointerTo(std::move(function));
         }
         else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             auto [symbol, found] = lookupVar(node.name, line, diags);
@@ -1122,6 +1154,44 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a C scalar value."});
             }
             return Type::integer(IntegerRank::Int);
+        }
+        else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            Type callee = decayArray(inferExpr(node.callee, line, diags));
+            Type function;
+            if (callee.isPointer() && callee.elementType && callee.elementType->isFunction()) {
+                function = *callee.elementType;
+            } else if (callee.isFunction()) {
+                function = callee;
+            } else {
+                diags.push_back({29, line, "Call through needs a pointer to a function, not " +
+                                          typeToString(callee) + "."});
+                for (Expr *arg : node.args) inferExpr(arg, line, diags);
+                return Type::number();
+            }
+
+            if (node.args.size() != function.parameterTypes.size()) {
+                diags.push_back({29, line, "Indirect call expects " +
+                                          std::to_string(function.parameterTypes.size()) +
+                                          " arguments but got " + std::to_string(node.args.size()) + "."});
+            }
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                std::size_t before = diags.size();
+                Type arg = inferExpr(node.args[i], line, diags);
+                if (i < function.parameterTypes.size() && diags.size() == before &&
+                    !assignableExprTo(function.parameterTypes[i], arg, node.args[i])) {
+                    diags.push_back({29, line, "Argument " + std::to_string(i + 1) +
+                                              " to indirect call expects " +
+                                              typeToString(function.parameterTypes[i]) +
+                                              " but got " + typeToString(arg) + "."});
+                }
+            }
+            if (!function.returnType) return Type::number();
+            if (function.returnType->kind == TypeKind::Void) {
+                diags.push_back({29, line,
+                    "Call through a function returning void cannot be used as a value expression; use it as a statement."});
+                return Type::number();
+            }
+            return *function.returnType;
         }
         else if constexpr (std::is_same_v<T, CallExpr>) {
             auto found = procTable_.find(node.name);
