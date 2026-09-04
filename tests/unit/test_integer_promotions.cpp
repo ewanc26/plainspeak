@@ -4,16 +4,6 @@
 #include "../../src/parser/parser.h"
 #include "../../src/sema/sema.h"
 
-namespace {
-AnalysisResult analyze(const std::string &source, Arena &arena) {
-    Tokenizer tokenizer(source);
-    Parser parser(tokenizer.tokenize(), arena);
-    auto program = parser.parseProgram();
-    Sema sema;
-    return sema.analyze(program);
-}
-}
-
 TEST_CASE("integer promotions lift small native integers to int", "[sema][c99][promotions]") {
     Tokenizer tokenizer(
         "Declare a as unsigned character with value 7. "
