@@ -60,6 +60,14 @@ std::string printExpr(const Expr *e) {
         else if constexpr (std::is_same_v<T, VarRef>) return node.name;
         else if constexpr (std::is_same_v<T, AddressOfExpr>) return "Address of " + node.name;
         else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);
+        else if constexpr (std::is_same_v<T, IncDecExpr>) {
+            const bool increment = node.kind == IncDecKind::PrefixIncrement ||
+                                   node.kind == IncDecKind::PostfixIncrement;
+            const bool prefix = node.kind == IncDecKind::PrefixIncrement ||
+                                node.kind == IncDecKind::PrefixDecrement;
+            return std::string(increment ? "Increment " : "Decrement ") +
+                   (prefix ? "before " : "after ") + printExpr(node.operand);
+        }
         else if constexpr (std::is_same_v<T, CastExpr>) return "Convert " + printExpr(node.operand) + " to type " + printTypeSpec(node.target);
         else if constexpr (std::is_same_v<T, ElementExpr>) return "Element at " + printExpr(node.index) + " in " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, MemberExpr>) return "Member " + node.name + " of " + printExpr(node.base);
