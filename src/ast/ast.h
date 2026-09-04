@@ -45,7 +45,8 @@ enum class TypeSpecKind {
     LongDecimal,
     Pointer,
     Array,
-    Structure
+    Structure,
+    Union
 };
 
 struct TypeSpec {
@@ -89,6 +90,7 @@ struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };
 struct StoreMemberStmt { std::string name; Expr *base; Expr *expr; };
 struct StructureField { std::string name; TypeSpec type; };
 struct StructureStmt { std::string name; std::vector<StructureField> fields; };
+struct UnionStmt { std::string name; std::vector<StructureField> fields; };
 struct AddStmt       { Expr *expr; std::string varName; };
 struct SubStmt       { Expr *expr; std::string varName; };
 struct ReadStmt      { std::string varName; };
@@ -111,7 +113,7 @@ struct ProcedureStmt {
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt,
+using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, UnionStmt,
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt,
