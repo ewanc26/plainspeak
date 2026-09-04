@@ -196,3 +196,5 @@ The semantic type `Nullptr` models C23 `nullptr_t` distinctly from `Pointer`. Th
 `null pointer` lowers to the zero representation of `PsNullptr`. Native integer/boolean/floating literals now also use direct C literals on the raw path, so literal `0` remains an integer constant expression and can serve as a C99-style null pointer constant in pointer contexts.
 
 Pointer/null conditions and logical operations lower directly to C scalar operators instead of boxing pointer values into `PsValue`. This also removes the earlier limitation that rejected pointer conditions in `If` and `While`.
+
+`nullptr_t` is native-only in the current mixed representation model. Inferred legacy `Set`, homogeneous `PsValue` lists and untyped Procedures reject null-pointer values rather than collapsing the distinct C23 type to boxed numeric zero.
