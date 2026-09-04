@@ -58,6 +58,7 @@ add_executable(unit_tests
     tests/unit/test_increment_decrement.cpp
     tests/unit/test_conditional_expression.cpp
     tests/unit/test_null_pointer_semantics.cpp
+    tests/unit/test_loop_control.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp

@@ -38,6 +38,7 @@ Resolved by exact, case-insensitive lookup — never fuzzy matching:
 Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
+       | BreakStmt | ContinueStmt
        | RepeatStmt | IfStmt | WhileStmt | ForEachStmt
        | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
@@ -67,6 +68,8 @@ ReadFloatStmt ::= "ReadFloat" IDENT "."
 AppendStmt ::= "Append" Expr "to" IDENT "."
 ReplaceItemStmt ::= "Replace" "item" "at" Expr "in" IDENT "with" Expr "."
 RemoveItemStmt ::= "Remove" "item" "at" Expr "from" IDENT "."
+BreakStmt ::= "Break" "."
+ContinueStmt ::= "Continue" "."
 CommentStmt ::= "(" COMMENT_TEXT ")"
 RepeatStmt ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
 IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
@@ -77,6 +80,8 @@ ProcedureParam ::= IDENT ("as" CType)?
 ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? ":" Stmt* "End" "procedure" "."
 ReturnStmt ::= "Return" Expr? "."
 ```
+
+`Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, and `For each`). `Continue.` is loop-only. `Break.` currently exits loops and is tracked as foundation-level C compatibility until `switch` lands, at which point the same breakable-context model extends to switch statements. Both lower directly to C `break;` / `continue;`.
 
 `Set` has two related roles. If its name does not exist in the current visible scopes, it creates the existing inferred boxed PlainSpeak variable. If that name already denotes a variable, `Set` assigns a new value to it instead. Explicit C-compatible objects are introduced only with `Declare`.
 
