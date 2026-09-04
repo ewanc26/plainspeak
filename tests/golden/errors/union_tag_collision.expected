@@ -1,0 +1,1 @@
+error[E0020]: Tag "value" is already used by a Structure; C structure and union tags share one namespace.
