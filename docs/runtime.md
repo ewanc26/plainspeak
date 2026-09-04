@@ -5,7 +5,7 @@ PlainSpeak currently emits portable C11 and links against `plainspeak_runtime.h`
 There are now two deliberately separate generated representations:
 
 1. **Legacy PlainSpeak values** use the tagged `PsValue` runtime.
-2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer/fixed-array type and therefore have C address, size, alignment, storage, indirection and subscript semantics.
+2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer/fixed-array/structure type and therefore have C address, size, alignment, storage, indirection, subscript and member semantics.
 
 The compiler's semantic analysis records which representation every relevant expression/object uses. Code generation consumes that result rather than re-inferring types.
 
@@ -111,3 +111,10 @@ Fixed native arrays do not add a runtime container ABI. They lower directly to C
 Legacy Procedures keep the `PsValue` ABI. Procedures with explicit parameter types and a `returns` clause instead lower to native C function declarations/definitions. Their parameters are emitted with the semantic C types retained by sema, array parameters use C's array-to-pointer adjustment, and typed return values use raw/native lowering. Generated prototypes precede all procedure definitions, so forward and mutually recursive calls are valid generated C.
 
 Typed calls use raw arguments and native return values; when a typed arithmetic result re-enters a legacy PlainSpeak expression it is boxed through the existing numeric bridge. Pointer results stay on the native/raw path. Typed `void` procedures emit C `void` and bare `return;`.
+
+
+## Native structures
+
+Structure definitions lower directly to C `struct` definitions before native object declarations and procedure prototypes. Semantic analysis retains the ordered field types, enforces completeness for by-value fields and objects, and permits pointers to incomplete/self-referential tags. Tags and field names use the same C-safe identifier mangling as other user names.
+
+`Member ... of ...` lowers to either C `.` or `->` according to the semantic type of its base. Scalar members cross the existing boxing bridge only when used by legacy operations such as `Say`; structure values themselves remain native. Fixed-array members remain arrays, so native `Element at` can operate on them without a runtime container.
