@@ -1,0 +1,1 @@
+error[E0009]: Lists can't contain other lists, native pointers, null pointer values, arrays, or aggregates. Use numbers, decimals, or strings as list items.
