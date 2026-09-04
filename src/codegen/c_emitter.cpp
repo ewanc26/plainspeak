@@ -184,6 +184,36 @@ const ProcedureSignature *procedureSignature(const std::string &name,
 std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis);
 std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
 
+bool isCArithmeticType(const Type &type) {
+    return type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
+           type.kind == TypeKind::Floating || type.kind == TypeKind::Enumeration ||
+           type.kind == TypeKind::BitInt;
+}
+
+const char *emitBinaryOperator(BinOp op) {
+    switch (op) {
+        case BinOp::Add: return "+";
+        case BinOp::Sub: return "-";
+        case BinOp::Mul: return "*";
+        case BinOp::Div: return "/";
+        case BinOp::Mod: return "%";
+        case BinOp::ShiftLeft: return "<<";
+        case BinOp::ShiftRight: return ">>";
+        case BinOp::Gt: return ">";
+        case BinOp::Lt: return "<";
+        case BinOp::Eq: return "==";
+        case BinOp::Ne: return "!=";
+        case BinOp::Ge: return ">=";
+        case BinOp::Le: return "<=";
+        case BinOp::BitAnd: return "&";
+        case BinOp::BitXor: return "^";
+        case BinOp::BitOr: return "|";
+        case BinOp::And: return "&&";
+        case BinOp::Or: return "||";
+    }
+    return "?";
+}
+
 std::string boxRaw(const std::string &raw, const Type &type) {
     if (type.kind == TypeKind::Floating) {
         return "ps_double((double)(" + raw + "))";
@@ -230,16 +260,20 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             Type rhsType = exprType(node.rhs, analysis);
             bool nativePointerOp = lhsType.isPointer() || lhsType.isArray() || rhsType.isPointer() || rhsType.isArray();
             if (nativePointerOp) {
-                const char *op = node.op == BinOp::Add ? "+"
-                               : node.op == BinOp::Sub ? "-"
-                               : node.op == BinOp::Gt  ? ">"
-                               : node.op == BinOp::Lt  ? "<"
-                               : node.op == BinOp::Eq  ? "=="
-                               : node.op == BinOp::Ne  ? "!="
-                               : node.op == BinOp::Ge  ? ">="
-                                                       : "<=";
-                return "((" + emitRawExpr(node.lhs, analysis) + ") " + op + " (" +
+                return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
                        emitRawExpr(node.rhs, analysis) + "))";
+            }
+            if (isCArithmeticType(lhsType) && isCArithmeticType(rhsType) &&
+                node.op != BinOp::And && node.op != BinOp::Or) {
+                return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
+                       emitRawExpr(node.rhs, analysis) + "))";
+            }
+        } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            Type rhsType = exprType(node.rhs, analysis);
+            if (isCArithmeticType(rhsType)) {
+                const char *op = node.op == UnaryOp::Neg ? "-" :
+                                 node.op == UnaryOp::BitNot ? "~" : "!";
+                return "(" + std::string(op) + "(" + emitRawExpr(node.rhs, analysis) + "))";
             }
         }
 
@@ -350,7 +384,9 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
             Type lhsType = exprType(node.lhs, analysis);
             Type rhsType = exprType(node.rhs, analysis);
-            if (lhsType.isPointer() || lhsType.isArray() || rhsType.isPointer() || rhsType.isArray()) {
+            if (lhsType.isPointer() || lhsType.isArray() || rhsType.isPointer() || rhsType.isArray() ||
+                (isCArithmeticType(lhsType) && isCArithmeticType(rhsType) &&
+                 node.op != BinOp::And && node.op != BinOp::Or)) {
                 return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
             }
             const char *fn = node.op == BinOp::Add ? "ps_add"
@@ -369,6 +405,12 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return std::string(fn) + "(" + emitBoxedExpr(node.lhs, analysis) + ", " +
                    emitBoxedExpr(node.rhs, analysis) + ")";
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            if (node.op == UnaryOp::BitNot && isCArithmeticType(exprType(node.rhs, analysis))) {
+                return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+            }
+            if (node.op == UnaryOp::Neg && isCArithmeticType(exprType(node.rhs, analysis))) {
+                return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+            }
             if (node.op == UnaryOp::Neg) return "ps_neg(" + emitBoxedExpr(node.rhs, analysis) + ")";
             return "ps_not(" + emitBoxedExpr(node.rhs, analysis) + ")";
         }
