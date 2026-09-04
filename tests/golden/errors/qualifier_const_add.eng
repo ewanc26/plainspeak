@@ -1,0 +1,1 @@
+Procedure f returns integer: Declare x as constant integer with value 1. Add 1 to x. Return x. End procedure. Say Call f done.
