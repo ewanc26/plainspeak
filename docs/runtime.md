@@ -5,7 +5,7 @@ PlainSpeak currently emits portable C11 and links against `plainspeak_runtime.h`
 There are now two deliberately separate generated representations:
 
 1. **Legacy PlainSpeak values** use the tagged `PsValue` runtime.
-2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer/fixed-array/structure type and therefore have C address, size, alignment, storage, indirection, subscript and member semantics.
+2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer/fixed-array/structure/union type and therefore have C address, size, alignment, storage, indirection, subscript and member semantics.
 
 The compiler's semantic analysis records which representation every relevant expression/object uses. Code generation consumes that result rather than re-inferring types.
 
@@ -95,8 +95,8 @@ The keyword set includes C89/C90, C99, C11, and C23 spellings. Runtime bridge na
 
 ## Current object-model boundaries
 
-- Native scalar and object-pointer storage is first-class, but arrays, aggregates, qualifiers, atomics, requested alignment and allocated storage have not landed yet.
-- Pointer arithmetic/comparison and pointer-valued legacy procedure transport are deliberately rejected rather than lowered incorrectly.
+- Native scalar, object-pointer, fixed-array, tagged-structure and tagged-union storage are first-class. Qualifiers, atomics, requested alignment, allocated storage, flexible members and bit-fields have not landed yet.
+- Pointer arithmetic/comparison are native, while pointer/aggregate transport through legacy untyped Procedures remains deliberately rejected; typed Procedures carry native values instead.
 - `sizeof`/`_Alignof` results are currently boxed into legacy signed `number`; a native `size_t`-equivalent is pending.
 - String-concatenation buffers, list allocations, and iteration snapshots live until process exit; the legacy runtime has no language-level ownership/GC.
 - Runtime list storage remains intentionally untyped; homogeneity is a compiler invariant rather than duplicated metadata in the C ABI.
@@ -118,3 +118,10 @@ Typed calls use raw arguments and native return values; when a typed arithmetic 
 Structure definitions lower directly to C `struct` definitions before native object declarations and procedure prototypes. Semantic analysis retains the ordered field types, enforces completeness for by-value fields and objects, and permits pointers to incomplete/self-referential tags. Tags and field names use the same C-safe identifier mangling as other user names.
 
 `Member ... of ...` lowers to either C `.` or `->` according to the semantic type of its base. Scalar members cross the existing boxing bridge only when used by legacy operations such as `Say`; structure values themselves remain native. Fixed-array members remain arrays, so native `Element at` can operate on them without a runtime container.
+
+
+## Native unions
+
+Union definitions lower directly to C `union` definitions alongside structures before native object declarations and procedure prototypes. Structure and union tags share C's single tag namespace. Semantic analysis tracks union completeness, ordered members and recursive/forward pointers independently from structures while preserving that namespace collision rule.
+
+Member access uses the same `.` / `->` lowering as structures. No active-member metadata is added to the runtime: union representation and any cross-member interpretation remain properties of generated C and the target implementation.
