@@ -54,6 +54,7 @@ add_executable(unit_tests
     tests/unit/test_aggregate_layout_members.cpp
     tests/unit/test_type_qualifiers.cpp
     tests/unit/test_integer_promotions.cpp
+    tests/unit/test_explicit_casts.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp
