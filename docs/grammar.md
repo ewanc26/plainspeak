@@ -195,7 +195,7 @@ Declare count as integer with value 41. Declare where as pointer to integer with
 Declare x as integer with value 7. Declare p as pointer to integer with value Address of x. Declare pp as pointer to pointer to integer with value Address of p. Say Value at Value at pp.
 ```
 
-Native arithmetic scalar declarations accept arithmetic initializers and assignments using C assignment conversion at the generated-C boundary. Compatible object pointers may be assigned directly; object-pointer/`void *` compatibility is recognised. Full integer promotions and the complete usual-arithmetic-conversion model remain separate conformance work.
+Native arithmetic scalar declarations accept arithmetic initializers and assignments using C assignment conversion at the generated-C boundary. Compatible object pointers may be assigned directly; object-pointer/`void *` compatibility is recognised. Ordinary C integer promotions and usual arithmetic conversions are implemented for the current boolean, enumeration, integer-rank and real-floating families; C23 `_BitInt`, complex arithmetic and remaining edge semantics are separate conformance work.
 
 ## Native fixed arrays and pointer arithmetic
 
