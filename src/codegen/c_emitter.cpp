@@ -324,8 +324,8 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             } else {
                 out << indent << mangle(node.name) << " = " << emitBoxedExpr(node.expr, analysis) << ";\n";
             }
-        } else if constexpr (std::is_same_v<T, StructureStmt>) {
-            // Top-level structure definitions are emitted before declarations
+        } else if constexpr (std::is_same_v<T, StructureStmt> || std::is_same_v<T, UnionStmt>) {
+            // Top-level aggregate definitions are emitted before declarations
             // and procedure prototypes by emitProgram.
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
@@ -495,25 +495,36 @@ std::string emitProgram(const std::vector<Stmt *> &program,
 
     for (const auto &v : vars) out << "PsValue " << mangle(v) << ";\n";
 
-    // Emit complete native structure definitions before objects and function
+    // Emit complete native aggregate definitions before objects and function
     // prototypes so by-value uses have real C layout. Pointer fields may
-    // mention later tags because C permits incomplete pointed-to structures.
+    // mention later tags because C permits incomplete pointed-to aggregates.
     for (Stmt *s : program) {
-        auto *structure = std::get_if<StructureStmt>(&s->node);
-        if (!structure) continue;
-        auto fieldsIt = analysis.structureFields.find(s);
-        if (fieldsIt == analysis.structureFields.end()) continue;
-        out << "struct " << mangle(structure->name) << " {\n";
-        for (const auto &field : fieldsIt->second) {
-            out << "    " << emitCDeclaration(field.second, mangle(field.first)) << ";\n";
+        if (auto *structure = std::get_if<StructureStmt>(&s->node)) {
+            auto fieldsIt = analysis.structureFields.find(s);
+            if (fieldsIt == analysis.structureFields.end()) continue;
+            out << "struct " << mangle(structure->name) << " {\n";
+            for (const auto &field : fieldsIt->second) {
+                out << "    " << emitCDeclaration(field.second, mangle(field.first)) << ";\n";
+            }
+            out << "};\n";
+        } else if (auto *uni = std::get_if<UnionStmt>(&s->node)) {
+            auto fieldsIt = analysis.unionFields.find(s);
+            if (fieldsIt == analysis.unionFields.end()) continue;
+            out << "union " << mangle(uni->name) << " {\n";
+            for (const auto &field : fieldsIt->second) {
+                out << "    " << emitCDeclaration(field.second, mangle(field.first)) << ";\n";
+            }
+            out << "};\n";
         }
-        out << "};\n";
     }
-    bool hasStructures = false;
+    bool hasAggregates = false;
     for (Stmt *s : program) {
-        if (analysis.structureFields.count(s)) { hasStructures = true; break; }
+        if (analysis.structureFields.count(s) || analysis.unionFields.count(s)) {
+            hasAggregates = true;
+            break;
+        }
     }
-    if (hasStructures) out << "\n";
+    if (hasAggregates) out << "\n";
 
     // Direct top-level native declarations are real file-scope C objects so
     // procedures can take their address or access them. Their possibly-dynamic
@@ -547,7 +558,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
     int loopCounter = 0;
     for (Stmt *s : program) {
         if (std::holds_alternative<ProcedureStmt>(s->node) ||
-            std::holds_alternative<StructureStmt>(s->node)) continue;
+            std::holds_alternative<StructureStmt>(s->node) ||
+            std::holds_alternative<UnionStmt>(s->node)) continue;
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
             if (decl->initializer) {
                 out << "    " << mangle(decl->name) << " = "

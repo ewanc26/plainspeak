@@ -39,7 +39,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | RepeatStmt | IfStmt | WhileStmt | ForEachStmt
-       | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt
+       | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
 SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
@@ -49,6 +49,7 @@ StoreElementStmt ::= ("Set" | "Let" | "Make") "element" "at" Expr "in" Expr "to"
 StoreMemberStmt ::= ("Set" | "Let" | "Make") "member" IDENT "of" Expr "to" Expr "."
 StructureField ::= "Field" IDENT "as" CType "."
 StructureStmt ::= "Structure" IDENT ":" StructureField+ "End" "structure" "."
+UnionStmt ::= "Union" IDENT ":" StructureField+ "End" "union" "."
 AddStmt ::= "Add" Expr "to" IDENT "."
 SubStmt ::= "Subtract" Expr "from" IDENT "."
 ReadStmt ::= "Read" IDENT "."
@@ -95,7 +96,7 @@ Set names to Empty list of strings. Append "Ada" to names. For each name in name
 
 ## C type spellings
 
-PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer, fixed-array, and tagged structure types:
+PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer, fixed-array, tagged structure, and tagged union types:
 
 ```text
 CScalarType ::= "void"
@@ -119,6 +120,7 @@ CType ::= CScalarType
         | "pointer" "to" CType
         | "array" "of" CType "with" "length" NUMBER
         | "structure" IDENT
+        | "union" IDENT
 ```
 
 The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` remains distinct from both signed and unsigned character types, matching C.
@@ -185,13 +187,29 @@ A tagged structure definition creates real C aggregate layout:
 Structure point: Field x as integer. Field y as integer. End structure. Declare p as structure point. Set member x of p to 10. Say Member x of p.
 ```
 
-Structure tags form their own semantic namespace and are pre-registered as incomplete before field checking. This permits self-referential and forward pointers such as `pointer to structure node`, while a recursive or forward structure used **by value** must already be complete at that definition point.
+Structure and union tags use C's shared tag namespace and are pre-registered as incomplete before field checking. This permits self-referential and forward pointers such as `pointer to structure node`, while a recursive or forward structure used **by value** must already be complete at that definition point.
 
 `Member name of base` reads a field from either a structure object or a pointer to one. `Set member name of base to value.` writes a non-array field after normal native assignment checking. The compiler chooses C `.` or `->` from the semantic base type; the prose syntax does not expose that punctuation distinction.
 
 Fixed arrays and already-complete structures may be fields. Array fields can be reached with native `Element at`, including nested expressions. Whole-array member assignment is still intentionally rejected.
 
-Native structures can be copied by assignment and transported by value through typed Procedures when their tags match, using the generated C ABI. Structure initializers/literals, designated initializers, anonymous members, flexible array members, unions and bit-fields remain separate work.
+Native structures can be copied by assignment and transported by value through typed Procedures when their tags match, using the generated C ABI. Structure initializers/literals, designated initializers, anonymous members, flexible array members and bit-fields remain separate work.
+
+## Native unions
+
+A tagged union definition uses the same field spelling but lowers to real C `union` layout:
+
+```text
+Union value: Field whole as integer. Field fraction as decimal. End union. Declare v as union value. Set member whole of v to 42. Say Member whole of v.
+```
+
+Unions share C's tag namespace with structures, so `Structure value` and `Union value` cannot both be defined. Like structures, union tags are known as incomplete before their fields are checked, allowing recursive and forward **pointers** while rejecting recursive by-value members.
+
+`Member name of base` and `Set member name of base to value.` work for union objects and pointers as well as structures. Union values may be copied and passed/returned by value through typed Procedures when their union types match.
+
+PlainSpeak does **not** add a runtime active-member discriminator. Writing one member and then reading another follows whatever semantics the generated C program has on the target/compiler; the language does not reinterpret C unions as tagged variants. The conformance tests therefore validate same-member reads/writes and layout, not type-punning assumptions.
+
+Union aggregate/designated initializers, anonymous members and bit-fields remain separate work.
 
 ## Procedures and typed signatures
 
@@ -306,7 +324,7 @@ The compiler's structural semantic type system also represents functions, qualif
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
-- Variable-length arrays, whole-array initializers, unions/bit-fields/flexible structure members, enums, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
+- Variable-length arrays, whole-array initializers, bit-fields/flexible or anonymous aggregate members, enums, qualifiers, atomics, storage/linkage specifiers, allocation and C23 pointer additions remain pending.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.

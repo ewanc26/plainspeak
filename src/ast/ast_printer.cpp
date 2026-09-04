@@ -29,6 +29,8 @@ std::string printTypeSpec(const TypeSpec &type) {
                    " with length " + std::to_string(type.arrayBound);
         case TypeSpecKind::Structure:
             return "structure " + type.tag;
+        case TypeSpecKind::Union:
+            return "union " + type.tag;
     }
     return "<unknown type>";
 }
@@ -116,6 +118,13 @@ std::string printStmt(const Stmt *s) {
                 out += "Field " + field.name + " as " + printTypeSpec(field.type) + ". ";
             }
             return out + "End structure. ";
+        }
+        else if constexpr (std::is_same_v<T, UnionStmt>) {
+            std::string out = "Union " + node.name + ": ";
+            for (const auto &field : node.fields) {
+                out += "Field " + field.name + " as " + printTypeSpec(field.type) + ". ";
+            }
+            return out + "End union. ";
         }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             std::string out = "Declare " + node.name + " as " + printTypeSpec(node.type);

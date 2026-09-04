@@ -61,6 +61,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (isSetKeyword(t.text)) return parseSet();
     if (t.text == "declare") return parseDeclare();
     if (t.text == "structure") return parseStructure();
+    if (t.text == "union") return parseUnion();
     if (t.text == "add") return parseAdd();
     if (t.text == "subtract") return parseSub();
     if (t.text == "readfloat") return parseReadFloat();
@@ -190,6 +191,29 @@ Stmt *Parser::parseStructure() {
     advance(); advance();
     expectDot();
     return arena_.makeStmt(StructureStmt{std::move(name), std::move(fields)}, line);
+}
+
+Stmt *Parser::parseUnion() {
+    int line = peek().line;
+    advance();
+    std::string name = expectIdentName();
+    expectColon();
+
+    std::vector<StructureField> fields;
+    while (!(checkWord("end") && checkWordAt(1, "union"))) {
+        if (peek().kind == TokKind::Eof) {
+            error("reached end of file while looking for \"End union.\"");
+        }
+        expectWord("field");
+        std::string fieldName = expectIdentName();
+        expectWord("as");
+        TypeSpec fieldType = parseTypeSpec();
+        expectDot();
+        fields.push_back(StructureField{std::move(fieldName), std::move(fieldType)});
+    }
+    advance(); advance();
+    expectDot();
+    return arena_.makeStmt(UnionStmt{std::move(name), std::move(fields)}, line);
 }
 
 Stmt *Parser::parseAdd() {
@@ -415,6 +439,13 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
 }
 
 TypeSpec Parser::parseTypeSpec() {
+    if (checkWord("union")) {
+        advance();
+        std::string tag = expectIdentName();
+        TypeSpec type{TypeSpecKind::Union};
+        type.tag = std::move(tag);
+        return type;
+    }
     if (checkWord("structure")) {
         advance();
         std::string tag = expectIdentName();
@@ -475,7 +506,7 @@ TypeSpec Parser::parseTypeSpec() {
         advance(); advance(); return TypeSpec{TypeSpecKind::LongDecimal};
     }
 
-    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"structure point\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
+    error("expected a C type such as \"integer\", \"pointer to integer\", \"array of integer with length 4\", \"structure point\", \"union value\", \"unsigned long integer\", \"character\", \"float\", or \"decimal\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }
