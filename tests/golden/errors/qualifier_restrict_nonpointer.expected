@@ -1,0 +1,1 @@
+error[E0024]: restricted may qualify only a pointer to an object type; restricted integer does not satisfy that C constraint.
