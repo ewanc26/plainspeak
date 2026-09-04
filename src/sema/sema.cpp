@@ -943,13 +943,15 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, ListExpr>) {
             Type first = inferExpr(node.items.front(), line, diags);
-            if (isList(first) || first.isPointer() || first.isArray() || first.isAggregate()) {
-                diags.push_back({9, line, "Lists can't contain other lists, native pointers, arrays, or aggregates. Use numbers, decimals, or strings as list items."});
+            if (isList(first) || first.isPointer() || first.kind == TypeKind::Nullptr ||
+                first.isArray() || first.isAggregate()) {
+                diags.push_back({9, line, "Lists can't contain other lists, native pointers, null pointer values, arrays, or aggregates. Use numbers, decimals, or strings as list items."});
                 first = Type::number();
             }
             for (size_t i = 1; i < node.items.size(); ++i) {
                 Type item = inferExpr(node.items[i], line, diags);
-                if (isList(item) || item.isPointer() || item.isArray() || item.isAggregate() || item != first) {
+                if (isList(item) || item.isPointer() || item.kind == TypeKind::Nullptr ||
+                    item.isArray() || item.isAggregate() || item != first) {
                     diags.push_back({9, line, "Every item in a list must have the same supported scalar type; this list starts with a " +
                                              typeToString(first) + " but also contains a " + typeToString(item) + "."});
                 }
@@ -1109,8 +1111,8 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                                                  node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
                                                  " but got " + typeToString(argType) + "."});
                     }
-                } else if (argType.isPointer() || argType.isArray()) {
-                    diags.push_back({16, line, "Legacy Procedure parameters cannot carry native pointers or arrays yet."});
+                } else if (argType.isPointer() || argType.kind == TypeKind::Nullptr || argType.isArray()) {
+                    diags.push_back({16, line, "Legacy Procedure parameters cannot carry native pointers, null pointer values, or arrays yet."});
                 }
             }
             if (signature.nativeTyped && signature.returnType.kind == TypeKind::Void) {
@@ -1243,8 +1245,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                              typeToString(existing->type) + ", to a " + typeToString(exprType) + "."});
                 }
                 if (existing->nativeObject && modifiable && analysis_) analysis_->nativeMutationTargets.insert(s);
-            } else if (exprType.isPointer() || exprType.isArray() || exprType.isAggregate()) {
-                diags.push_back({13, s->line, "Native pointers, arrays, and aggregates need explicit declarations; inferred Set cannot create them."});
+            } else if (exprType.isPointer() || exprType.kind == TypeKind::Nullptr ||
+                       exprType.isArray() || exprType.isAggregate()) {
+                diags.push_back({13, s->line, "Native pointers, null pointer values, arrays, and aggregates need explicit declarations; inferred Set cannot create them."});
             } else {
                 declareVar(node.name, exprType, false, s->line, diags);
             }
@@ -1880,8 +1883,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     return;
                 }
                 Type type = inferExpr(node.expr, s->line, diags);
-                if (type.isPointer() || type.isArray()) {
-                    diags.push_back({16, s->line, "Legacy Procedures cannot return native pointers or arrays yet."});
+                if (type.isPointer() || type.kind == TypeKind::Nullptr || type.isArray()) {
+                    diags.push_back({16, s->line, "Legacy Procedures cannot return native pointers, null pointer values, or arrays yet."});
                 }
                 return;
             }
