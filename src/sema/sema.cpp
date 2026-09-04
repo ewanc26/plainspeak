@@ -1829,6 +1829,19 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             --breakableDepth_;
             --loopDepth_;
         }
+        else if constexpr (std::is_same_v<T, DoWhileStmt>) {
+            Type condType = inferExpr(node.cond, s->line, diags);
+            if (!isConditionalScalar(condType)) {
+                diags.push_back({5, s->line, "Do while needs a C scalar condition, not a " + typeToString(condType) + "."});
+            }
+            ++loopDepth_;
+            ++breakableDepth_;
+            enterScope();
+            for (Stmt *inner : node.body) checkStmt(inner, diags);
+            leaveScope();
+            --breakableDepth_;
+            --loopDepth_;
+        }
         else if constexpr (std::is_same_v<T, ForEachStmt>) {
             Type listType = inferExpr(node.list, s->line, diags);
             Type itemType = Type::number();

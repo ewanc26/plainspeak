@@ -50,6 +50,7 @@ private:
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseWhile();
+    Stmt *parseDoWhile();
     Stmt *parseForEach();
     Stmt *parseCall();
     Stmt *parseReturn();
