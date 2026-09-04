@@ -42,6 +42,20 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "union " + type.tag; break;
         case TypeSpecKind::Enumeration:
             body = "enumeration " + type.tag; break;
+        case TypeSpecKind::Function: {
+            body = "function taking ";
+            if (type.functionParameters.empty()) {
+                body += "nothing";
+            } else {
+                for (std::size_t i = 0; i < type.functionParameters.size(); ++i) {
+                    if (i) body += " followed by ";
+                    body += type.functionParameters[i] ? printTypeSpec(*type.functionParameters[i]) : "<unknown type>";
+                }
+            }
+            body += " returning ";
+            body += type.functionReturn ? printTypeSpec(*type.functionReturn) : "<unknown type>";
+            break;
+        }
         case TypeSpecKind::Nullptr:
             body = "null pointer type"; break;
     }
@@ -62,6 +76,7 @@ std::string printExpr(const Expr *e) {
         else if constexpr (std::is_same_v<T, NullptrLit>) return "null pointer";
         else if constexpr (std::is_same_v<T, VarRef>) return node.name;
         else if constexpr (std::is_same_v<T, AddressOfExpr>) return "Address of " + node.name;
+        else if constexpr (std::is_same_v<T, ProcedureAddressExpr>) return "Address of Procedure " + node.name;
         else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);
         else if constexpr (std::is_same_v<T, ConditionalExpr>) {
             return "Choose " + printExpr(node.whenTrue) + " when " +
@@ -109,6 +124,13 @@ std::string printExpr(const Expr *e) {
                     if (i) out += ", ";
                     out += printExpr(node.args[i]);
                 }
+            }
+            return out + " done";
+        } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            std::string out = "Call through " + printExpr(node.callee);
+            if (!node.args.empty()) {
+                out += " with";
+                for (Expr *arg : node.args) out += " " + printExpr(arg);
             }
             return out + " done";
         } else if constexpr (std::is_same_v<T, BinaryExpr>) {
@@ -243,6 +265,13 @@ std::string printStmt(const Stmt *s) {
             std::string out = "For each " + node.itemName + " in " + printExpr(node.list) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End for. ";
+        } else if constexpr (std::is_same_v<T, IndirectCallStmt>) {
+            std::string out = "Call through " + printExpr(node.callee);
+            if (!node.args.empty()) {
+                out += " with";
+                for (Expr *arg : node.args) out += " " + printExpr(arg);
+            }
+            return out + " done. ";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             std::string out = "Call " + node.name;
             if (!node.args.empty()) {
