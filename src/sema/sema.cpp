@@ -823,9 +823,9 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return integerPromotion(lhsValue);
             }
             if (node.op == BinOp::And || node.op == BinOp::Or) {
-                if (lhsValue != Type::number() || rhsValue != Type::number()) {
+                if (!isArithmeticScalar(lhsValue) || !isArithmeticScalar(rhsValue)) {
                     diags.push_back({2, line, "I can't do logical " + std::string(node.op == BinOp::And ? "and" : "or") +
-                                             " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
+                                             " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be arithmetic scalar values."});
                 }
                 return Type::number();
             }
