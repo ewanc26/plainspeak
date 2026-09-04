@@ -628,6 +628,10 @@ TypeSpec Parser::parseTypeSpec() {
         type.tag = std::move(tag);
         return finish(std::move(type));
     }
+    if (checkWord("null") && checkWordAt(1, "pointer") && checkWordAt(2, "type")) {
+        advance(); advance(); advance();
+        return finish(TypeSpec{TypeSpecKind::Nullptr});
+    }
     if (checkWord("array") && checkWordAt(1, "of")) {
         advance(); advance();
         TypeSpec element = parseTypeSpec();
@@ -681,7 +685,7 @@ TypeSpec Parser::parseTypeSpec() {
         advance(); advance(); return finish(TypeSpec{TypeSpecKind::LongDecimal});
     }
 
-    error("expected a C type such as \"constant integer\", \"pointer to volatile integer\", \"restricted pointer to integer\", \"atomic integer\", \"array of integer with length 4\", \"structure point\", or \"enumeration color\"");
+    error("expected a C type such as \"constant integer\", \"pointer to volatile integer\", \"restricted pointer to integer\", \"atomic integer\", \"null pointer type\", \"array of integer with length 4\", \"structure point\", or \"enumeration color\"");
 }
 
 Expr *Parser::parseExpr() { return parseOr(); }
@@ -837,6 +841,11 @@ Expr *Parser::parsePrimary() {
         advance();
         Expr *rhs = parsePrimary();
         return arena_.makeExpr(UnaryExpr{UnaryOp::Neg, rhs}, line);
+    }
+    if (checkWord("null") && checkWordAt(1, "pointer")) {
+        int line = peek().line;
+        advance(); advance();
+        return arena_.makeExpr(NullptrLit{}, line);
     }
     if (checkWord("choose")) {
         int line = peek().line;
@@ -1005,5 +1014,5 @@ Expr *Parser::parsePrimary() {
         return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
     }
     if (t.kind == TokKind::Ident) { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a decimal, a string, a name, true, false, minus, Choose, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
+    error("expected a number, a decimal, a string, a name, true, false, null pointer, minus, Choose, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
 }
