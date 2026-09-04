@@ -1579,6 +1579,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({13, s->line, "I can't Declare \"" + node.name + "\" as void because void is not an object type."});
                 return;
             }
+            if (declared.kind == TypeKind::Function) {
+                diags.push_back({29, s->line,
+                    "Declare creates objects; a function type is not an object type. Declare a pointer to that function type instead."});
+                return;
+            }
             if (!isCompleteObjectType(declared)) {
                 if (declared.isArray()) {
                     diags.push_back({17, s->line, "A fixed native array needs a complete object element type."});
@@ -1946,6 +1951,37 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             leaveScope();
             if (hadPrevious) currentProcedure_ = previous;
             else currentProcedure_.reset();
+        }
+        else if constexpr (std::is_same_v<T, IndirectCallStmt>) {
+            Type callee = decayArray(inferExpr(node.callee, s->line, diags));
+            Type function;
+            if (callee.isPointer() && callee.elementType && callee.elementType->isFunction()) {
+                function = *callee.elementType;
+            } else if (callee.isFunction()) {
+                function = callee;
+            } else {
+                diags.push_back({29, s->line, "Call through needs a pointer to a function, not " +
+                                             typeToString(callee) + "."});
+                for (Expr *arg : node.args) inferExpr(arg, s->line, diags);
+                return;
+            }
+
+            if (node.args.size() != function.parameterTypes.size()) {
+                diags.push_back({29, s->line, "Indirect call expects " +
+                                             std::to_string(function.parameterTypes.size()) +
+                                             " arguments but got " + std::to_string(node.args.size()) + "."});
+            }
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                std::size_t before = diags.size();
+                Type arg = inferExpr(node.args[i], s->line, diags);
+                if (i < function.parameterTypes.size() && diags.size() == before &&
+                    !assignableExprTo(function.parameterTypes[i], arg, node.args[i])) {
+                    diags.push_back({29, s->line, "Argument " + std::to_string(i + 1) +
+                                                 " to indirect call expects " +
+                                                 typeToString(function.parameterTypes[i]) +
+                                                 " but got " + typeToString(arg) + "."});
+                }
+            }
         }
         else if constexpr (std::is_same_v<T, CallStmt>) {
             auto found = procTable_.find(node.name);
