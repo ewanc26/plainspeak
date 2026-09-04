@@ -2,6 +2,7 @@
 #include <cstddef>
 #include <deque>
 #include <memory>
+#include <optional>
 #include <string>
 #include <variant>
 #include <vector>
@@ -94,7 +95,13 @@ struct IfStmt        { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stm
 struct WhileStmt     { Expr *cond; std::vector<Stmt *> body; };
 struct ForEachStmt   { std::string itemName; Expr *list; std::vector<Stmt *> body; };
 struct CallStmt      { std::string name; std::vector<Expr *> args; };
-struct ProcedureStmt { std::string name; std::vector<std::string> params; std::vector<Stmt *> body; };
+struct ProcedureParam { std::string name; std::optional<TypeSpec> type; };
+struct ProcedureStmt {
+    std::string name;
+    std::vector<ProcedureParam> params;
+    std::optional<TypeSpec> returnType;
+    std::vector<Stmt *> body;
+};
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 
