@@ -5,7 +5,7 @@ PlainSpeak currently emits portable C11 and links against `plainspeak_runtime.h`
 There are now two deliberately separate generated representations:
 
 1. **Legacy PlainSpeak values** use the tagged `PsValue` runtime.
-2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer type and therefore have C address, size, alignment, storage and indirection semantics.
+2. **Explicit native objects** introduced by `Declare` use their real C scalar/pointer/fixed-array type and therefore have C address, size, alignment, storage, indirection and subscript semantics.
 
 The compiler's semantic analysis records which representation every relevant expression/object uses. Code generation consumes that result rather than re-inferring types.
 
@@ -100,3 +100,7 @@ The keyword set includes C89/C90, C99, C11, and C23 spellings. Runtime bridge na
 - `sizeof`/`_Alignof` results are currently boxed into legacy signed `number`; a native `size_t`-equivalent is pending.
 - String-concatenation buffers, list allocations, and iteration snapshots live until process exit; the legacy runtime has no language-level ownership/GC.
 - Runtime list storage remains intentionally untyped; homogeneity is a compiler invariant rather than duplicated metadata in the C ABI.
+
+## Native fixed arrays
+
+Fixed native arrays do not add a runtime container ABI. They lower directly to C arrays, and native `Element at` lowers to C subscripting. Ordinary array expressions decay to element pointers in value contexts, while retained semantic types let `Size of arrayName` preserve the full array extent. The C declarator emitter is recursive so array-of-pointer and pointer-to-array types preserve C precedence.
