@@ -1,0 +1,1 @@
+error[E0019]: Structure "point" defines member "x" more than once.
