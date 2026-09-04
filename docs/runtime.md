@@ -166,3 +166,10 @@ Top-level native objects are still emitted as file-scope declarations with most 
 Arithmetic expressions over native C arithmetic types are no longer forced through `PsValue` arithmetic. Semantic analysis computes the C integer promotions/usual arithmetic conversion result type, and codegen emits direct C arithmetic for those operands. When such a result enters a legacy PlainSpeak surface such as `Say`, only the final result is boxed.
 
 The same raw path is used for bitwise `&`, `^`, `|`, unary `~`, and shifts. This preserves target integer width, rank and signedness during the operation rather than first narrowing through the runtime's signed `long` representation.
+
+
+## Explicit native conversions
+
+`Convert <primary> to type <CType>` lowers directly to a C cast around the raw operand. Arithmetic casts therefore happen before any result is boxed for legacy surfaces. Pointer-to-pointer and integer-to-pointer/pointer-to-integer casts are also emitted directly, intentionally leaving implementation-defined representation details to the target C implementation.
+
+Semantic analysis rejects non-scalar cast categories before C emission. Cast-to-void is intentionally deferred until PlainSpeak has a standalone expression-discard statement; allowing it as an ordinary value expression would invent semantics C does not have.
