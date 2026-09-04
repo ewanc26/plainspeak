@@ -688,13 +688,14 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 return Type::number();
             }
             if (node.op == BinOp::And || node.op == BinOp::Or) {
-                if (lhs != Type::number() || rhs != Type::number()) {
+                if (lhsValue != Type::number() || rhsValue != Type::number()) {
                     diags.push_back({2, line, "I can't do logical " + std::string(node.op == BinOp::And ? "and" : "or") +
                                              " on a " + typeToString(lhs) + " and a " + typeToString(rhs) + ". Both sides must be numbers."});
                 }
                 return Type::number();
             }
-            if (isList(lhs) || isList(rhs) || (lhs != rhs && !(isNumeric(lhs) && isNumeric(rhs)))) {
+            if (isList(lhsValue) || isList(rhsValue) ||
+                (lhsValue != rhsValue && !(isNumeric(lhsValue) && isNumeric(rhsValue)))) {
                 diags.push_back({4, line, "I can't compare a " + typeToString(lhs) + " with a " + typeToString(rhs) +
                                          ". Both sides must be comparable scalar values."});
             }
@@ -702,11 +703,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, UnaryExpr>) {
             Type rhs = inferExpr(node.rhs, line, diags);
+            Type value = decayArray(rhs);
             if (node.op == UnaryOp::Neg) {
-                if (!isNumeric(rhs)) diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
-                return rhs;
+                if (!isNumeric(value)) diags.push_back({2, line, "I can't negate a " + typeToString(rhs) + "."});
+                return value;
             }
-            if (rhs != Type::number()) {
+            if (value != Type::number()) {
                 diags.push_back({2, line, "I can't apply not to a " + typeToString(rhs) + ". It must be a number."});
             }
             return Type::number();
@@ -1261,6 +1263,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({15, s->line, "Set value at needs a pointer target, not a " + typeToString(pointer) + "."});
             } else if (pointer.elementType->kind == TypeKind::Void) {
                 diags.push_back({15, s->line, "I can't store a value through a pointer to void without a concrete pointee type."});
+            } else if (!isModifiableObjectType(*pointer.elementType)) {
+                diags.push_back({24, s->line, "I can't store through " + typeToString(pointer) +
+                                          " because its pointed-to object type is not modifiable."});
             } else if (!assignableTo(*pointer.elementType, value)) {
                 diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " through a " + typeToString(pointer) + "."});
             }
@@ -1287,12 +1292,20 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 if (!info || !info->complete) {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag +
                                                 "\" is incomplete here, so its members cannot be stored."});
+                } else if (aggregate.qualifiers.isAtomic) {
+                    diags.push_back({24, s->line, "Member access on atomic " + kind + " \"" + aggregate.tag +
+                                              "\" is undefined in C; use whole-object atomic operations instead."});
                 } else if (const AggregateFieldInfo *field = findAggregateField(base, node.name)) {
-                    if (field->type.isArray()) {
+                    Type effectiveField = memberTypeWithAggregateQualifiers(field->type, aggregate.qualifiers);
+                    if (effectiveField.isArray()) {
                         diags.push_back({code, s->line, "Whole-array aggregate member assignment is not implemented yet."});
-                    } else if (!assignableTo(field->type, value)) {
+                    } else if (!isModifiableObjectType(effectiveField)) {
+                        diags.push_back({24, s->line, "I can't store in member \"" + node.name +
+                                                  "\" because its effective type " + typeToString(effectiveField) +
+                                                  " is not a modifiable C object type."});
+                    } else if (!assignableTo(effectiveField, value)) {
                         diags.push_back({code, s->line, "I can't store a " + typeToString(value) + " in member \"" +
-                                                   node.name + "\", which is a " + typeToString(field->type) + "."});
+                                                   node.name + "\", which is a " + typeToString(effectiveField) + "."});
                     }
                 } else {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
@@ -1312,6 +1325,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({17, s->line, "I can't store an element through a pointer to void."});
             } else if (base.elementType->isArray()) {
                 diags.push_back({17, s->line, "Whole-array element assignment is not implemented yet."});
+            } else if (!isModifiableObjectType(*base.elementType)) {
+                diags.push_back({24, s->line, "I can't store an element through " + typeToString(base) +
+                                          " because its element type is not modifiable."});
             } else if (!assignableTo(*base.elementType, value)) {
                 diags.push_back({13, s->line, "I can't store a " + typeToString(value) + " as an element of " + typeToString(base) + "."});
             }
@@ -1320,7 +1336,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             auto [symbol, found] = lookupVar(node.varName, s->line, diags);
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (found && symbol.nativeObject) {
-                if (symbol.type.isPointer()) {
+                bool modifiable = isModifiableObjectType(symbol.type);
+                if (!modifiable) {
+                    diags.push_back({24, s->line, "I can't change \"" + node.varName +
+                                              "\" with Add/Subtract because its native type " +
+                                              typeToString(symbol.type) + " is not modifiable."});
+                } else if (symbol.type.isPointer()) {
                     if (!hasCompletePointee(symbol.type) || !isIntegralType(exprType)) {
                         diags.push_back({16, s->line, "Changing a pointer with Add/Subtract needs a complete object pointer and an integer offset."});
                     }
@@ -1328,7 +1349,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({3, s->line, "I can only change native arithmetic objects or object pointers with Add/Subtract; \"" +
                                              node.varName + "\" is a " + typeToString(symbol.type) + "."});
                 }
-                if (analysis_) analysis_->nativeMutationTargets.insert(s);
+                if (modifiable && analysis_) analysis_->nativeMutationTargets.insert(s);
             } else if (found && symbol.type != exprType) {
                 diags.push_back({3, s->line, std::string(std::is_same_v<T, AddStmt> ? "I can't add a " : "I can't subtract a ") +
                                          typeToString(exprType) + (std::is_same_v<T, AddStmt> ? " to \"" : " from \"") +
