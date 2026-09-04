@@ -180,3 +180,10 @@ Semantic analysis rejects non-scalar cast categories before C emission. Cast-to-
 `Increment before` / `Decrement before` lower to prefix C `++` / `--`. `Increment after` / `Decrement after` lower to postfix forms. Codegen operates on the raw native lvalue expression, so dereferences, subscripts, aggregate members and bit-fields are updated by the target C implementation rather than by a runtime helper.
 
 Semantic analysis requires a native modifiable lvalue and either a real arithmetic type or a pointer to a complete object. Top-level qualifiers are removed from the expression result, matching value conversion. Atomic operands remain atomic at the object, while the yielded expression value is non-atomic; direct C lowering gives C11 atomic increment/decrement their native sequentially consistent read-modify-write behavior.
+
+
+## Native conditional expressions
+
+`Choose A when C otherwise B` emits a native C conditional expression, `C ? A : B`. Because the branches remain inside the generated C operator, only the selected branch is evaluated and side effects in the unselected branch do not run.
+
+Sema computes the current common-result rules before emission: usual arithmetic conversion for arithmetic branches, compatible-pointer composition with pointed-to qualifier union and object-pointer/`void *` handling, or identical structure/union types. The condition is restricted to current C scalar values. Null-pointer-constant recognition, function pointers and void-valued conditionals remain later work.
