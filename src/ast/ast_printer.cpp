@@ -42,6 +42,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "union " + type.tag; break;
         case TypeSpecKind::Enumeration:
             body = "enumeration " + type.tag; break;
+        case TypeSpecKind::Nullptr:
+            body = "null pointer type"; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;
@@ -57,6 +59,7 @@ std::string printExpr(const Expr *e) {
             snprintf(buf, sizeof(buf), "%.17g", node.value);
             return buf;
         } else if constexpr (std::is_same_v<T, StringLit>) return "\"" + node.value + "\"";
+        else if constexpr (std::is_same_v<T, NullptrLit>) return "null pointer";
         else if constexpr (std::is_same_v<T, VarRef>) return node.name;
         else if constexpr (std::is_same_v<T, AddressOfExpr>) return "Address of " + node.name;
         else if constexpr (std::is_same_v<T, DerefExpr>) return "Value at " + printExpr(node.pointer);

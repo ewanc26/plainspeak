@@ -59,6 +59,7 @@ std::string emitCUnqualifiedBaseType(const Type &type) {
     if (type.kind == TypeKind::Structure) return "struct " + mangle(type.tag);
     if (type.kind == TypeKind::Union) return "union " + mangle(type.tag);
     if (type.kind == TypeKind::Enumeration) return "enum " + mangle(type.tag);
+    if (type.kind == TypeKind::Nullptr) return "PsNullptr";
     return "long";
 }
 
@@ -190,6 +191,10 @@ bool isCArithmeticType(const Type &type) {
            type.kind == TypeKind::BitInt;
 }
 
+bool isCScalarType(const Type &type) {
+    return isCArithmeticType(type) || type.isPointer() || type.kind == TypeKind::Nullptr;
+}
+
 const char *emitBinaryOperator(BinOp op) {
     switch (op) {
         case BinOp::Add: return "+";
@@ -231,7 +236,23 @@ std::string boxRaw(const std::string &raw, const Type &type) {
 std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
     return std::visit([&](auto &&node) -> std::string {
         using T = std::decay_t<decltype(node)>;
-        if constexpr (std::is_same_v<T, AddressOfExpr>) {
+        if constexpr (std::is_same_v<T, IntLit>) {
+            return std::to_string(node.value) + "L";
+        } else if constexpr (std::is_same_v<T, BoolLit>) {
+            return node.value ? "1" : "0";
+        } else if constexpr (std::is_same_v<T, FloatLit>) {
+            char buf[64];
+            snprintf(buf, sizeof(buf), "%.17g", node.value);
+            std::string literal(buf);
+            if (literal.find_first_of(".eE") == std::string::npos) literal += ".0";
+            return literal;
+        } else if constexpr (std::is_same_v<T, NullptrLit>) {
+            // Keep the predefined null literal as an integer null pointer
+            // constant on the C11 backend. Stored nullptr_t objects use
+            // PsNullptr; the literal itself must retain null-constant behavior
+            // in pointer conversions and conditional expressions.
+            return "0";
+        } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "(&" + mangle(node.name) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return "(*(" + emitRawExpr(node.pointer, analysis) + "))";
@@ -278,6 +299,16 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
                 return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
                        emitRawExpr(node.rhs, analysis) + "))";
             }
+            if ((node.op == BinOp::Eq || node.op == BinOp::Ne) &&
+                (lhsType.kind == TypeKind::Nullptr || rhsType.kind == TypeKind::Nullptr)) {
+                return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
+                       emitRawExpr(node.rhs, analysis) + "))";
+            }
+            if ((node.op == BinOp::And || node.op == BinOp::Or) &&
+                isCScalarType(lhsType) && isCScalarType(rhsType)) {
+                return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
+                       emitRawExpr(node.rhs, analysis) + "))";
+            }
             if (isCArithmeticType(lhsType) && isCArithmeticType(rhsType) &&
                 node.op != BinOp::And && node.op != BinOp::Or) {
                 return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
@@ -285,6 +316,9 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             }
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
             Type rhsType = exprType(node.rhs, analysis);
+            if (node.op == UnaryOp::Not && isCScalarType(rhsType)) {
+                return "(!(" + emitRawExpr(node.rhs, analysis) + "))";
+            }
             if (isCArithmeticType(rhsType)) {
                 const char *op = node.op == UnaryOp::Neg ? "-" :
                                  node.op == UnaryOp::BitNot ? "~" : "!";
@@ -310,6 +344,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, IntLit>) {
             return "ps_int(" + std::to_string(node.value) + "L)";
+        } else if constexpr (std::is_same_v<T, NullptrLit>) {
+            return "ps_int(0L)";
         } else if constexpr (std::is_same_v<T, BoolLit>) {
             return "ps_int(" + std::string(node.value ? "1" : "0") + "L)";
         } else if constexpr (std::is_same_v<T, FloatLit>) {
@@ -406,6 +442,7 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             Type lhsType = exprType(node.lhs, analysis);
             Type rhsType = exprType(node.rhs, analysis);
             if (lhsType.isPointer() || lhsType.isArray() || rhsType.isPointer() || rhsType.isArray() ||
+                lhsType.kind == TypeKind::Nullptr || rhsType.kind == TypeKind::Nullptr ||
                 (isCArithmeticType(lhsType) && isCArithmeticType(rhsType) &&
                  node.op != BinOp::And && node.op != BinOp::Or)) {
                 return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
@@ -555,7 +592,12 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "    }\n";
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, IfStmt>) {
-            out << indent << "if (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
+            Type condType = exprType(node.cond, analysis);
+            if (isCScalarType(condType)) {
+                out << indent << "if (" << emitRawExpr(node.cond, analysis) << ") {\n";
+            } else {
+                out << indent << "if (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
+            }
             for (Stmt *inner : node.thenBody) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "}";
             if (!node.elseBody.empty()) {
@@ -566,7 +608,12 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 out << "\n";
             }
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
-            out << indent << "while (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
+            Type condType = exprType(node.cond, analysis);
+            if (isCScalarType(condType)) {
+                out << indent << "while (" << emitRawExpr(node.cond, analysis) << ") {\n";
+            } else {
+                out << indent << "while (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
+            }
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, ForEachStmt>) {
@@ -661,7 +708,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
 
     std::ostringstream out;
     out << "/* generated by plainspeak — do not edit by hand */\n";
-    out << "#include \"plainspeak_runtime.h\"\n\n";
+    out << "#include \"plainspeak_runtime.h\"\n";
+    out << "typedef void *PsNullptr;\n\n";
 
     for (const auto &v : vars) out << "PsValue " << mangle(v) << ";\n";
 

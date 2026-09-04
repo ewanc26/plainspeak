@@ -134,6 +134,7 @@ CCoreType ::= CScalarType
             | "structure" IDENT
             | "union" IDENT
             | "enumeration" IDENT
+            | "null" "pointer" "type"
 ```
 
 The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `short`, `unsigned short`, `int`, `unsigned int`, `long`, `unsigned long`, `long long`, `unsigned long long`, `float`, `double`, and `long double`. Plain `character` remains distinct from both signed and unsigned character types, matching C.
@@ -170,6 +171,24 @@ Reading a qualified scalar follows C value conversion: top-level qualifiers do n
 For array spellings, `constant array of T ...` and `volatile array of T ...` qualify the element type, matching C's array qualification rules.
 
 One lowering boundary remains: direct top-level native objects are declared at C file scope while most PlainSpeak initializers execute later in `main`. A top-level const object with a runtime `with value` initializer is therefore rejected until the constant-initializer tranche can emit that initializer at file scope. Likewise, aggregate initializer forms that currently lower as zero-initialize-then-member-store are rejected when const subobjects or atomic aggregate objects would make those post-declaration stores invalid. Local scalar/pointer const initialization is already emitted directly in the C declaration.
+
+## Null pointer constants and C23 `nullptr_t`
+
+PlainSpeak exposes the C23 predefined null pointer constant as `null pointer` and its distinct scalar type as `null pointer type`:
+
+```text
+Declare n as null pointer type with value null pointer.
+Declare p as pointer to integer with value null pointer.
+Say Convert n to type boolean.
+```
+
+`null pointer type` is semantically distinct from every pointer type. Its only valid value is `null pointer`; values of that type convert implicitly to any supported object-pointer type and to `boolean` (as false), but no other type converts to `null pointer type`. Its size and alignment follow `void *`, matching C23's `nullptr_t` requirements.
+
+For the older C99-C17 null-pointer-constant rule, the literal integer `0` is accepted implicitly in pointer initialization, assignment, typed Procedure arguments/returns, equality comparison and conditional-expression branches. Nonzero integers are not implicit pointer conversions; use an explicit `Convert ... to type pointer to ...` where C permits an implementation-defined integer/pointer cast.
+
+Pointer and null-pointer values are valid scalar conditions in `If`, `While`, logical operations and `Choose`. Equality against `0`, `null pointer`, or a `null pointer type` object lowers to native C comparison.
+
+This is still a foundation for the full null-pointer-constant model: arbitrary **integer constant expressions** that evaluate to zero are not yet folded/classified as null pointer constants. Function pointers are also pending, so null conversion is currently exercised against object pointers only.
 
 ## Native objects and pointers
 
@@ -387,7 +406,7 @@ Additive ::= Multiplicative (("plus" | "minus") Multiplicative)*
 Multiplicative ::= Power (("times" | "divided by" | "mod" | "modulo") Power)*
 Power ::= Primary ("to" "the" "power" "of" Primary)*
 
-Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
+Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false" | "null" "pointer"
           | "minus" Primary
           | "(" Expr ")"
           | "Choose" Expr "when" Expr "otherwise" Expr
@@ -492,7 +511,7 @@ The compiler's structural semantic type system also represents functions, qualif
 ## Known gaps
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
-- Pointer conditions, null pointers, function pointers and the complete C pointer-conversion model remain pending.
+- Function pointers and the complete C pointer-conversion model remain pending. Null pointer values/literal-zero constants are implemented, but general integer constant-expression recognition for zero-valued null pointer constants is not yet complete.
 - Variable-length arrays, nested aggregate initializers, compound literals, anonymous aggregate members, enum constant-expression/underlying-type extensions, storage/linkage specifiers, allocation and C23 pointer additions remain pending. Atomic memory-order APIs, fences and lock-free queries are also still pending beyond the native `atomic` object foundation.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.

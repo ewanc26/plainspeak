@@ -187,3 +187,14 @@ Semantic analysis requires a native modifiable lvalue and either a real arithmet
 `Choose A when C otherwise B` emits a native C conditional expression, `C ? A : B`. Because the branches remain inside the generated C operator, only the selected branch is evaluated and side effects in the unselected branch do not run.
 
 Sema computes the current common-result rules before emission: usual arithmetic conversion for arithmetic branches, compatible-pointer composition with pointed-to qualifier union and object-pointer/`void *` handling, or identical structure/union types. The condition is restricted to current C scalar values. Null-pointer-constant recognition, function pointers and void-valued conditionals remain later work.
+
+
+## Null pointer representation
+
+The semantic type `Nullptr` models C23 `nullptr_t` distinctly from `Pointer`. The generated C11-compatible translation unit defines `PsNullptr` as a `void *` typedef purely as a backend representation; semantic analysis prevents pointer-only operations and conversions that C23 does not permit for `nullptr_t`.
+
+`null pointer` lowers to the zero representation of `PsNullptr`. Native integer/boolean/floating literals now also use direct C literals on the raw path, so literal `0` remains an integer constant expression and can serve as a C99-style null pointer constant in pointer contexts.
+
+Pointer/null conditions and logical operations lower directly to C scalar operators instead of boxing pointer values into `PsValue`. This also removes the earlier limitation that rejected pointer conditions in `If` and `While`.
+
+`nullptr_t` is native-only in the current mixed representation model. Inferred legacy `Set`, homogeneous `PsValue` lists and untyped Procedures reject null-pointer values rather than collapsing the distinct C23 type to boxed numeric zero.
