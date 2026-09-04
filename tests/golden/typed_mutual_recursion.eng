@@ -1,0 +1,1 @@
+Procedure even takes n as integer returns integer: If n is equal to 0 then: Return 1. End if. Return Call odd with n minus 1 done. End procedure. Procedure odd takes n as integer returns integer: If n is equal to 0 then: Return 0. End if. Return Call even with n minus 1 done. End procedure. Say Call even with 6 done. Say Call odd with 6 done.
