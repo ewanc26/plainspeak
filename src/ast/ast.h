@@ -44,13 +44,15 @@ enum class TypeSpecKind {
     Decimal,
     LongDecimal,
     Pointer,
-    Array
+    Array,
+    Structure
 };
 
 struct TypeSpec {
     TypeSpecKind kind;
     std::shared_ptr<TypeSpec> pointee{};
     std::size_t arrayBound = 0;
+    std::string tag{};
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, Gt, Lt, Eq, Ne, Ge, Le, And, Or };
@@ -63,6 +65,7 @@ struct AlignOfTypeExpr { TypeSpec type; };
 struct AddressOfExpr   { std::string name; };
 struct DerefExpr       { Expr *pointer; };
 struct ElementExpr     { Expr *index; Expr *base; };
+struct MemberExpr      { std::string name; Expr *base; };
 struct MathCallExpr    { std::string func; Expr *arg; };
 struct CallExpr        { std::string name; std::vector<Expr *> args; };
 struct PowExpr         { Expr *base; Expr *exp; };
@@ -74,7 +77,7 @@ struct ItemExpr        { Expr *index; Expr *list; };
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, AddressOfExpr, DerefExpr,
-                              ElementExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
+                              ElementExpr, MemberExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
@@ -83,6 +86,9 @@ struct SetStmt       { std::string name; Expr *expr; };
 struct NativeDeclStmt { std::string name; TypeSpec type; Expr *initializer; };
 struct StoreThroughStmt { Expr *pointer; Expr *expr; };
 struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };
+struct StoreMemberStmt { std::string name; Expr *base; Expr *expr; };
+struct StructureField { std::string name; TypeSpec type; };
+struct StructureStmt { std::string name; std::vector<StructureField> fields; };
 struct AddStmt       { Expr *expr; std::string varName; };
 struct SubStmt       { Expr *expr; std::string varName; };
 struct ReadStmt      { std::string varName; };
@@ -105,8 +111,8 @@ struct ProcedureStmt {
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt,
-                              StoreThroughStmt, StoreElementStmt, AddStmt, SubStmt, ReadStmt,
+using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt,
+                              StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt,
                               ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt,
