@@ -28,3 +28,41 @@ TEST_CASE("parser keeps native element syntax separate from list item syntax", "
     const auto &say = std::get<SayStmt>(program[2]->node);
     CHECK(std::holds_alternative<ElementExpr>(say.expr->node));
 }
+
+#include "../../src/sema/sema.h"
+
+TEST_CASE("sema resolves fixed arrays, decay and pointer arithmetic", "[sema][arrays][pointer][c99]") {
+    Tokenizer tokenizer(
+        "Declare values as array of integer with length 4. "
+        "Declare p as pointer to integer with value values. "
+        "Declare q as pointer to integer with value p plus 2. "
+        "Say Element at 1 in q. "
+        "Say q minus p.");
+    Arena arena;
+    Parser parser(tokenizer.tokenize(), arena);
+    auto program = parser.parseProgram();
+    Sema sema;
+    AnalysisResult analysis = sema.analyze(program);
+    REQUIRE(analysis.diagnostics.empty());
+
+    Type array = analysis.declarationTypes.at(program[0]);
+    REQUIRE(array.isArray());
+    REQUIRE(array.arrayBound);
+    CHECK(*array.arrayBound == 4);
+    REQUIRE(array.elementType);
+    CHECK(*array.elementType == Type::integer(IntegerRank::Int));
+
+    Type p = analysis.declarationTypes.at(program[1]);
+    REQUIRE(p.isPointer());
+    REQUIRE(p.elementType);
+    CHECK(*p.elementType == Type::integer(IntegerRank::Int));
+
+    const auto &qDecl = std::get<NativeDeclStmt>(program[2]->node);
+    REQUIRE(qDecl.initializer);
+    CHECK(analysis.exprTypes.at(qDecl.initializer).isPointer());
+
+    const auto &sayElement = std::get<SayStmt>(program[3]->node);
+    CHECK(analysis.exprTypes.at(sayElement.expr) == Type::integer(IntegerRank::Int));
+    const auto &sayDifference = std::get<SayStmt>(program[4]->node);
+    CHECK(analysis.exprTypes.at(sayDifference.expr) == Type::number());
+}
