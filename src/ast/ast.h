@@ -136,6 +136,8 @@ struct ReadFloatStmt { std::string varName; };
 struct AppendStmt    { Expr *expr; std::string varName; };
 struct ReplaceItemStmt { Expr *index; std::string varName; Expr *expr; };
 struct RemoveItemStmt  { Expr *index; std::string varName; };
+struct BreakStmt       {};
+struct ContinueStmt    {};
 struct RepeatStmt    { Expr *count; std::vector<Stmt *> body; };
 struct IfStmt        { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
 struct WhileStmt     { Expr *cond; std::vector<Stmt *> body; };
@@ -154,7 +156,7 @@ struct CommentStmt   { std::string text; };
 using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, UnionStmt, EnumerationStmt,
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
-                              RemoveItemStmt, RepeatStmt, IfStmt, WhileStmt,
+                              RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
                               ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt,
                               CommentStmt>;
 struct Stmt { StmtNode node; int line; };

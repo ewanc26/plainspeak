@@ -70,6 +70,18 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "append") return parseAppend();
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
+    if (t.text == "break") {
+        int line = peek().line;
+        advance();
+        expectDot();
+        return arena_.makeStmt(BreakStmt{}, line);
+    }
+    if (t.text == "continue") {
+        int line = peek().line;
+        advance();
+        expectDot();
+        return arena_.makeStmt(ContinueStmt{}, line);
+    }
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
@@ -79,7 +91,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -97,6 +109,18 @@ Stmt *Parser::parseStmt() {
     if (t.text == "append") return parseAppend();
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
+    if (t.text == "break") {
+        int line = peek().line;
+        advance();
+        expectDot();
+        return arena_.makeStmt(BreakStmt{}, line);
+    }
+    if (t.text == "continue") {
+        int line = peek().line;
+        advance();
+        expectDot();
+        return arena_.makeStmt(ContinueStmt{}, line);
+    }
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
@@ -106,7 +130,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {

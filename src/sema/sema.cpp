@@ -411,6 +411,8 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
     unionTable_.clear();
     enumerationTable_.clear();
     currentProcedure_.reset();
+    loopDepth_ = 0;
+    breakableDepth_ = 0;
     scopes_.emplace_back();
     analysis_ = &result;
 
@@ -1779,14 +1781,28 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({10, s->line, "I can only remove an item from a list; \"" + node.varName + "\" is a " + typeToString(symbol.type) + "."});
             }
         }
+        else if constexpr (std::is_same_v<T, BreakStmt>) {
+            if (breakableDepth_ == 0) {
+                diags.push_back({29, s->line, "Break can only appear inside a loop or another C breakable construct."});
+            }
+        }
+        else if constexpr (std::is_same_v<T, ContinueStmt>) {
+            if (loopDepth_ == 0) {
+                diags.push_back({29, s->line, "Continue can only appear inside a loop."});
+            }
+        }
         else if constexpr (std::is_same_v<T, RepeatStmt>) {
             Type countType = inferExpr(node.count, s->line, diags);
             if (countType != Type::number()) {
                 diags.push_back({5, s->line, "Repeat needs a whole number of times, not a " + typeToString(countType) + "."});
             }
+            ++loopDepth_;
+            ++breakableDepth_;
             enterScope();
             for (Stmt *inner : node.body) checkStmt(inner, diags);
             leaveScope();
+            --breakableDepth_;
+            --loopDepth_;
         }
         else if constexpr (std::is_same_v<T, IfStmt>) {
             Type cond = inferExpr(node.cond, s->line, diags);
@@ -1805,9 +1821,13 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             if (!isConditionalScalar(condType)) {
                 diags.push_back({5, s->line, "While needs a C scalar condition, not a " + typeToString(condType) + "."});
             }
+            ++loopDepth_;
+            ++breakableDepth_;
             enterScope();
             for (Stmt *inner : node.body) checkStmt(inner, diags);
             leaveScope();
+            --breakableDepth_;
+            --loopDepth_;
         }
         else if constexpr (std::is_same_v<T, ForEachStmt>) {
             Type listType = inferExpr(node.list, s->line, diags);
@@ -1817,17 +1837,25 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             } else {
                 itemType = listElementType(listType);
             }
+            ++loopDepth_;
+            ++breakableDepth_;
             enterScope();
             declareVar(node.itemName, itemType, false, s->line, diags);
             for (Stmt *inner : node.body) checkStmt(inner, diags);
             leaveScope();
+            --breakableDepth_;
+            --loopDepth_;
         }
         else if constexpr (std::is_same_v<T, ProcedureStmt>) {
             auto signatureIt = procTable_.find(node.name);
             if (signatureIt == procTable_.end()) return;
             ProcedureSignature previous = currentProcedure_.value_or(ProcedureSignature{});
             bool hadPrevious = currentProcedure_.has_value();
+            int previousLoopDepth = loopDepth_;
+            int previousBreakableDepth = breakableDepth_;
             currentProcedure_ = signatureIt->second;
+            loopDepth_ = 0;
+            breakableDepth_ = 0;
 
             enterScope();
             for (size_t i = 0; i < node.params.size(); ++i) {
@@ -1848,6 +1876,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
 
             leaveScope();
+            loopDepth_ = previousLoopDepth;
+            breakableDepth_ = previousBreakableDepth;
             if (hadPrevious) currentProcedure_ = previous;
             else currentProcedure_.reset();
         }

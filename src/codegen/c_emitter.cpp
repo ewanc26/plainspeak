@@ -602,6 +602,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << emitBoxedExpr(node.index, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, CommentStmt>) {
             out << indent << "/* " << node.text << " */\n";
+        } else if constexpr (std::is_same_v<T, BreakStmt>) {
+            out << indent << "break;\n";
+        } else if constexpr (std::is_same_v<T, ContinueStmt>) {
+            out << indent << "continue;\n";
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
             int id = loopCounter++;
             std::string i = "ps__i" + std::to_string(id);
