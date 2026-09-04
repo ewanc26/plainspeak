@@ -45,6 +45,7 @@ add_executable(unit_tests
     tests/unit/test_types.cpp
     tests/unit/test_c_type_queries.cpp
     tests/unit/test_native_objects.cpp
+    tests/unit/test_native_arrays.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp
