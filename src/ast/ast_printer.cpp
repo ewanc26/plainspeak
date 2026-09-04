@@ -101,16 +101,23 @@ std::string printExpr(const Expr *e) {
                           : node.op == BinOp::Mul ? "times"
                           : node.op == BinOp::Div ? "divided by"
                           : node.op == BinOp::Mod ? "mod"
+                          : node.op == BinOp::ShiftLeft ? "shifted left by"
+                          : node.op == BinOp::ShiftRight ? "shifted right by"
                           : node.op == BinOp::Gt  ? "is greater than"
                           : node.op == BinOp::Lt  ? "is less than"
                           : node.op == BinOp::Eq  ? "is equal to"
                           : node.op == BinOp::Ne  ? "is not equal to"
                           : node.op == BinOp::Ge  ? "is greater than or equal to"
                           : node.op == BinOp::Le  ? "is less than or equal to"
+                          : node.op == BinOp::BitAnd ? "bitwise and"
+                          : node.op == BinOp::BitXor ? "bitwise xor"
+                          : node.op == BinOp::BitOr ? "bitwise or"
                           : node.op == BinOp::And ? "and" : "or";
             return "(" + printExpr(node.lhs) + " " + std::string(op) + " " + printExpr(node.rhs) + ")";
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
-            return std::string("(") + (node.op == UnaryOp::Not ? "not" : "minus") + " " + printExpr(node.rhs) + ")";
+            const char *op = node.op == UnaryOp::Not ? "not" :
+                             node.op == UnaryOp::BitNot ? "bitwise not" : "minus";
+            return std::string("(") + op + " " + printExpr(node.rhs) + ")";
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             return node.func + " of " + printExpr(node.arg);
         } else if constexpr (std::is_same_v<T, PowExpr>) {
