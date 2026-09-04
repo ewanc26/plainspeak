@@ -119,12 +119,52 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
     AnalysisResult result;
     scopes_.clear();
     procTable_.clear();
+    currentProcedure_.reset();
     scopes_.emplace_back();
     analysis_ = &result;
+
+    // Register every procedure signature before checking any body. This makes
+    // source order irrelevant for calls and gives codegen enough information
+    // to emit real C prototypes before definitions.
+    for (Stmt *s : program) {
+        auto *proc = std::get_if<ProcedureStmt>(&s->node);
+        if (!proc) continue;
+        if (procTable_.count(proc->name)) {
+            result.diagnostics.push_back({18, s->line, "Procedure \"" + proc->name + "\" is already defined."});
+            continue;
+        }
+
+        bool typed = proc->returnType.has_value();
+        ProcedureSignature signature;
+        signature.nativeTyped = typed;
+        signature.returnType = typed ? resolveTypeSpec(*proc->returnType) : Type::number();
+
+        for (const auto &param : proc->params) {
+            Type paramType = Type::number();
+            if (typed && param.type) {
+                paramType = resolveTypeSpec(*param.type);
+                if (paramType.kind == TypeKind::Void) {
+                    result.diagnostics.push_back({18, s->line, "Typed parameter \"" + param.name + "\" cannot have type void."});
+                    paramType = Type::number();
+                } else if (paramType.isArray()) {
+                    paramType = decayArray(paramType);
+                }
+            }
+            signature.parameterTypes.push_back(std::move(paramType));
+        }
+
+        if (typed && signature.returnType.isArray()) {
+            result.diagnostics.push_back({18, s->line, "A typed Procedure cannot return an array directly; return a pointer to the array instead."});
+        }
+
+        procTable_[proc->name] = signature;
+        result.procedureSignatures[proc->name] = signature;
+    }
 
     for (Stmt *s : program) checkStmt(s, result.diagnostics);
 
     scopes_.pop_back();
+    currentProcedure_.reset();
     analysis_ = nullptr;
     return result;
 }
@@ -344,24 +384,39 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             return Type::number();
         }
         else if constexpr (std::is_same_v<T, CallExpr>) {
-            if (!procTable_.count(node.name)) {
+            auto found = procTable_.find(node.name);
+            if (found == procTable_.end()) {
                 diags.push_back({7, line, "I don't know what to do with \"" + node.name +
                                          "\" — it is used here but never defined. Use Procedure to create it first."});
-            } else {
-                const auto &expected = procTable_[node.name];
-                if (node.args.size() != expected.size()) {
-                    diags.push_back({8, line, "Call to \"" + node.name + "\" expects " +
-                                             std::to_string(expected.size()) + " arguments but got " +
-                                             std::to_string(node.args.size()) + "."});
-                }
-                for (Expr *arg : node.args) {
-                    Type argType = inferExpr(arg, line, diags);
-                    if (argType.isPointer()) {
-                        diags.push_back({16, line, "Legacy Procedure parameters cannot carry native pointers yet."});
+                for (Expr *arg : node.args) inferExpr(arg, line, diags);
+                return Type::number();
+            }
+
+            const ProcedureSignature &signature = found->second;
+            if (node.args.size() != signature.parameterTypes.size()) {
+                diags.push_back({8, line, "Call to \"" + node.name + "\" expects " +
+                                         std::to_string(signature.parameterTypes.size()) + " arguments but got " +
+                                         std::to_string(node.args.size()) + "."});
+            }
+            for (size_t i = 0; i < node.args.size(); ++i) {
+                std::size_t before = diags.size();
+                Type argType = inferExpr(node.args[i], line, diags);
+                if (signature.nativeTyped) {
+                    if (i < signature.parameterTypes.size() && diags.size() == before &&
+                        !assignableTo(signature.parameterTypes[i], argType)) {
+                        diags.push_back({18, line, "Argument " + std::to_string(i + 1) + " to typed Procedure \"" +
+                                                 node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
+                                                 " but got " + typeToString(argType) + "."});
                     }
+                } else if (argType.isPointer() || argType.isArray()) {
+                    diags.push_back({16, line, "Legacy Procedure parameters cannot carry native pointers or arrays yet."});
                 }
             }
-            return Type::number();
+            if (signature.nativeTyped && signature.returnType.kind == TypeKind::Void) {
+                diags.push_back({18, line, "Typed Procedure \"" + node.name + "\" returns void and cannot be used as an expression."});
+                return Type::number();
+            }
+            return signature.returnType;
         }
         else if constexpr (std::is_same_v<T, LengthExpr>) {
             Type operand = inferExpr(node.operand, line, diags);
@@ -594,35 +649,107 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             leaveScope();
         }
         else if constexpr (std::is_same_v<T, ProcedureStmt>) {
-            std::vector<Type> paramTypes(node.params.size(), Type::number());
-            procTable_[node.name] = paramTypes;
+            auto signatureIt = procTable_.find(node.name);
+            if (signatureIt == procTable_.end()) return;
+            ProcedureSignature previous = currentProcedure_.value_or(ProcedureSignature{});
+            bool hadPrevious = currentProcedure_.has_value();
+            currentProcedure_ = signatureIt->second;
+
             enterScope();
             for (size_t i = 0; i < node.params.size(); ++i) {
-                declareVar(node.params[i], paramTypes[i], false, s->line, diags);
+                Type paramType = i < signatureIt->second.parameterTypes.size()
+                               ? signatureIt->second.parameterTypes[i] : Type::number();
+                declareVar(node.params[i].name, paramType, signatureIt->second.nativeTyped, s->line, diags);
             }
             for (Stmt *inner : node.body) checkStmt(inner, diags);
+
+            if (signatureIt->second.nativeTyped &&
+                signatureIt->second.returnType.kind != TypeKind::Void) {
+                bool endsWithValueReturn = false;
+                if (!node.body.empty()) {
+                    if (auto *ret = std::get_if<ReturnStmt>(&node.body.back()->node)) {
+                        endsWithValueReturn = ret->expr != nullptr;
+                    }
+                }
+                if (!endsWithValueReturn) {
+                    diags.push_back({18, s->line, "Typed Procedure \"" + node.name +
+                                              "\" must end with a value Return for now; full control-flow return analysis is still pending."});
+                }
+            }
+
             leaveScope();
+            if (hadPrevious) currentProcedure_ = previous;
+            else currentProcedure_.reset();
         }
         else if constexpr (std::is_same_v<T, CallStmt>) {
-            if (!procTable_.count(node.name)) {
+            auto found = procTable_.find(node.name);
+            if (found == procTable_.end()) {
                 diags.push_back({7, s->line, "I don't know what to do with \"" + node.name +
                                            "\" — it is used here but never defined. Use Procedure to create it first."});
+                for (Expr *arg : node.args) inferExpr(arg, s->line, diags);
             } else {
-                const auto &expected = procTable_[node.name];
-                if (node.args.size() != expected.size()) {
+                const ProcedureSignature &signature = found->second;
+                if (node.args.size() != signature.parameterTypes.size()) {
                     diags.push_back({8, s->line, "Call to \"" + node.name + "\" expects " +
-                                             std::to_string(expected.size()) + " arguments but got " +
+                                             std::to_string(signature.parameterTypes.size()) + " arguments but got " +
                                              std::to_string(node.args.size()) + "."});
                 }
-                for (Expr *arg : node.args) {
-                    Type argType = inferExpr(arg, s->line, diags);
-                    if (argType.isPointer() || argType.isArray()) diags.push_back({16, s->line, "Legacy Procedure parameters cannot carry native pointers or arrays yet."});
+                for (size_t i = 0; i < node.args.size(); ++i) {
+                    std::size_t before = diags.size();
+                    Type argType = inferExpr(node.args[i], s->line, diags);
+                    if (signature.nativeTyped) {
+                        if (i < signature.parameterTypes.size() && diags.size() == before &&
+                            !assignableTo(signature.parameterTypes[i], argType)) {
+                            diags.push_back({18, s->line, "Argument " + std::to_string(i + 1) + " to typed Procedure \"" +
+                                                     node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
+                                                     " but got " + typeToString(argType) + "."});
+                        }
+                    } else if (argType.isPointer() || argType.isArray()) {
+                        diags.push_back({16, s->line, "Legacy Procedure parameters cannot carry native pointers or arrays yet."});
+                    }
                 }
             }
         }
         else if constexpr (std::is_same_v<T, ReturnStmt>) {
-            Type type = inferExpr(node.expr, s->line, diags);
-            if (type.isPointer() || type.isArray()) diags.push_back({16, s->line, "Legacy Procedures cannot return native pointers or arrays yet."});
+            if (!currentProcedure_) {
+                diags.push_back({18, s->line, "Return can only appear inside a Procedure."});
+                if (node.expr) inferExpr(node.expr, s->line, diags);
+                return;
+            }
+
+            const ProcedureSignature &signature = *currentProcedure_;
+            if (!signature.nativeTyped) {
+                if (!node.expr) {
+                    diags.push_back({18, s->line, "A legacy Procedure Return needs a value; use an explicitly typed Procedure returning void for a bare Return."});
+                    return;
+                }
+                Type type = inferExpr(node.expr, s->line, diags);
+                if (type.isPointer() || type.isArray()) {
+                    diags.push_back({16, s->line, "Legacy Procedures cannot return native pointers or arrays yet."});
+                }
+                return;
+            }
+
+            if (signature.returnType.kind == TypeKind::Void) {
+                if (node.expr) {
+                    inferExpr(node.expr, s->line, diags);
+                    diags.push_back({18, s->line, "A Procedure returning void must use bare Return. or fall through; it cannot return a value."});
+                }
+                return;
+            }
+
+            if (!node.expr) {
+                diags.push_back({18, s->line, "This typed Procedure returns " + typeToString(signature.returnType) +
+                                          ", so Return needs a value."});
+                return;
+            }
+
+            std::size_t before = diags.size();
+            Type returned = inferExpr(node.expr, s->line, diags);
+            if (diags.size() == before && !assignableTo(signature.returnType, returned)) {
+                diags.push_back({18, s->line, "This typed Procedure returns " + typeToString(signature.returnType) +
+                                          " but Return provides " + typeToString(returned) + "."});
+            }
         }
         else if constexpr (std::is_same_v<T, CommentStmt>) {
         }
