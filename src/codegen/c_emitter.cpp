@@ -293,6 +293,11 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
                 return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
                        emitRawExpr(node.rhs, analysis) + "))";
             }
+            if ((node.op == BinOp::Eq || node.op == BinOp::Ne) &&
+                (lhsType.kind == TypeKind::Nullptr || rhsType.kind == TypeKind::Nullptr)) {
+                return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
+                       emitRawExpr(node.rhs, analysis) + "))";
+            }
             if ((node.op == BinOp::And || node.op == BinOp::Or) &&
                 isCScalarType(lhsType) && isCScalarType(rhsType)) {
                 return "((" + emitRawExpr(node.lhs, analysis) + ") " + emitBinaryOperator(node.op) + " (" +
@@ -431,6 +436,7 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             Type lhsType = exprType(node.lhs, analysis);
             Type rhsType = exprType(node.rhs, analysis);
             if (lhsType.isPointer() || lhsType.isArray() || rhsType.isPointer() || rhsType.isArray() ||
+                lhsType.kind == TypeKind::Nullptr || rhsType.kind == TypeKind::Nullptr ||
                 (isCArithmeticType(lhsType) && isCArithmeticType(rhsType) &&
                  node.op != BinOp::And && node.op != BinOp::Or)) {
                 return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
