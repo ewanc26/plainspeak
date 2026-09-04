@@ -1,0 +1,1 @@
+error[E0021]: Flexible member "data" is not an initializer target; C flexible array storage is outside sizeof the structure.
