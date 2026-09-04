@@ -980,7 +980,13 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                             if (it != unionTable_.end()) info = &it->second;
                         }
                         if (info && info->complete) {
-                            std::size_t allowed = declared.kind == TypeKind::Union ? 1 : info->fields.size();
+                            std::vector<const AggregateFieldInfo *> positionalFields;
+                            for (const auto &field : info->fields) {
+                                if (!field.name.empty() && !field.flexibleArray) positionalFields.push_back(&field);
+                            }
+                            std::size_t allowed = declared.kind == TypeKind::Union
+                                                    ? std::min<std::size_t>(1, positionalFields.size())
+                                                    : positionalFields.size();
                             if (aggregate.entries.size() > allowed) {
                                 diags.push_back({21, s->line, (declared.kind == TypeKind::Union ? "Union" : "Structure") +
                                                           std::string(" \"") + declared.tag + "\" accepts at most " +
@@ -989,8 +995,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                             }
                             std::size_t count = std::min(aggregate.entries.size(), allowed);
                             for (std::size_t i = 0; i < count; ++i) {
-                                checkValue(info->fields[i].second, aggregate.entries[i].expr,
-                                           "member \"" + info->fields[i].first + "\" of \"" + node.name + "\"");
+                                checkValue(positionalFields[i]->type, aggregate.entries[i].expr,
+                                           "member \"" + positionalFields[i]->name + "\" of \"" + node.name + "\"");
                             }
                         }
                     } else {
@@ -1017,7 +1023,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                 continue;
                             }
                             Type aggregateType = declared;
-                            const Type *field = findAggregateField(aggregateType, entry.memberName);
+                            const AggregateFieldInfo *field = findAggregateField(aggregateType, entry.memberName);
                             if (!field) {
                                 diags.push_back({21, s->line, (declared.kind == TypeKind::Structure ? "Structure" : "Union") +
                                                           std::string(" \"") + declared.tag + "\" has no member \"" +
@@ -1025,7 +1031,13 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                 inferExpr(entry.expr, s->line, diags);
                                 continue;
                             }
-                            checkValue(*field, entry.expr, "member \"" + entry.memberName + "\" of \"" + node.name + "\"");
+                            if (field->flexibleArray) {
+                                diags.push_back({21, s->line, "Flexible member \"" + entry.memberName +
+                                                          "\" is not an initializer target; C flexible array storage is outside sizeof the structure."});
+                                inferExpr(entry.expr, s->line, diags);
+                                continue;
+                            }
+                            checkValue(field->type, entry.expr, "member \"" + entry.memberName + "\" of \"" + node.name + "\"");
                         }
                     }
                 } else {
@@ -1089,12 +1101,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 if (!info || !info->complete) {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag +
                                                 "\" is incomplete here, so its members cannot be stored."});
-                } else if (const Type *field = findAggregateField(base, node.name)) {
-                    if (field->isArray()) {
+                } else if (const AggregateFieldInfo *field = findAggregateField(base, node.name)) {
+                    if (field->type.isArray()) {
                         diags.push_back({code, s->line, "Whole-array aggregate member assignment is not implemented yet."});
-                    } else if (!assignableTo(*field, value)) {
+                    } else if (!assignableTo(field->type, value)) {
                         diags.push_back({code, s->line, "I can't store a " + typeToString(value) + " in member \"" +
-                                                   node.name + "\", which is a " + typeToString(*field) + "."});
+                                                   node.name + "\", which is a " + typeToString(field->type) + "."});
                     }
                 } else {
                     diags.push_back({code, s->line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
