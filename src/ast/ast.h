@@ -49,6 +49,7 @@ enum class TypeSpecKind {
     Structure,
     Union,
     Enumeration,
+    Function,
     Nullptr
 };
 
@@ -65,6 +66,9 @@ struct TypeSpec {
     std::size_t arrayBound = 0;
     std::string tag{};
     TypeSpecQualifiers qualifiers{};
+    std::vector<std::shared_ptr<TypeSpec>> functionParameters{};
+    std::shared_ptr<TypeSpec> functionReturn{};
+    bool functionVariadic = false;
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or };
@@ -75,6 +79,7 @@ struct SizeOfTypeExpr  { TypeSpec type; };
 struct SizeOfExpr      { Expr *operand; };
 struct AlignOfTypeExpr { TypeSpec type; };
 struct AddressOfExpr   { std::string name; };
+struct ProcedureAddressExpr { std::string name; };
 struct DerefExpr       { Expr *pointer; };
 struct CastExpr        { Expr *operand; TypeSpec target; };
 enum class IncDecKind { PrefixIncrement, PrefixDecrement, PostfixIncrement, PostfixDecrement };
@@ -85,6 +90,7 @@ struct MemberExpr      { std::string name; Expr *base; };
 struct EnumeratorExpr  { std::string name; std::string enumeration; };
 struct MathCallExpr    { std::string func; Expr *arg; };
 struct CallExpr        { std::string name; std::vector<Expr *> args; };
+struct IndirectCallExpr { Expr *callee; std::vector<Expr *> args; };
 struct PowExpr         { Expr *base; Expr *exp; };
 struct BinaryExpr      { BinOp op; Expr *lhs; Expr *rhs; };
 struct ListExpr        { std::vector<Expr *> items; };
@@ -93,8 +99,8 @@ struct ItemExpr        { Expr *index; Expr *list; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
-                              AlignOfTypeExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
-                              ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
+                              AlignOfTypeExpr, AddressOfExpr, ProcedureAddressExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
+                              ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
