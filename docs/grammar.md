@@ -390,6 +390,7 @@ Power ::= Primary ("to" "the" "power" "of" Primary)*
 Primary ::= NUMBER | FLOAT | STRING | IDENT | "true" | "false"
           | "minus" Primary
           | "(" Expr ")"
+          | ("Increment" | "Decrement") ("before" | "after") Primary
           | "Convert" Primary "to" "type" CType
           | "Address" "of" IDENT
           | "Value" "at" Primary
@@ -416,7 +417,7 @@ MemberExpr ::= "Member" IDENT "of" Primary
 EnumeratorExpr ::= "Enumerator" IDENT "of" IDENT
 ```
 
-Precedence, low to high: `or` → `and` → `bitwise or` → `bitwise xor` → `bitwise and` → `not` / `bitwise not` → comparison → shifts → additive → multiplicative → power → primary. `Convert` is a primary form; convert a parenthesized expression when the operand should include lower-precedence operators. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
+Precedence, low to high: `or` → `and` → `bitwise or` → `bitwise xor` → `bitwise and` → `not` / `bitwise not` → comparison → shifts → additive → multiplicative → power → primary. `Increment/Decrement before/after` and `Convert` are primary forms; convert a parenthesized expression when the operand should include lower-precedence operators. Addressing, indirection, native subscripting, list access, length, size/alignment queries, and calls bind as primaries. Parentheses override precedence.
 
 ## C arithmetic conversions and bitwise operators
 
@@ -425,6 +426,23 @@ For native arithmetic expressions, PlainSpeak now follows C's integer promotions
 The bitwise forms are `bitwise and`, `bitwise xor`, `bitwise or`, and unary `bitwise not`. Shift expressions use `shifted left by` and `shifted right by`. Bitwise operands must be integer types, and each shift operand undergoes integer promotion; the result type of a shift is the promoted left operand. Modulo is likewise restricted to integer operands.
 
 These expressions lower directly to C `&`, `^`, `|`, `~`, `<<`, `>>`, and the ordinary arithmetic operators, so the backend compiler performs the same target-specific conversion and execution rules represented by sema. PlainSpeak does not currently promise to diagnose every run-time undefined or implementation-defined shift case (for example, a negative or excessive shift count); those remain part of the broader C execution-semantics conformance work.
+
+## Prefix and postfix increment/decrement
+
+PlainSpeak exposes C's four increment/decrement expression forms with explicit value-timing words:
+
+```text
+Say Increment before x.
+Say Increment after x.
+Say Decrement before x.
+Say Decrement after x.
+```
+
+`before` is the prefix form: the object is changed first and the expression yields the updated value. `after` is the postfix form: the expression yields the previous value and the side effect updates the object afterwards, following C's sequencing rule for postfix increment/decrement.
+
+The operand must be a native modifiable lvalue of real arithmetic type or a pointer to a complete object type. Native variables, dereferences, array elements and structure/union members (including named bit-fields) are supported. Boxed PlainSpeak variables, temporaries, whole arrays, aggregates, const-qualified objects, `void *` and pointers to incomplete objects are rejected before C emission.
+
+The compiler lowers these forms directly to C `++` and `--`. Pointer increments therefore use the pointed-to type's element size, and C11 atomic operands use the implementation's native read-modify-write semantics. The expression result is a non-lvalue value with top-level qualifiers removed.
 
 ## Explicit C conversions
 
