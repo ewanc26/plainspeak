@@ -145,11 +145,131 @@ bool pointersComparable(const Type &a, const Type &b) {
     return pointerBasesCompatible(stripTopQualifiers(a), stripTopQualifiers(b));
 }
 
+bool checkedAddLong(long lhs, long rhs, long &out) {
+    if ((rhs > 0 && lhs > LONG_MAX - rhs) ||
+        (rhs < 0 && lhs < LONG_MIN - rhs)) {
+        return false;
+    }
+    out = lhs + rhs;
+    return true;
+}
+
+bool checkedSubLong(long lhs, long rhs, long &out) {
+    if ((rhs < 0 && lhs > LONG_MAX + rhs) ||
+        (rhs > 0 && lhs < LONG_MIN + rhs)) {
+        return false;
+    }
+    out = lhs - rhs;
+    return true;
+}
+
+bool checkedMulLong(long lhs, long rhs, long &out) {
+    if (lhs == 0 || rhs == 0) {
+        out = 0;
+        return true;
+    }
+    if ((lhs == -1 && rhs == LONG_MIN) || (rhs == -1 && lhs == LONG_MIN)) {
+        return false;
+    }
+    if (lhs > 0) {
+        if (rhs > 0) {
+            if (lhs > LONG_MAX / rhs) return false;
+        } else if (rhs < LONG_MIN / lhs) {
+            return false;
+        }
+    } else {
+        if (rhs > 0) {
+            if (lhs < LONG_MIN / rhs) return false;
+        } else if (lhs < LONG_MAX / rhs) {
+            return false;
+        }
+    }
+    out = lhs * rhs;
+    return true;
+}
+
+std::optional<long> integerConstantValue(const Expr *expr) {
+    if (!expr) return std::nullopt;
+
+    return std::visit([&](auto &&node) -> std::optional<long> {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, IntLit>) {
+            return node.value;
+        } else if constexpr (std::is_same_v<T, BoolLit>) {
+            return node.value ? 1L : 0L;
+        } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            auto rhs = integerConstantValue(node.rhs);
+            if (!rhs) return std::nullopt;
+            if (node.op == UnaryOp::Not) return *rhs == 0 ? 1L : 0L;
+            if (node.op == UnaryOp::BitNot) return ~*rhs;
+            if (*rhs == LONG_MIN) return std::nullopt;
+            return -*rhs;
+        } else if constexpr (std::is_same_v<T, BinaryExpr>) {
+            auto lhs = integerConstantValue(node.lhs);
+            if (!lhs) return std::nullopt;
+
+            // Preserve C short-circuit evaluation. An unevaluated right operand
+            // does not need a translation-time value merely to determine this
+            // expression's result.
+            if (node.op == BinOp::And && *lhs == 0) return 0L;
+            if (node.op == BinOp::Or && *lhs != 0) return 1L;
+
+            auto rhs = integerConstantValue(node.rhs);
+            if (!rhs) return std::nullopt;
+
+            long result = 0;
+            switch (node.op) {
+                case BinOp::Add:
+                    return checkedAddLong(*lhs, *rhs, result) ? std::optional<long>(result) : std::nullopt;
+                case BinOp::Sub:
+                    return checkedSubLong(*lhs, *rhs, result) ? std::optional<long>(result) : std::nullopt;
+                case BinOp::Mul:
+                    return checkedMulLong(*lhs, *rhs, result) ? std::optional<long>(result) : std::nullopt;
+                case BinOp::Div:
+                    if (*rhs == 0 || (*lhs == LONG_MIN && *rhs == -1)) return std::nullopt;
+                    return *lhs / *rhs;
+                case BinOp::Mod:
+                    if (*rhs == 0 || (*lhs == LONG_MIN && *rhs == -1)) return std::nullopt;
+                    return *lhs % *rhs;
+                case BinOp::ShiftLeft: {
+                    if (*lhs < 0 || *rhs < 0 || *rhs >= static_cast<long>(sizeof(long) * CHAR_BIT)) {
+                        return std::nullopt;
+                    }
+                    if (*lhs > (LONG_MAX >> *rhs)) return std::nullopt;
+                    return *lhs << *rhs;
+                }
+                case BinOp::ShiftRight:
+                    if (*rhs < 0 || *rhs >= static_cast<long>(sizeof(long) * CHAR_BIT)) {
+                        return std::nullopt;
+                    }
+                    return *lhs >> *rhs;
+                case BinOp::Gt: return *lhs > *rhs ? 1L : 0L;
+                case BinOp::Lt: return *lhs < *rhs ? 1L : 0L;
+                case BinOp::Eq: return *lhs == *rhs ? 1L : 0L;
+                case BinOp::Ne: return *lhs != *rhs ? 1L : 0L;
+                case BinOp::Ge: return *lhs >= *rhs ? 1L : 0L;
+                case BinOp::Le: return *lhs <= *rhs ? 1L : 0L;
+                case BinOp::BitAnd: return *lhs & *rhs;
+                case BinOp::BitXor: return *lhs ^ *rhs;
+                case BinOp::BitOr: return *lhs | *rhs;
+                case BinOp::And: return *rhs != 0 ? 1L : 0L;
+                case BinOp::Or: return *rhs != 0 ? 1L : 0L;
+            }
+            return std::nullopt;
+        } else if constexpr (std::is_same_v<T, ConditionalExpr>) {
+            auto cond = integerConstantValue(node.condition);
+            if (!cond) return std::nullopt;
+            return integerConstantValue(*cond != 0 ? node.whenTrue : node.whenFalse);
+        }
+        return std::nullopt;
+    }, expr->node);
+}
+
 bool isNullPointerConstantExpr(const Expr *expr) {
     if (!expr) return false;
     if (std::holds_alternative<NullptrLit>(expr->node)) return true;
-    if (const auto *integer = std::get_if<IntLit>(&expr->node)) return integer->value == 0;
-    return false;
+    auto value = integerConstantValue(expr);
+    return value && *value == 0;
 }
 
 bool assignableTo(const Type &target, const Type &source) {

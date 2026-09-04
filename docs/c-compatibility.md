@@ -44,6 +44,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 
 | ID | Status |
 |---|---|
+| `expr.integer-constant-expressions` | foundation |
 | `expr.integer-promotions` | foundation |
 | `expr.value-categories` | foundation |
 | `expr.arithmetic` | foundation |
@@ -63,13 +64,15 @@ An arbitrary-C escape hatch does **not** count as parity.
 
 Explicit native objects model C modifiable-lvalue constraints: const-qualified objects and aggregates containing const subobjects cannot be mutated; pointer dereference, fixed-array elements and structure/union members (including named bit-fields) preserve effective const/volatile qualification. Arrays decay to element pointers in ordinary value contexts but retain extent for `Size of` and `Address of`. Pointer +/- integer, same-element-type pointer difference/comparison and pointer +=/-= offsets are supported. This remains **foundation** because function decay, null pointers, complete conversions, anonymous members, sequencing and the full usual arithmetic conversions are not complete.
 
+PlainSpeak now classifies and evaluates a source-spellable subset of C integer constant expressions at translation time: integer/boolean constants, unary integer operators, integer binary arithmetic/bitwise/shift/comparison/logical operators and conditional expressions, including short-circuit unevaluated branches. This powers zero-valued null pointer constants without treating runtime zero values as constants. The row remains **foundation** until enumerator references, constant `sizeof`/`alignof`, integer casts, C23 `constexpr` names and the remaining extended rules are represented.
+
 Native arithmetic expressions now apply C integer promotions and usual arithmetic conversions across the ordinary integer and real-floating families, and lower directly to C operators. Bitwise AND/XOR/OR/complement and shifts are source-spellable with promoted result types. This remains **foundation** because C23 `_BitInt` conversion rank interactions, complex arithmetic, full constant-expression overflow analysis, and exhaustive undefined/implementation-defined shift behavior are not yet covered.
 
 Conditional expressions are now source-spellable and lower directly to C `?:`. Arithmetic branches use usual arithmetic conversions; compatible object-pointer branches compose pointed-to qualifiers and `void *`; identical structure/union branches are transported by value. This remains **foundation** because integer null-pointer constants, function pointers, void-valued branches and the remaining exhaustive composite-type rules are pending.
 
 Prefix/postfix increment and decrement are now source-spellable over native modifiable arithmetic/pointer lvalues, including array elements, dereferences, named bit-fields and C11 atomic scalar objects. The operators lower directly to C, preserving prefix/postfix value timing and pointer scaling. This remains **foundation** because function-pointer operands are not yet source-spellable and the repository has not yet completed the broader C sequencing model.
 
-C99-style literal-zero null pointer constants and C23 `nullptr_t` values now participate in object-pointer initialization/assignment, typed calls/returns, equality, scalar conditions and conditional expressions. C23 `nullptr_t` remains a distinct semantic scalar type and lowers through a C11-compatible pointer-sized backend representation. This remains **foundation** because arbitrary zero-valued integer constant expressions and function-pointer null conversions await the constant-expression and function-pointer tranches.
+Zero-valued integer constant expressions from the current compile-time evaluator and C23 `nullptr_t` values now participate in object-pointer initialization/assignment, typed calls/returns, equality, scalar conditions and conditional expressions. C23 `nullptr_t` remains a distinct semantic scalar type and lowers through a C11-compatible pointer-sized backend representation. This remains **foundation** because the remaining integer constant-expression forms and function-pointer null conversions await their respective tranches.
 
 Explicit scalar conversions are now source-spellable and lower to native C casts across arithmetic↔arithmetic, object-pointer↔object-pointer, integer↔pointer and scalar→boolean categories. C23 null-pointer constants may also explicitly convert to `null pointer type`, while `nullptr_t` converts to supported object pointers and boolean. This remains **foundation** because cast-to-void discard expressions, function pointers, general zero-valued integer constant-expression recognition, and exhaustive implementation-defined pointer/integer guarantees are still pending.
 
