@@ -243,9 +243,15 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, FloatLit>) {
             char buf[64];
             snprintf(buf, sizeof(buf), "%.17g", node.value);
-            return std::string(buf);
+            std::string literal(buf);
+            if (literal.find_first_of(".eE") == std::string::npos) literal += ".0";
+            return literal;
         } else if constexpr (std::is_same_v<T, NullptrLit>) {
-            return "((PsNullptr)0)";
+            // Keep the predefined null literal as an integer null pointer
+            // constant on the C11 backend. Stored nullptr_t objects use
+            // PsNullptr; the literal itself must retain null-constant behavior
+            // in pointer conversions and conditional expressions.
+            return "0";
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "(&" + mangle(node.name) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
