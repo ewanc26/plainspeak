@@ -39,7 +39,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | BreakStmt | ContinueStmt
-       | RepeatStmt | IfStmt | WhileStmt | ForEachStmt
+       | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt
        | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
@@ -74,6 +74,7 @@ CommentStmt ::= "(" COMMENT_TEXT ")"
 RepeatStmt ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
 IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
 WhileStmt ::= "While" Expr ":" Stmt* "End" "while" "."
+DoWhileStmt ::= "Do" ":" Stmt* "End" "do" "while" Expr "."
 ForEachStmt ::= "For" "each" IDENT "in" Expr ":" Stmt* "End" "for" "."
 CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
 ProcedureParam ::= IDENT ("as" CType)?
@@ -81,7 +82,7 @@ ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)
 ReturnStmt ::= "Return" Expr? "."
 ```
 
-`Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, and `For each`). `Continue.` is loop-only. `Break.` currently exits loops and is tracked as foundation-level C compatibility until `switch` lands, at which point the same breakable-context model extends to switch statements. Both lower directly to C `break;` / `continue;`.
+`Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, `Do`/`while`, and `For each`). `Continue.` is loop-only. `Break.` currently exits loops and is tracked as foundation-level C compatibility until `switch` lands, at which point the same breakable-context model extends to switch statements. Both lower directly to C `break;` / `continue;`.
 
 `Set` has two related roles. If its name does not exist in the current visible scopes, it creates the existing inferred boxed PlainSpeak variable. If that name already denotes a variable, `Set` assigns a new value to it instead. Explicit C-compatible objects are introduced only with `Declare`.
 
@@ -94,6 +95,14 @@ Say "Hello, world!". Set total to 0. Add 1 to total. Set total to 9. Say total.
 ```text
 If total is greater than 5 then: Say "big". Else: Say "small". End if. While total is less than 10: Add 1 to total. End while.
 ```
+
+A post-test loop uses an explicit closing condition:
+
+```text
+Do: Add 1 to total. End do while total is less than 10.
+```
+
+The body runs before the first condition test, and `Continue.` transfers control to that trailing condition just as C `continue` does in a `do ... while` loop.
 
 ## Lists
 

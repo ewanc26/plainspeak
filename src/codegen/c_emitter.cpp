@@ -512,6 +512,7 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
                 collectVars(node.elseBody, out, analysis);
             }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out, analysis);
+            else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, ForEachStmt>) collectVars(node.body, out, analysis);
         }, s->node);
     }
@@ -641,6 +642,15 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             }
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "}\n";
+        } else if constexpr (std::is_same_v<T, DoWhileStmt>) {
+            out << indent << "do {\n";
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
+            Type condType = exprType(node.cond, analysis);
+            if (isCScalarType(condType)) {
+                out << indent << "} while (" << emitRawExpr(node.cond, analysis) << ");\n";
+            } else {
+                out << indent << "} while (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << "));\n";
+            }
         } else if constexpr (std::is_same_v<T, ForEachStmt>) {
             int id = loopCounter++;
             std::string list = "ps__list" + std::to_string(id);

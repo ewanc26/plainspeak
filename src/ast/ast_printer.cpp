@@ -241,6 +241,10 @@ std::string printStmt(const Stmt *s) {
             std::string out = "While " + printExpr(node.cond) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End while. ";
+        } else if constexpr (std::is_same_v<T, DoWhileStmt>) {
+            std::string out = "Do: ";
+            for (Stmt *inner : node.body) out += printStmt(inner);
+            return out + "End do while " + printExpr(node.cond) + ". ";
         } else if constexpr (std::is_same_v<T, ForEachStmt>) {
             std::string out = "For each " + node.itemName + " in " + printExpr(node.list) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);

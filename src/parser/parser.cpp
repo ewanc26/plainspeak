@@ -85,13 +85,14 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
+    if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return parseForEach();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -124,13 +125,14 @@ Stmt *Parser::parseStmt() {
     if (t.text == "repeat") return parseRepeat();
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
+    if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return parseForEach();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -509,6 +511,26 @@ Stmt *Parser::parseWhile() {
     expectColon();
     auto body = parseBlockUntil("end", "while");
     return arena_.makeStmt(WhileStmt{cond, std::move(body)}, line);
+}
+
+Stmt *Parser::parseDoWhile() {
+    int line = peek().line;
+    expectWord("do");
+    expectColon();
+
+    std::vector<Stmt *> body;
+    while (!(checkWord("end") && checkWordAt(1, "do"))) {
+        if (peek().kind == TokKind::Eof) {
+            error("reached end of file while looking for \"End do while ... .\"");
+        }
+        body.push_back(parseStmt());
+    }
+    advance();
+    advance();
+    expectWord("while");
+    Expr *cond = parseExpr();
+    expectDot();
+    return arena_.makeStmt(DoWhileStmt{std::move(body), cond}, line);
 }
 
 Stmt *Parser::parseForEach() {

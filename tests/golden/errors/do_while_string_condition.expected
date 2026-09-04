@@ -1,0 +1,1 @@
+error[E0005]: Do while needs a C scalar condition, not a string.

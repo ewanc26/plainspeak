@@ -1,0 +1,1 @@
+Set x to 0. Do: Add 1 to x. If x is less than 3 then: Continue. End if. Say x. End do while x is less than 4. Say x. Set y to 0. Do: Add 1 to y. Break. End do while 1. Say y. Declare p as pointer to integer with value 0. Do: Say 9. End do while p.
