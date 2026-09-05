@@ -186,7 +186,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.stdbool` | foundation | `<stdbool.h>` / C23 boolean spellings |
 | `lib.stddef` | foundation | Native `size type` and `difference type` declarations exist; remaining `<stddef.h>` types/macros and exact ABI bindings remain pending. |
 | `lib.stdint` | planned | `<stdint.h>` |
-| `lib.stdio` | foundation | `<stdio.h>`; `Say`/`Read` are only a small high-level subset. |
+| `lib.stdio` | foundation | `<stdio.h>`; typed imports cover `fopen`, `fputs`, and `fclose` with string literals and opaque native stream pointers. Formatted/binary I/O, buffering, `FILE` typing, and full stream-error semantics remain pending. |
 | `lib.stdlib` | foundation | Typed imports cover allocation plus `atoi`/`atol`/`atof`/`strtoll` string conversions; the remainder of the conversion, process, sorting and searching surface remains pending. |
 | `lib.stdnoreturn` | planned | `<stdnoreturn.h>` / C23 spelling |
 | `lib.string` | foundation | Typed imports cover `strlen` and `strcmp` with string-literal decay; byte-memory mutation and the remaining `<string.h>` surface remain pending. |

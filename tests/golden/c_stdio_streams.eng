@@ -1,0 +1,7 @@
+Import the C function fopen taking a pointer to character and a pointer to character, returning a pointer to void, from the header "stdio.h".
+Import the C function fputs taking a pointer to character and a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function fclose taking a pointer to void, returning an integer, from the header "stdio.h".
+Declare stream as pointer to void with value Call fopen with "/dev/null", "w" done.
+Call fputs with "plain C stream", stream done.
+Call fclose with stream done.
+Say 1.
