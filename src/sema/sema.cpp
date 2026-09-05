@@ -2,6 +2,7 @@
 #include <algorithm>
 #include <climits>
 #include <limits>
+#include <functional>
 #include <type_traits>
 #include <utility>
 
@@ -773,6 +774,29 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
                 result.diagnostics.push_back({22, s->line, "Type alias \"" + alias->name + "\" is already defined."});
             else aliases_[alias->name] = alias->target;
         }
+    }
+
+    // Validate alias chains before declarations resolve them.
+    std::function<bool(const std::string &, std::unordered_set<std::string> &, std::unordered_set<std::string> &)> validateAlias;
+    validateAlias = [&](const std::string &name, auto &active, auto &checked) {
+        if (checked.count(name)) return true;
+        if (!active.insert(name).second) return false;
+        auto it = aliases_.find(name);
+        if (it == aliases_.end()) return false;
+        bool valid = it->second.kind != TypeSpecKind::Alias || validateAlias(it->second.tag, active, checked);
+        active.erase(name);
+        if (valid) checked.insert(name);
+        return valid;
+    };
+    std::unordered_set<std::string> checkedAliases;
+    std::vector<std::string> aliasNames;
+    for (const auto &[name, target] : aliases_) aliasNames.push_back(name);
+    std::sort(aliasNames.begin(), aliasNames.end());
+    for (const auto &name : aliasNames) {
+        const auto &target = aliases_.at(name);
+        std::unordered_set<std::string> active;
+        if (target.kind == TypeSpecKind::Alias && !validateAlias(name, active, checkedAliases))
+            result.diagnostics.push_back({22, 1, "Type alias \"" + name + "\" refers to an unknown or recursive alias."});
     }
 
     // Structure tags live in their own namespace. Register all tags as

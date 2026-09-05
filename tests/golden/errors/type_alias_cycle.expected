@@ -1,0 +1,2 @@
+error[E0022]: Type alias "first" refers to an unknown or recursive alias.
+error[E0022]: Type alias "second" refers to an unknown or recursive alias.
