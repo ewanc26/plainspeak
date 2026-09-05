@@ -21,18 +21,20 @@
 
 int main(int argc, char **argv) {
     if (argc < 2) {
-        std::cerr << "usage: plainspeak <file.eng> [-o output] [--emit-c]\n";
+        std::cerr << "usage: plainspeak <file.eng> [-o output] [--emit-c|--show-generated-c] [--lint]\n";
         return 1;
     }
 
     std::string srcPath = argv[1];
     std::string outPath = "a.out";
     bool emitCOnly = false;
+    bool lintOnly = false;
     bool printAstOnly = false;
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
         if (a == "-o" && i + 1 < argc) outPath = argv[++i];
-        else if (a == "--emit-c") emitCOnly = true;
+        else if (a == "--emit-c" || a == "--show-generated-c") emitCOnly = true;
+        else if (a == "--lint") lintOnly = true;
         else if (a == "--print-ast") printAstOnly = true;
     }
 
@@ -81,6 +83,11 @@ int main(int argc, char **argv) {
 
     if (printAstOnly) {
         std::cout << printAST(program);
+        return 0;
+    }
+
+    if (lintOnly) {
+        std::cout << "No lint issues found.\n";
         return 0;
     }
 

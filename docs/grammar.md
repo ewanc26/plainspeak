@@ -452,6 +452,8 @@ Explicit native declarations support positional and designated aggregate initial
 
 Function types with no parameters are written as `function returning type`; for example, `pointer to function returning integer` declares a native pointer with a zero-parameter C function signature. `Address of` a typed Procedure or imported C function produces a pointer to that function. `Call through callback done.` invokes a zero-parameter function pointer; parameterized function types and calls remain under development.
 
+The command `plainspeak file.eng --lint` runs the deterministic tokenizer, parser, and semantic checker without generating or compiling a native binary. A successful run prints `No lint issues found.`; invalid source receives the same stable diagnostics as compilation. `--show-generated-c` (also spelled `--emit-c`) prints the generated C instead of compiling it.
+
 Positional initialization uses declaration order:
 
 ```text
