@@ -216,6 +216,27 @@ void emitAggregateStores(const std::string &name, const Type &declared,
     }
 }
 
+std::string emitCompoundLiteral(const Type &type, const AggregateInitializer &initializer,
+                                const AnalysisResult &analysis) {
+    std::string result = "((" + emitCType(type) + "){";
+    if (initializer.kind == AggregateInitKind::Empty) {
+        result += "0";
+    } else if (initializer.kind == AggregateInitKind::Scalar) {
+        result += emitRawExpr(initializer.entries.front().expr, analysis);
+    } else {
+        for (std::size_t i = 0; i < initializer.entries.size(); ++i) {
+            if (i) result += ", ";
+            const auto &entry = initializer.entries[i];
+            if (initializer.kind == AggregateInitKind::Members)
+                result += "." + mangle(entry.memberName) + " = ";
+            else if (initializer.kind == AggregateInitKind::Elements)
+                result += "[" + std::to_string(entry.elementIndex) + "] = ";
+            result += emitRawExpr(entry.expr, analysis);
+        }
+    }
+    return result + "})";
+}
+
 bool isNativeRef(const Expr *e, const AnalysisResult &analysis) {
     return analysis.nativeObjectRefs.count(e) != 0;
 }
@@ -318,6 +339,8 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             // PsNullptr; the literal itself must retain null-constant behavior
             // in pointer conversions and conditional expressions.
             return "0";
+        } else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
+            return emitCompoundLiteral(exprType(e, analysis), node.initializer, analysis);
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "(&" + (cFunctionSignature(node.name, analysis) ? node.name : mangle(node.name)) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
@@ -459,6 +482,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
                 return boxRaw(isImportedObject(node.name, analysis) ? node.name : mangle(node.name), exprType(e, analysis));
             }
             return mangle(node.name);
+        } else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "ps_int(0L)";
         } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {

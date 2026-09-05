@@ -91,4 +91,5 @@ private:
     Expr *parseMultiplicative();
     Expr *parsePower();
     Expr *parsePrimary();
+    Expr *parseCompoundLiteral();
 };

@@ -218,6 +218,8 @@ The C23 spellings `type of name` and `type of unqualified name` can name the nat
 
 `least integer with at least N bits`, `unsigned least integer with at least N bits`, `fast integer with at least N bits`, and `unsigned fast integer with at least N bits` spell the C99 `<stdint.h>` `int_leastN_t`, `uint_leastN_t`, `int_fastN_t`, and `uint_fastN_t` families. The requested width must be positive; the selected target C implementation chooses the concrete representation.
 
+`Compound value of type CType with value expression done` creates a scalar C99 compound literal. `with values expression followed by expression done` creates a positional array, structure, or union literal; `with members name as expression followed by name as expression done` uses C99 member designators; and `with elements at index as expression followed by at index as expression done` uses C99 array designators. `with empty braces done` supplies the C23 empty initializer form. Compound values have their native C type and lvalue semantics, and the type must be complete.
+
 `size type` spells the native unsigned size representation used by the current C backend. The broader `<stddef.h>` surface remains pending.
 
 `difference type` spells the native signed pointer-difference representation. The broader `<stddef.h>` surface remains pending.

@@ -58,7 +58,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.conditional` | foundation |
 | `expr.sequencing` | planned |
 | `expr.function-calls` | foundation |
-| `expr.compound-literals` | planned |
+| `expr.compound-literals` | foundation |
 | `expr.generic-selection` | planned |
 | `expr.nullptr-conversions` | foundation |
 
@@ -67,6 +67,8 @@ Explicit native objects model C modifiable-lvalue constraints: const-qualified o
 PlainSpeak now classifies and evaluates a source-spellable subset of C integer constant expressions at translation time: integer/boolean constants, unary integer operators, integer binary arithmetic/bitwise/shift/comparison/logical operators and conditional expressions, including short-circuit unevaluated branches. This powers zero-valued null pointer constants without treating runtime zero values as constants. The row remains **foundation** until enumerator references, constant `sizeof`/`alignof`, integer casts, C23 `constexpr` names and the remaining extended rules are represented.
 
 Native arithmetic expressions now apply C integer promotions and usual arithmetic conversions across the ordinary integer and real-floating families, and lower directly to C operators. Bitwise AND/XOR/OR/complement and shifts are source-spellable with promoted result types. This remains **foundation** because C23 `_BitInt` conversion rank interactions, complex arithmetic, full constant-expression overflow analysis, and exhaustive undefined/implementation-defined shift behavior are not yet covered.
+
+Compound values now lower scalar, positional, member-designated and array-element-designated forms to native C99 compound literals. Their complete native object type and lvalue status are retained through semantic analysis; nested initializer lists and the remaining lifetime/constant-expression edge cases remain pending.
 
 Conditional expressions are now source-spellable and lower directly to C `?:`. Arithmetic branches use usual arithmetic conversions; compatible object-pointer branches compose pointed-to qualifiers and `void *`; identical structure/union branches are transported by value. This remains **foundation** because integer null-pointer constants, function pointers, void-valued branches and the remaining exhaustive composite-type rules are pending.
 

@@ -1,0 +1,12 @@
+Structure point:
+Field x as integer.
+Field y as integer.
+End structure.
+Procedure first takes values as pointer to integer returns integer:
+Return Element at 0 in values.
+End procedure.
+Declare number as integer with value Compound value of type integer with value 7 done.
+Declare point as structure point with value Compound value of type structure point with members x as 3 followed by y as 4 done.
+Say number.
+Say Member x of point.
+Say Call first with Compound value of type array of integer with length 3 with elements at 0 as 8 followed by at 2 as 10 done done.

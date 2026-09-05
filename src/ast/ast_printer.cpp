@@ -101,6 +101,36 @@ std::string printExpr(const Expr *e) {
             return "Choose " + printExpr(node.whenTrue) + " when " +
                    printExpr(node.condition) + " otherwise " + printExpr(node.whenFalse);
         }
+        else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
+            std::string out = "Compound value of type " + printTypeSpec(node.type) + " with ";
+            const auto &initializer = node.initializer;
+            if (initializer.kind == AggregateInitKind::Empty) {
+                out += "empty braces";
+            } else if (initializer.kind == AggregateInitKind::Scalar) {
+                out += "value " + printExpr(initializer.entries.front().expr);
+            } else if (initializer.kind == AggregateInitKind::Positional) {
+                out += "values ";
+                for (std::size_t i = 0; i < initializer.entries.size(); ++i) {
+                    if (i) out += " followed by ";
+                    out += printExpr(initializer.entries[i].expr);
+                }
+            } else if (initializer.kind == AggregateInitKind::Members) {
+                out += "members ";
+                for (std::size_t i = 0; i < initializer.entries.size(); ++i) {
+                    if (i) out += " followed by ";
+                    out += initializer.entries[i].memberName + " as " +
+                           printExpr(initializer.entries[i].expr);
+                }
+            } else {
+                out += "elements ";
+                for (std::size_t i = 0; i < initializer.entries.size(); ++i) {
+                    if (i) out += " followed by ";
+                    out += "at " + std::to_string(initializer.entries[i].elementIndex) +
+                           " as " + printExpr(initializer.entries[i].expr);
+                }
+            }
+            return out + " done";
+        }
         else if constexpr (std::is_same_v<T, IncDecExpr>) {
             const bool increment = node.kind == IncDecKind::PrefixIncrement ||
                                    node.kind == IncDecKind::PostfixIncrement;

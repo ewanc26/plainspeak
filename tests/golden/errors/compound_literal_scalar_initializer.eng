@@ -1,0 +1,4 @@
+Structure point:
+Field x as integer.
+End structure.
+Declare value as structure point with value Compound value of type structure point with value 1 done.

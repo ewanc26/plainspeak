@@ -1268,6 +1268,8 @@ bool Sema::isNativeLvalueExpr(const Expr *e) const {
             auto found = analysis_->exprTypes.find(node.base);
             if (found != analysis_->exprTypes.end() && found->second.isPointer()) return true;
             return isNativeLvalueExpr(node.base);
+        } else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
+            return true;
         }
         return false;
     }, e->node);
@@ -1285,6 +1287,125 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             auto [symbol, found] = lookupVar(node.name, line, diags);
             if (found && symbol.nativeObject && analysis_) analysis_->nativeObjectRefs.insert(e);
             return symbol.type;
+        }
+        else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
+            Type target = resolveTypeSpec(node.type);
+            const std::size_t before = diags.size();
+            validateTypeQualifiers(target, line, diags);
+            if (diags.size() != before) return Type::number();
+            if (!isCompleteObjectType(target)) {
+                diags.push_back({21, line, "A compound value needs a complete native object type, not " +
+                                         typeToString(target) + "."});
+                return Type::number();
+            }
+
+            const auto &initializer = node.initializer;
+            auto checkValue = [&](const Type &valueTarget, Expr *value) {
+                const std::size_t valueBefore = diags.size();
+                Type source = inferExpr(value, line, diags);
+                if (diags.size() == valueBefore && !assignableExprTo(valueTarget, source, value)) {
+                    diags.push_back({21, line, "I can't initialize a compound value of type " +
+                                             typeToString(valueTarget) + " with a " + typeToString(source) + "."});
+                }
+            };
+
+            if (initializer.kind == AggregateInitKind::Empty) return target;
+            if (initializer.kind == AggregateInitKind::Scalar) {
+                if (!isArithmeticScalar(target) && !target.isPointer() && target.kind != TypeKind::Nullptr) {
+                    diags.push_back({21, line, "A compound scalar value needs an arithmetic, pointer, or null-pointer type, not " +
+                                             typeToString(target) + "."});
+                } else {
+                    checkValue(target, initializer.entries.front().expr);
+                }
+                return target;
+            }
+
+            if (initializer.kind == AggregateInitKind::Positional) {
+                if (target.isArray() && target.elementType && target.arrayBound) {
+                    if (initializer.entries.size() > *target.arrayBound) {
+                        diags.push_back({21, line, "A compound array value has length " +
+                                                 std::to_string(*target.arrayBound) + " but received " +
+                                                 std::to_string(initializer.entries.size()) + " positional initializers."});
+                    }
+                    const std::size_t count = std::min(initializer.entries.size(), *target.arrayBound);
+                    for (std::size_t i = 0; i < count; ++i)
+                        checkValue(*target.elementType, initializer.entries[i].expr);
+                } else if (target.kind == TypeKind::Structure || target.kind == TypeKind::Union) {
+                    const StructureInfo *info = target.kind == TypeKind::Structure
+                        ? (structureTable_.count(target.tag) ? &structureTable_.at(target.tag) : nullptr)
+                        : (unionTable_.count(target.tag) ? &unionTable_.at(target.tag) : nullptr);
+                    std::vector<const AggregateFieldInfo *> fields;
+                    if (info) {
+                        for (const auto &field : info->fields)
+                            if (!field.name.empty() && !field.flexibleArray) fields.push_back(&field);
+                    }
+                    const std::size_t allowed = target.kind == TypeKind::Union ? std::min<std::size_t>(1, fields.size()) : fields.size();
+                    if (initializer.entries.size() > allowed) {
+                        diags.push_back({21, line, (target.kind == TypeKind::Union ? "A compound union value" : "A compound structure value") +
+                                                 std::string(" accepts at most ") + std::to_string(allowed) + " positional initializer" +
+                                                 (allowed == 1 ? "" : "s") + "."});
+                    }
+                    const std::size_t count = std::min(initializer.entries.size(), allowed);
+                    for (std::size_t i = 0; i < count; ++i)
+                        checkValue(fields[i]->type, initializer.entries[i].expr);
+                } else {
+                    diags.push_back({21, line, "Compound values needs an array, structure, or union target for positional initializers, not " +
+                                             typeToString(target) + "."});
+                    for (const auto &entry : initializer.entries) inferExpr(entry.expr, line, diags);
+                }
+                return target;
+            }
+
+            if (initializer.kind == AggregateInitKind::Members) {
+                if (target.kind != TypeKind::Structure && target.kind != TypeKind::Union) {
+                    diags.push_back({21, line, "Compound member designators need a structure or union target, not " +
+                                             typeToString(target) + "."});
+                    for (const auto &entry : initializer.entries) inferExpr(entry.expr, line, diags);
+                    return target;
+                }
+                if (target.kind == TypeKind::Union && initializer.entries.size() > 1)
+                    diags.push_back({21, line, "A compound union value selects exactly one member."});
+                std::unordered_set<std::string> used;
+                for (const auto &entry : initializer.entries) {
+                    if (!used.insert(entry.memberName).second) {
+                        diags.push_back({21, line, "Compound member designator \"" + entry.memberName + "\" appears more than once."});
+                        inferExpr(entry.expr, line, diags);
+                        continue;
+                    }
+                    const AggregateFieldInfo *field = findAggregateField(target, entry.memberName);
+                    if (!field) {
+                        diags.push_back({21, line, "Compound value has no member \"" + entry.memberName + "\"."});
+                        inferExpr(entry.expr, line, diags);
+                    } else if (field->flexibleArray) {
+                        diags.push_back({21, line, "Flexible member \"" + entry.memberName + "\" cannot initialize a compound value."});
+                        inferExpr(entry.expr, line, diags);
+                    } else {
+                        checkValue(field->type, entry.expr);
+                    }
+                }
+                return target;
+            }
+
+            if (!target.isArray() || !target.elementType || !target.arrayBound) {
+                diags.push_back({21, line, "Compound element designators need a fixed native array target, not " +
+                                         typeToString(target) + "."});
+                for (const auto &entry : initializer.entries) inferExpr(entry.expr, line, diags);
+                return target;
+            }
+            std::unordered_set<std::size_t> used;
+            for (const auto &entry : initializer.entries) {
+                if (entry.elementIndex >= *target.arrayBound) {
+                    diags.push_back({21, line, "Compound element designator " + std::to_string(entry.elementIndex) +
+                                             " is outside the array of length " + std::to_string(*target.arrayBound) + "."});
+                    inferExpr(entry.expr, line, diags);
+                } else if (!used.insert(entry.elementIndex).second) {
+                    diags.push_back({21, line, "Compound element designator " + std::to_string(entry.elementIndex) + " appears more than once."});
+                    inferExpr(entry.expr, line, diags);
+                } else {
+                    checkValue(*target.elementType, entry.expr);
+                }
+            }
+            return target;
         }
         else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
             auto found = enumerationTable_.find(node.enumeration);

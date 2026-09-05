@@ -72,6 +72,21 @@ TEST_CASE("parser handles arithmetic precedence", "[parser]") {
     CHECK(mul.op == BinOp::Mul);
 }
 
+TEST_CASE("parser represents a compound literal expression", "[parser][c99]") {
+    Tokenizer t("Say Compound value of type integer with value 7 done.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    const auto &literal = std::get<CompoundLiteralExpr>(say.args[0]->node);
+    CHECK(literal.type.kind == TypeSpecKind::Integer);
+    CHECK(literal.initializer.kind == AggregateInitKind::Scalar);
+    REQUIRE(literal.initializer.entries.size() == 1);
+    CHECK(std::get<IntLit>(literal.initializer.entries[0].expr->node).value == 7);
+}
+
 TEST_CASE("parser handles logical operators", "[parser]") {
     Tokenizer t("Say true and false or true.");
     auto tokens = t.tokenize();

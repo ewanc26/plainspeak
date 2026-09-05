@@ -88,6 +88,17 @@ struct TypeSpec {
     bool stdintFast = false;
 };
 
+enum class AggregateInitKind { Empty, Scalar, Positional, Members, Elements };
+struct AggregateInitEntry {
+    std::string memberName{};
+    std::size_t elementIndex = 0;
+    Expr *expr = nullptr;
+};
+struct AggregateInitializer {
+    AggregateInitKind kind = AggregateInitKind::Positional;
+    std::vector<AggregateInitEntry> entries;
+};
+
 enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or };
 enum class UnaryOp { Not, Neg, BitNot };
 struct UnaryExpr       { UnaryOp op; Expr *rhs; };
@@ -106,6 +117,7 @@ struct CastExpr        { Expr *operand; TypeSpec target; };
 enum class IncDecKind { PrefixIncrement, PrefixDecrement, PostfixIncrement, PostfixDecrement };
 struct IncDecExpr      { IncDecKind kind; Expr *operand; };
 struct ConditionalExpr { Expr *whenTrue; Expr *condition; Expr *whenFalse; };
+struct CompoundLiteralExpr { TypeSpec type; AggregateInitializer initializer; };
 struct ElementExpr     { Expr *index; Expr *base; };
 struct MemberExpr      { std::string name; Expr *base; };
 struct EnumeratorExpr  { std::string name; std::string enumeration; };
@@ -121,22 +133,12 @@ struct ItemExpr        { Expr *index; Expr *list; };
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
-                              ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
+                              CompoundLiteralExpr, ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
 struct SayStmt       { std::vector<Expr *> args; };
 struct SetStmt       { std::string name; Expr *expr; };
-enum class AggregateInitKind { Empty, Positional, Members, Elements };
-struct AggregateInitEntry {
-    std::string memberName{};
-    std::size_t elementIndex = 0;
-    Expr *expr = nullptr;
-};
-struct AggregateInitializer {
-    AggregateInitKind kind = AggregateInitKind::Positional;
-    std::vector<AggregateInitEntry> entries;
-};
 struct NativeDeclStmt {
     std::string name;
     TypeSpec type;

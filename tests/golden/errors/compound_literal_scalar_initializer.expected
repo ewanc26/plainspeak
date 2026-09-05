@@ -1,0 +1,1 @@
+error[E0021]: A compound scalar value needs an arithmetic, pointer, or null-pointer type, not structure point.
