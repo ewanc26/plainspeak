@@ -2,3 +2,7 @@ Import the C function atoi taking a pointer to character, returning an integer, 
 Import the C function atol taking a pointer to character, returning a long integer, from the header "stdlib.h".
 Say Call atoi with "123" done.
 Say Call atol with "456" done.
+Import the C function atof taking a pointer to character, returning a decimal, from the header "stdlib.h".
+Import the C function strtoll taking a pointer to character and a pointer to pointer to character and an integer, returning a long long integer, from the header "stdlib.h".
+Say Call atof with "2.5" done.
+Say Call strtoll with "789", null pointer, 10 done.
