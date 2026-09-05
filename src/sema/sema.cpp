@@ -1694,6 +1694,10 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             if (!(isArithmeticScalar(type) || type.isPointer() || type.kind == TypeKind::Nullptr))
                 diags.push_back({3, s->line, "An assertion needs a scalar condition."});
         }
+        else if constexpr (std::is_same_v<T, AtomicFenceStmt>) {
+            // This spelling has no operands; lowering supplies C11's default
+            // sequentially consistent fence semantics.
+        }
         else if constexpr (std::is_same_v<T, SetStmt>) {
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (Symbol *existing = findVar(node.name)) {

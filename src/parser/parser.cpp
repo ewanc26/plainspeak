@@ -99,6 +99,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "procedure") return parseProcedure();
     if (isReturnKeyword(t.text)) return parseReturn();
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
+    if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
           "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
@@ -119,6 +120,13 @@ Stmt *Parser::parseRuntimeAssert() {
     Expr *condition = parseExpr();
     expectDot();
     return arena_.makeStmt(RuntimeAssertStmt{condition}, line);
+}
+
+Stmt *Parser::parseAtomicFence() {
+    int line = peek().line;
+    advance(); advance();
+    expectDot();
+    return arena_.makeStmt(AtomicFenceStmt{}, line);
 }
 
 Stmt *Parser::parseStmt() {

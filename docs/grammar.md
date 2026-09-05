@@ -274,6 +274,8 @@ Declare q as constant pointer to integer.
 
 The words map directly to C `const`, `volatile`, `restrict`, and `_Atomic`. Qualifiers apply to the **type immediately following them**, so `constant pointer to integer` is a const-qualified pointer while `pointer to constant integer` is a mutable pointer to const-qualified integer. Multiple qualifiers may be combined; repeated qualifiers are idempotent and the AST printer uses the canonical order `constant volatile restricted atomic`.
 
+`Atomic fence.` emits a C11 sequentially consistent atomic fence. Memory-order-specific fences remain pending.
+
 Reading a qualified scalar follows C value conversion: top-level qualifiers do not become qualifiers on arithmetic results. Pointer conversions may add pointee qualification, such as `pointer to integer` to `pointer to constant integer`, but may not discard it. Nested pointer qualification remains strict, so the unsafe C-style `T **` to `const T **` conversion is not accepted merely because the innermost object can be qualified.
 
 `constant` is enforced through every current native mutation surface: direct `Set`, `Add`/`Subtract`, pointer stores, array element stores and structure/union member stores. Qualifiers on an aggregate propagate to member access as C requires. A const pointer may still modify a mutable pointee; a pointer to const may not.

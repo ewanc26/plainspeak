@@ -1,0 +1,5 @@
+Declare flag as atomic integer with value 0.
+Set flag to 1.
+Atomic fence.
+Assert flag is equal to 1.
+Say flag.
