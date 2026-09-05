@@ -1,0 +1,3 @@
+Procedure bad returns void with no return:
+    Return.
+End procedure.

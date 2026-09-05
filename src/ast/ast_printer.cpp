@@ -367,6 +367,8 @@ std::string printStmt(const Stmt *s) {
                 }
             }
             if (node.returnType) out += " returns " + printTypeSpec(*node.returnType);
+            if (node.inlineSpecifier) out += " with inline";
+            if (node.noreturnSpecifier) out += " with no return";
             out += ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End procedure. ";

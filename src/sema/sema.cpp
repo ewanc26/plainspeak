@@ -294,6 +294,29 @@ bool isConstTruthyExpr(const Expr *expr) {
     return value && *value != 0;
 }
 
+bool containsReturnStatement(const std::vector<Stmt *> &statements) {
+    for (const Stmt *statement : statements) {
+        if (std::holds_alternative<ReturnStmt>(statement->node)) return true;
+        if (const auto *ifStmt = std::get_if<IfStmt>(&statement->node)) {
+            if (containsReturnStatement(ifStmt->thenBody) || containsReturnStatement(ifStmt->elseBody)) return true;
+        } else if (const auto *loop = std::get_if<RepeatStmt>(&statement->node)) {
+            if (containsReturnStatement(loop->body)) return true;
+        } else if (const auto *loop = std::get_if<WhileStmt>(&statement->node)) {
+            if (containsReturnStatement(loop->body)) return true;
+        } else if (const auto *loop = std::get_if<DoWhileStmt>(&statement->node)) {
+            if (containsReturnStatement(loop->body)) return true;
+        } else if (const auto *loop = std::get_if<ForStmt>(&statement->node)) {
+            if (containsReturnStatement(loop->body)) return true;
+        } else if (const auto *loop = std::get_if<ForEachStmt>(&statement->node)) {
+            if (containsReturnStatement(loop->body)) return true;
+        } else if (const auto *sw = std::get_if<SwitchStmt>(&statement->node)) {
+            for (const auto &clause : sw->cases)
+                if (containsReturnStatement(clause.body)) return true;
+        }
+    }
+    return false;
+}
+
 bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth);
 bool statementHasLevelBreak(const Stmt *s, int depth) {
     if (!s) return false;
@@ -890,8 +913,14 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         bool typed = proc->returnType.has_value();
         ProcedureSignature signature;
         signature.nativeTyped = typed;
+        signature.inlineSpecifier = proc->inlineSpecifier;
+        signature.noreturnSpecifier = proc->noreturnSpecifier;
         signature.returnType = typed ? resolveTypeSpec(*proc->returnType) : Type::number();
         if (typed) validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
+
+        if (signature.noreturnSpecifier && (!typed || signature.returnType.kind != TypeKind::Void)) {
+            result.diagnostics.push_back({18, s->line, "A no-return Procedure must have an explicit void return type."});
+        }
 
         for (const auto &param : proc->params) {
             Type paramType = Type::number();
@@ -2831,10 +2860,21 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             validateLabels(diags);
 
             if (signatureIt->second.nativeTyped &&
+                !signatureIt->second.noreturnSpecifier &&
                 signatureIt->second.returnType.kind != TypeKind::Void) {
                 if (ReturnPathChecker::endIsReachable(node.body)) {
                     diags.push_back({18, s->line, "Typed Procedure \"" + node.name +
                                               "\" can reach its end without a Return on some path; every path must return a value."});
+                }
+            }
+
+            if (signatureIt->second.noreturnSpecifier) {
+                if (ReturnPathChecker::endIsReachable(node.body)) {
+                    diags.push_back({18, s->line, "No-return Procedure \"" + node.name +
+                                              "\" can reach its end; every path must leave without returning."});
+                }
+                if (containsReturnStatement(node.body)) {
+                    diags.push_back({18, s->line, "No-return Procedure \"" + node.name + "\" cannot contain a Return."});
                 }
             }
 

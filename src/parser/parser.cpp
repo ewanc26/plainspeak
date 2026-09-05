@@ -919,9 +919,24 @@ Stmt *Parser::parseProcedure() {
         error("a typed Procedure return requires typed parameters; either add \"as <type>\" to every parameter or remove \"returns\"");
     }
 
+    bool inlineSpecifier = false;
+    bool noreturnSpecifier = false;
+    while (checkWord("with")) {
+        advance();
+        if (checkWord("inline")) {
+            advance();
+            inlineSpecifier = true;
+        } else if (checkWord("no") && checkWordAt(1, "return")) {
+            advance(); advance();
+            noreturnSpecifier = true;
+        } else {
+            error("expected \"inline\" or \"no return\" after Procedure with");
+        }
+    }
+
     expectColon();
     auto body = parseBlockUntil("end", "procedure");
-    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body)}, line);
+    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {

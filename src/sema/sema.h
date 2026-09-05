@@ -19,6 +19,8 @@ struct ProcedureSignature {
     Type returnType = Type::number();
     bool nativeTyped = false;
     bool variadic = false;
+    bool inlineSpecifier = false;
+    bool noreturnSpecifier = false;
 };
 
 struct AggregateFieldInfo {

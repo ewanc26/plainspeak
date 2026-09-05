@@ -210,6 +210,8 @@ struct ProcedureStmt {
     std::vector<ProcedureParam> params;
     std::optional<TypeSpec> returnType;
     std::vector<Stmt *> body;
+    bool inlineSpecifier = false;
+    bool noreturnSpecifier = false;
 };
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };

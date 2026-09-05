@@ -126,10 +126,10 @@ PlainSpeak's `For each` is a language extension and is not counted as a replacem
 | `func.prototypes` | foundation |
 | `func.variadic` | foundation |
 | `func.recursion` | foundation |
-| `func.inline` | planned |
-| `func.noreturn` | planned |
+| `func.inline` | foundation |
+| `func.noreturn` | foundation |
 
-Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer.
+Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer. `with inline` and `with no return` preserve the corresponding C function specifiers, with no-return Procedures restricted to explicit `void` functions whose control flow cannot reach the end and which contain no `Return`; complete C inline/linkage compatibility rules remain pending.
 
 Typed Procedures now have explicit native parameter and return types, recursive native qualifiers, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. `func.typed-signatures`, `func.prototypes`, `func.recursion` and `types.function-types` are **implemented** because the C99 function-type surface used by PlainSpeak is complete and end-to-end tested; variadic definitions/calls, function pointers, C's full compatible-type/prototype rules and complete path-sensitive return analysis remain pending in their own rows.
 

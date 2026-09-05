@@ -103,6 +103,18 @@ TEST_CASE("parser represents a generic selection expression", "[parser][c11]") {
     REQUIRE(selection.defaultExpr);
 }
 
+TEST_CASE("parser represents function specifiers", "[parser][c99][c11]") {
+    Tokenizer t("Procedure stop returns void with inline with no return:\nEnd procedure.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &procedure = std::get<ProcedureStmt>(program[0]->node);
+    CHECK(procedure.inlineSpecifier);
+    CHECK(procedure.noreturnSpecifier);
+}
+
 TEST_CASE("parser handles logical operators", "[parser]") {
     Tokenizer t("Say true and false or true.");
     auto tokens = t.tokenize();

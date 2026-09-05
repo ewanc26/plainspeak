@@ -1,0 +1,10 @@
+Procedure add takes value as integer returns integer with inline:
+    Return value plus 3.
+End procedure.
+
+Procedure never returns void with no return:
+    While true:
+    End while.
+End procedure.
+
+Say Call add with 2 done.

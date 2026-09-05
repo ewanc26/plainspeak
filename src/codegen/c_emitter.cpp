@@ -969,11 +969,15 @@ std::string emitProcedureDeclaration(const ProcedureStmt &proc,
     }
     if (parameters.empty()) parameters = "void";
 
+    std::string specifiers;
+    if (signature && signature->inlineSpecifier) specifiers += "inline ";
+    if (signature && signature->noreturnSpecifier) specifiers += "_Noreturn ";
+
     if (typed) {
-        return emitCDeclaration(signature->returnType,
-                                mangle(proc.name) + "(" + parameters + ")");
+        return specifiers + emitCDeclaration(signature->returnType,
+                                             mangle(proc.name) + "(" + parameters + ")");
     }
-    return "PsValue " + mangle(proc.name) + "(" + parameters + ")";
+    return specifiers + "PsValue " + mangle(proc.name) + "(" + parameters + ")";
 }
 
 void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
