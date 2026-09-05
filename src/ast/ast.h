@@ -173,6 +173,7 @@ struct CFunctionImportStmt {
     std::vector<TypeSpec> parameterTypes;
     TypeSpec returnType;
     std::string header;
+    bool variadic = false;
 };
 struct ProcedureStmt {
     std::string name;

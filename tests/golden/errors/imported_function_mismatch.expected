@@ -1,1 +1,1 @@
-error[E0018]: Argument 1 to typed C function "abs" expects integer but got decimal.
+error[E0018]: Argument 1 to typed C function "abs" expects integer but got string.

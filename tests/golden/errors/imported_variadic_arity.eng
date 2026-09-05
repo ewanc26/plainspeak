@@ -1,0 +1,2 @@
+Import C function abs taking type integer and variadic parameters returns type integer from header "stdlib.h".
+Say Call abs done.

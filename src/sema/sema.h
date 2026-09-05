@@ -18,6 +18,7 @@ struct ProcedureSignature {
     std::vector<Type> parameterTypes;
     Type returnType = Type::number();
     bool nativeTyped = false;
+    bool variadic = false;
 };
 
 struct AggregateFieldInfo {

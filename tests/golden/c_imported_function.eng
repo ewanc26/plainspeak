@@ -1,2 +1,2 @@
-Import C function abs taking type integer returns type integer from header "stdlib.h".
+Import the C function abs taking an integer, returning an integer, from the header "stdlib.h".
 Say Call abs with minus 7 done.

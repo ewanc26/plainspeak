@@ -101,7 +101,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
-    if (t.text == "import" && checkWordAt(1, "c")) return parseCImport();
+    if (t.text == "import" && (checkWordAt(1, "c") || (checkWordAt(1, "the") && checkWordAt(2, "c")))) return parseCImport();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
 
@@ -145,7 +145,9 @@ Stmt *Parser::parseAtomicStore() {
 
 Stmt *Parser::parseCImport() {
     int line = peek().line;
-    advance(); expectWord("c");
+    advance();
+    if (checkWord("the")) advance();
+    expectWord("c");
     if (checkWord("function")) return parseCFunctionImport();
     CImportKind kind;
     if (checkWord("header")) kind = CImportKind::Header;
@@ -164,23 +166,33 @@ Stmt *Parser::parseCFunctionImport() {
     std::string name = expectIdentName();
     expectWord("taking");
     std::vector<TypeSpec> parameters;
+    bool variadic = false;
     if (checkWord("no")) {
         advance(); expectWord("parameters");
     } else {
         do {
-            expectWord("type");
+            if (checkWord("a") || checkWord("an") || checkWord("the")) advance();
+            if (checkWord("type")) advance();
             parameters.push_back(parseTypeSpec());
             if (!checkWord("and")) break;
             advance();
+            if (checkWord("variadic")) {
+                advance(); expectWord("parameters"); variadic = true;
+                break;
+            }
         } while (true);
     }
-    expectWord("returns"); expectWord("type");
+    if (checkWord("returning")) advance(); else expectWord("returns");
+    if (checkWord("a") || checkWord("an") || checkWord("the")) advance();
+    if (checkWord("type")) advance();
     TypeSpec returnType = parseTypeSpec();
-    expectWord("from"); expectWord("header");
+    expectWord("from");
+    if (checkWord("the")) advance();
+    expectWord("header");
     if (peek().kind != TokKind::String) error("a C function import needs a quoted header name");
     std::string header = advance().text;
     expectDot();
-    return arena_.makeStmt(CFunctionImportStmt{std::move(name), std::move(parameters), std::move(returnType), std::move(header)}, line);
+    return arena_.makeStmt(CFunctionImportStmt{std::move(name), std::move(parameters), std::move(returnType), std::move(header), variadic}, line);
 }
 
 Stmt *Parser::parseStmt() {

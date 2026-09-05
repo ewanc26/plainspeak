@@ -904,6 +904,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         }
         ProcedureSignature signature;
         signature.nativeTyped = true;
+        signature.variadic = import->variadic;
         signature.returnType = resolveTypeSpec(import->returnType);
         validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
         for (const TypeSpec &spec : import->parameterTypes) {
@@ -1593,9 +1594,10 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
 
             const ProcedureSignature &signature = found != procTable_.end() ? found->second : *imported;
-            if (node.args.size() != signature.parameterTypes.size()) {
+            if ((!signature.variadic && node.args.size() != signature.parameterTypes.size()) ||
+                (signature.variadic && node.args.size() < signature.parameterTypes.size())) {
                 diags.push_back({8, line, "Call to \"" + node.name + "\" expects " +
-                                         std::to_string(signature.parameterTypes.size()) + " arguments but got " +
+                                         (signature.variadic ? "at least " : "") + std::to_string(signature.parameterTypes.size()) + " arguments but got " +
                                          std::to_string(node.args.size()) + "."});
             }
             for (size_t i = 0; i < node.args.size(); ++i) {
