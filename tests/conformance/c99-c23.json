@@ -90,7 +90,7 @@
     {"id":"concurrency.memory-model","revision":"C11","area":"concurrency","status":"planned","tests":[],"note":"Happens-before/data-race semantics must be documented and tested."},
 
     {"id":"lib.assert","revision":"C99","area":"library","status":"implemented","tests":["tests/golden/c_runtime_assert.eng","tests/golden/errors/runtime_assert_string.eng"],"note":"Assert lowers scalar runtime conditions through the conforming <assert.h> facility."},
-    {"id":"lib.complex","revision":"C99","area":"library","status":"planned","tests":[],"note":"<complex.h> parity pending."},
+    {"id":"lib.complex","revision":"C99","area":"library","status":"foundation","tests":["tests/golden/c_complex.eng"],"note":"Real, imaginary, and magnitude queries use the platform <complex.h> functions; complex construction and the remaining complex library surface remain pending."},
     {"id":"lib.ctype","revision":"C99","area":"library","status":"planned","tests":[],"note":"<ctype.h> parity pending."},
     {"id":"lib.errno","revision":"C99","area":"library","status":"planned","tests":[],"note":"<errno.h> parity pending."},
     {"id":"lib.fenv","revision":"C99","area":"library","status":"planned","tests":[],"note":"<fenv.h> parity pending."},
