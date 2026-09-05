@@ -2,3 +2,6 @@ Declare z as complex decimal with value 2.5.
 Say Size of z.
 Declare sum as complex decimal with value z plus z.
 Say Size of sum.
+Say Real part of z.
+Say Imaginary part of z.
+Say Magnitude of z.

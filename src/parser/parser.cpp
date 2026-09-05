@@ -1244,6 +1244,18 @@ Expr *Parser::parsePrimary() {
         Expr *operand = parsePrimary();
         return arena_.makeExpr(MathCallExpr{"sqrt", operand}, line);
     }
+    if (checkWord("real") && checkWordAt(1, "part") && checkWordAt(2, "of")) {
+        int line = peek().line; advance(); advance(); advance();
+        return arena_.makeExpr(MathCallExpr{"real", parsePrimary()}, line);
+    }
+    if (checkWord("imaginary") && checkWordAt(1, "part") && checkWordAt(2, "of")) {
+        int line = peek().line; advance(); advance(); advance();
+        return arena_.makeExpr(MathCallExpr{"imaginary", parsePrimary()}, line);
+    }
+    if (checkWord("magnitude") && checkWordAt(1, "of")) {
+        int line = peek().line; advance(); advance();
+        return arena_.makeExpr(MathCallExpr{"magnitude", parsePrimary()}, line);
+    }
     if (checkWord("absolute") && checkWordAt(1, "value") && checkWordAt(2, "of")) {
         int line = peek().line;
         advance(); advance(); advance();

@@ -1603,7 +1603,10 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
-            if (!isNumeric(arg)) diags.push_back({2, line, "I can't apply " + node.func + " to a " + typeToString(arg) + "."});
+            if (node.func == "real" || node.func == "imaginary" || node.func == "magnitude") {
+                if (arg.kind != TypeKind::Complex)
+                    diags.push_back({2, line, node.func + " part needs a complex decimal, not a " + typeToString(arg) + "."});
+            } else if (!isNumeric(arg)) diags.push_back({2, line, "I can't apply " + node.func + " to a " + typeToString(arg) + "."});
             return Type::decimal();
         }
         else if constexpr (std::is_same_v<T, PowExpr>) {
