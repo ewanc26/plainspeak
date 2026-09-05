@@ -24,6 +24,9 @@ struct ProcedureSignature {
     bool variadic = false;
     bool inlineSpecifier = false;
     bool noreturnSpecifier = false;
+    bool deprecated = false;
+    std::string deprecationMessage;
+    bool maybeUnused = false;
 };
 
 struct AggregateFieldInfo {
@@ -89,6 +92,9 @@ private:
     struct Symbol {
         Type type;
         bool nativeObject = false;
+        bool deprecated = false;
+        std::string deprecationMessage;
+        bool maybeUnused = false;
     };
 
     std::vector<std::unordered_map<std::string, Symbol>> scopes_;
@@ -114,7 +120,9 @@ private:
     Symbol *findVar(const std::string &name);
     std::pair<Symbol, bool> lookupVar(const std::string &name, int line, std::vector<Diag> &diags);
     bool declareVar(const std::string &name, Type type, bool nativeObject,
-                    int line, std::vector<Diag> &diags);
+                    int line, std::vector<Diag> &diags,
+                    bool deprecated = false, std::string deprecationMessage = {},
+                    bool maybeUnused = false);
     Type resolveTypeSpec(const TypeSpec &spec) const;
     bool validateTypeQualifiers(const Type &type, int line, std::vector<Diag> &diags) const;
     bool isCompleteObjectType(const Type &type) const;

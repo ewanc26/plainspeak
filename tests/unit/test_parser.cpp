@@ -125,6 +125,19 @@ TEST_CASE("parser represents a warning directive", "[parser][c23]") {
     CHECK(std::get<WarningStmt>(program[0]->node).message == "check this");
 }
 
+TEST_CASE("parser represents declaration attributes", "[parser][c23]") {
+    Tokenizer t("Declare old with deprecated \"use new\" with maybe unused as integer.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &declaration = std::get<NativeDeclStmt>(program[0]->node);
+    CHECK(declaration.deprecated);
+    CHECK(declaration.deprecationMessage == "use new");
+    CHECK(declaration.maybeUnused);
+}
+
 TEST_CASE("parser represents a variable-length array bound", "[parser][c99]") {
     Tokenizer t("Procedure f takes count as integer returns integer:\nDeclare values as array of integer with length count.\nReturn 0.\nEnd procedure.");
     auto tokens = t.tokenize();

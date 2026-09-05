@@ -274,7 +274,13 @@ std::string printStmt(const Stmt *s) {
             return out + "End enumeration. ";
         }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
-            std::string out = "Declare " + node.name + " as " + printTypeSpec(node.type);
+            std::string out = "Declare " + node.name;
+            if (node.deprecated) {
+                out += " with deprecated";
+                if (!node.deprecationMessage.empty()) out += " \"" + node.deprecationMessage + "\"";
+            }
+            if (node.maybeUnused) out += " with maybe unused";
+            out += " as " + printTypeSpec(node.type);
             if (node.initializer) {
                 out += " with value " + printExpr(node.initializer);
             } else if (node.aggregateInitializer) {
@@ -373,6 +379,11 @@ std::string printStmt(const Stmt *s) {
             if (node.returnType) out += " returns " + printTypeSpec(*node.returnType);
             if (node.inlineSpecifier) out += " with inline";
             if (node.noreturnSpecifier) out += " with no return";
+            if (node.deprecated) {
+                out += " with deprecated";
+                if (!node.deprecationMessage.empty()) out += " \"" + node.deprecationMessage + "\"";
+            }
+            if (node.maybeUnused) out += " with maybe unused";
             out += ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End procedure. ";

@@ -158,6 +158,9 @@ struct NativeDeclStmt {
     bool internalLinkage = false;
     bool externalLinkage = false;
     bool staticStorage = false;
+    bool deprecated = false;
+    std::string deprecationMessage{};
+    bool maybeUnused = false;
 };
 struct StoreThroughStmt { Expr *pointer; Expr *expr; };
 struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };
@@ -214,6 +217,9 @@ struct ProcedureStmt {
     std::vector<Stmt *> body;
     bool inlineSpecifier = false;
     bool noreturnSpecifier = false;
+    bool deprecated = false;
+    std::string deprecationMessage{};
+    bool maybeUnused = false;
 };
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };

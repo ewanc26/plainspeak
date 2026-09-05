@@ -331,6 +331,9 @@ Stmt *Parser::parseDeclare() {
     bool internalLinkage = false;
     bool externalLinkage = false;
     bool staticStorage = false;
+    bool deprecated = false;
+    std::string deprecationMessage;
+    bool maybeUnused = false;
     while (checkWord("with")) {
         if (checkWordAt(1, "alignment")) {
             advance(); advance();
@@ -346,6 +349,13 @@ Stmt *Parser::parseDeclare() {
         } else if (checkWordAt(1, "static") && checkWordAt(2, "storage")) {
             advance(); advance(); advance();
             staticStorage = true;
+        } else if (checkWordAt(1, "deprecated")) {
+            advance(); advance();
+            deprecated = true;
+            if (peek().kind == TokKind::String) deprecationMessage = advance().text;
+        } else if (checkWordAt(1, "maybe") && checkWordAt(2, "unused")) {
+            advance(); advance(); advance();
+            maybeUnused = true;
         } else break;
     }
     expectWord("as");
@@ -428,7 +438,7 @@ Stmt *Parser::parseDeclare() {
         }
     }
     expectDot();
-    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal, alignment, constexprObject, internalLinkage, externalLinkage, staticStorage}, line);
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal, alignment, constexprObject, internalLinkage, externalLinkage, staticStorage, deprecated, std::move(deprecationMessage), maybeUnused}, line);
 }
 
 Stmt *Parser::parseStructure() {
@@ -932,6 +942,9 @@ Stmt *Parser::parseProcedure() {
 
     bool inlineSpecifier = false;
     bool noreturnSpecifier = false;
+    bool deprecated = false;
+    std::string deprecationMessage;
+    bool maybeUnused = false;
     while (checkWord("with")) {
         advance();
         if (checkWord("inline")) {
@@ -940,14 +953,21 @@ Stmt *Parser::parseProcedure() {
         } else if (checkWord("no") && checkWordAt(1, "return")) {
             advance(); advance();
             noreturnSpecifier = true;
+        } else if (checkWord("deprecated")) {
+            advance();
+            deprecated = true;
+            if (peek().kind == TokKind::String) deprecationMessage = advance().text;
+        } else if (checkWord("maybe") && checkWordAt(1, "unused")) {
+            advance(); advance();
+            maybeUnused = true;
         } else {
-            error("expected \"inline\" or \"no return\" after Procedure with");
+            error("expected \"inline\", \"no return\", \"deprecated\", or \"maybe unused\" after Procedure with");
         }
     }
 
     expectColon();
     auto body = parseBlockUntil("end", "procedure");
-    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier}, line);
+    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {

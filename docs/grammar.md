@@ -55,7 +55,8 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
 
 SayStmt ::= ("Say" | "Print" | "Show" | "Display" | "Write" | "Output") Expr ("followed" "by" Expr)* "."
 SetStmt ::= ("Set" | "Let" | "Make" | "Assign" | "Put") IDENT "to" Expr "."
-DeclareStmt ::= ("Declare" | "Create") IDENT "as" CType NativeInitializer? "."
+DeclareStmt ::= ("Declare" | "Create") IDENT DeclarationAttribute* "as" CType NativeInitializer? "."
+DeclarationAttribute ::= "with" "deprecated" STRING? | "with" "maybe" "unused"
 NativeInitializer ::= "with" "value" Expr
                     | "with" "values" Expr ("followed" "by" Expr)* "done"
                     | "with" "members" IDENT "as" Expr ("followed" "by" IDENT "as" Expr)* "done"
@@ -98,7 +99,7 @@ SwitchCase ::= ("When" Expr | "Otherwise") ":" Stmt*
 SwitchStmt ::= "Switch" Expr ":" SwitchCase+ "End" "switch" "."
 CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
 ProcedureParam ::= IDENT ("as" CType)?
-ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? ":" Stmt* "End" "procedure" "."
+ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? DeclarationAttribute* ":" Stmt* "End" "procedure" "."
 ReturnStmt ::= ("Return" | "Yield") Expr? "."
 ```
 
@@ -225,6 +226,8 @@ The C23 spellings `type of name`, `type of unqualified name`, `type of (expressi
 `Procedure name ... returns void with no return:` declares a C11 `_Noreturn` Procedure. Its body must have no reachable end and may not contain a `Return`. Add `with inline` to request the C99 `inline` function specifier; these modifiers are preserved in generated prototypes and definitions.
 
 `Warning "message".` (or `Warn "message".`) emits a non-fatal, deterministic compiler warning. It is the PlainSpeak equivalent of the C23 `#warning` directive and does not add code to the generated translation unit.
+
+`with deprecated` and `with maybe unused` are C23 declaration attributes. A declaration may say `Declare old with deprecated "use new" with maybe unused as integer.`; a Procedure may place the same attributes after its return type. Deprecated objects and Procedures emit warnings when used, while `maybe unused` is accepted for portable source and has no runtime effect.
 
 `size type` spells the native unsigned size representation used by the current C backend. The broader `<stddef.h>` surface remains pending.
 

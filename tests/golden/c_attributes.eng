@@ -1,0 +1,8 @@
+Declare old with deprecated "Use replacement." as integer with value 2.
+Say old.
+
+Procedure obsolete returns integer with deprecated "Call replacement." with maybe unused:
+    Return 3.
+End procedure.
+
+Say Call obsolete done.

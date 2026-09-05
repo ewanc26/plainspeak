@@ -1037,6 +1037,9 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         signature.nativeTyped = typed;
         signature.inlineSpecifier = proc->inlineSpecifier;
         signature.noreturnSpecifier = proc->noreturnSpecifier;
+        signature.deprecated = proc->deprecated;
+        signature.deprecationMessage = proc->deprecationMessage;
+        signature.maybeUnused = proc->maybeUnused;
         signature.returnType = typed ? resolveTypeSpec(*proc->returnType) : Type::number();
         if (typed) validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
 
@@ -1111,7 +1114,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             continue;
         }
         result.cObjectTypes[import->name] = type;
-        scopes_.front()[import->name] = Symbol{type, true};
+        scopes_.front()[import->name] = Symbol{type, true, false, {}, false};
         if (std::find(result.cHeaders.begin(), result.cHeaders.end(), import->header) == result.cHeaders.end())
             result.cHeaders.push_back(import->header);
     }
@@ -1174,17 +1177,20 @@ std::pair<Sema::Symbol, bool> Sema::lookupVar(const std::string &name, int line,
     if (Symbol *symbol = findVar(name)) return {*symbol, true};
     diags.push_back({1, line, "I don't know what to do with \"" + name +
                               "\" — it is used here but never declared. Use Set or Declare to create it first."});
-    return {Symbol{Type::number(), false}, false};
+    return {Symbol{Type::number(), false, false, {}, false}, false};
 }
 
 bool Sema::declareVar(const std::string &name, Type type, bool nativeObject,
-                      int line, std::vector<Diag> &diags) {
+                      int line, std::vector<Diag> &diags,
+                      bool deprecated, std::string deprecationMessage,
+                      bool maybeUnused) {
     auto &current = scopes_.back();
     if (current.count(name)) {
         diags.push_back({6, line, "variable \"" + name + "\" is already declared in this scope"});
         return false;
     }
-    current[name] = Symbol{std::move(type), nativeObject};
+    current[name] = Symbol{std::move(type), nativeObject, deprecated,
+                           std::move(deprecationMessage), maybeUnused};
     return true;
 }
 
@@ -1447,6 +1453,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, VarRef>) {
             auto [symbol, found] = lookupVar(node.name, line, diags);
             if (found && symbol.nativeObject && analysis_) analysis_->nativeObjectRefs.insert(e);
+            if (found && symbol.deprecated) {
+                std::string message = symbol.deprecationMessage.empty()
+                    ? "Use of deprecated native object \"" + node.name + "\"."
+                    : symbol.deprecationMessage;
+                diags.push_back({35, line, message, DiagSeverity::Warning});
+            }
             return symbol.type;
         }
         else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
@@ -2046,6 +2058,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
 
             const ProcedureSignature &signature = found != procTable_.end() ? found->second : *imported;
+            if (signature.deprecated) {
+                std::string message = signature.deprecationMessage.empty()
+                    ? "Call to deprecated Procedure \"" + node.name + "\"."
+                    : signature.deprecationMessage;
+                diags.push_back({35, line, message, DiagSeverity::Warning});
+            }
             if ((!signature.variadic && node.args.size() != signature.parameterTypes.size()) ||
                 (signature.variadic && node.args.size() < signature.parameterTypes.size())) {
                 diags.push_back({8, line, "Call to \"" + node.name + "\" expects " +
@@ -2595,7 +2613,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
                 return;
             }
-            bool created = declareVar(node.name, declared, true, s->line, diags);
+            bool created = declareVar(node.name, declared, true, s->line, diags,
+                                      node.deprecated, node.deprecationMessage, node.maybeUnused);
             if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer && !node.constexprObject) {
                 diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
                 return;
@@ -3110,6 +3129,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 for (Expr *arg : node.args) inferExpr(arg, s->line, diags);
             } else {
                 const ProcedureSignature &signature = found != procTable_.end() ? found->second : *imported;
+                if (signature.deprecated) {
+                    std::string message = signature.deprecationMessage.empty()
+                        ? "Call to deprecated Procedure \"" + node.name + "\"."
+                        : signature.deprecationMessage;
+                    diags.push_back({35, s->line, message, DiagSeverity::Warning});
+                }
                 if ((!signature.variadic && node.args.size() != signature.parameterTypes.size()) ||
                     (signature.variadic && node.args.size() < signature.parameterTypes.size())) {
                     diags.push_back({8, s->line, "Call to \"" + node.name + "\" expects " +

@@ -94,9 +94,11 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `decl.designated-initializers` | foundation |
 | `decl.empty-initialization` | foundation | Native declarations of scalar, pointer, fixed-array, structure, union, enumeration and decimal objects with no initializer clause, or with the plain-English `with empty braces` clause, are zero-initialized in the generated C: integer/boolean/enumeration objects get 0, pointers get the platform null, decimal objects get 0.0, fixed-array elements and aggregate members are recursively zero-initialized. Legacy boxed declarations and the remaining C23 initializer-context rules remain pending. |
 | `decl.static-assert` | implemented | `Assert that` lowers to C11 `_Static_assert` after integer-constant-expression validation. |
-| `decl.attributes` | planned |
+| `decl.attributes` | foundation | C23 `deprecated` and `maybe unused` attributes are source-spellable on native declarations and Procedures. Deprecated uses emit deterministic E0035 warnings; `maybe unused` is retained in the semantic model and has no runtime effect. Target-specific attribute mapping and the remaining C23 attribute grammar remain pending. |
 
 `Declare` now introduces native scalar (including complete enumerations), pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer assignment-style initializers plus positional aggregate, named member-designated, and array index-designated initialization are type-checked. Omitted aggregate slots are zeroed. Native declarations with no initializer at all are also zero-initialized (C23-style omitted-initializer behaviour for the native subset); user-controlled linkage, `static`/`extern`/thread storage, allocated storage, the C23 `{}` empty-brace spelling and full C constant-initializer rules remain missing.
+
+Declaration attributes are represented structurally and checked before lowering. `deprecated` accepts an optional message and warns on native-object reads and calls to marked Procedures; `maybe unused` is accepted as a portable source annotation. This is foundation coverage only: target-specific attributes, attribute placement on every C declaration form, and the complete C23 attribute-token grammar remain pending.
 
 ## Statements and control flow
 
