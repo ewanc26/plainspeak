@@ -63,6 +63,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "structure") return parseStructure();
     if (t.text == "union") return parseUnion();
     if (t.text == "enumeration") return parseEnumeration();
+    if (t.text == "define") return parseTypeAlias();
     if (isAddKeyword(t.text)) return parseAdd();
     if (isSubtractKeyword(t.text)) return parseSub();
     if (isIncreaseKeyword(t.text)) return parseIncrease();
@@ -795,6 +796,16 @@ std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::st
     return body;
 }
 
+Stmt *Parser::parseTypeAlias() {
+    int line = peek().line;
+    advance();
+    std::string name = expectIdentName();
+    expectWord("as");
+    TypeSpec target = parseTypeSpec();
+    expectDot();
+    return arena_.makeStmt(TypeAliasStmt{std::move(name), std::move(target)}, line);
+}
+
 TypeSpec Parser::parseTypeSpec() {
     TypeSpecQualifiers qualifiers;
     while (true) {
@@ -896,6 +907,13 @@ TypeSpec Parser::parseTypeSpec() {
     if (checkWord("decimal")) { advance(); return finish(TypeSpec{TypeSpecKind::Decimal}); }
     if (checkWord("long") && checkWordAt(1, "decimal")) {
         advance(); advance(); return finish(TypeSpec{TypeSpecKind::LongDecimal});
+    }
+
+    if (peek().kind == TokKind::Ident) {
+        std::string name = expectIdentName();
+        TypeSpec type{TypeSpecKind::Alias};
+        type.tag = std::move(name);
+        return finish(std::move(type));
     }
 
     error("expected a C type such as \"constant integer\", \"pointer to volatile integer\", \"restricted pointer to integer\", \"atomic integer\", \"null pointer type\", \"array of integer with length 4\", \"structure point\", or \"enumeration color\"");

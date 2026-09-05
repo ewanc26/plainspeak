@@ -1,0 +1,3 @@
+Define Count as unsigned integer.
+Declare total as Count with value 7.
+Say total.

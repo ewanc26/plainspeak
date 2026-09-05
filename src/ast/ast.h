@@ -49,7 +49,8 @@ enum class TypeSpecKind {
     Structure,
     Union,
     Enumeration,
-    Nullptr
+    Nullptr,
+    Alias
 };
 
 struct TypeSpecQualifiers {
@@ -129,6 +130,7 @@ struct StructureStmt { std::string name; std::vector<StructureField> fields; };
 struct UnionStmt { std::string name; std::vector<StructureField> fields; };
 struct EnumeratorDef { std::string name; std::optional<long> explicitValue; };
 struct EnumerationStmt { std::string name; std::vector<EnumeratorDef> enumerators; };
+struct TypeAliasStmt { std::string name; TypeSpec target; };
 struct AddStmt       { Expr *expr; std::string varName; };
 struct SubStmt       { Expr *expr; std::string varName; };
 struct ReadStmt      { std::string varName; };
@@ -161,7 +163,7 @@ struct CommentStmt   { std::string text; };
 struct StaticAssertStmt { Expr *condition; };
 struct RuntimeAssertStmt { Expr *condition; };
 
-using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, UnionStmt, EnumerationStmt,
+using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, UnionStmt, EnumerationStmt, TypeAliasStmt,
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,

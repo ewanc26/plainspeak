@@ -80,6 +80,7 @@ private:
     std::unordered_map<std::string, StructureInfo> structureTable_;
     std::unordered_map<std::string, StructureInfo> unionTable_;
     std::unordered_map<std::string, EnumerationInfo> enumerationTable_;
+    std::unordered_map<std::string, TypeSpec> aliases_;
     std::optional<ProcedureSignature> currentProcedure_;
     int loopDepth_ = 0;
     int breakableDepth_ = 0;

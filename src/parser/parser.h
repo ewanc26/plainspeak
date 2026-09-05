@@ -39,6 +39,7 @@ private:
     Stmt *parseStructure();
     Stmt *parseUnion();
     Stmt *parseEnumeration();
+    Stmt *parseTypeAlias();
     Stmt *parseAdd();
     Stmt *parseSub();
     Stmt *parseIncrease();

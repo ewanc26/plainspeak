@@ -760,11 +760,20 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
     structureTable_.clear();
     unionTable_.clear();
     enumerationTable_.clear();
+    aliases_.clear();
     currentProcedure_.reset();
     loopDepth_ = 0;
     breakableDepth_ = 0;
     scopes_.emplace_back();
     analysis_ = &result;
+
+    for (Stmt *s : program) {
+        if (auto *alias = std::get_if<TypeAliasStmt>(&s->node)) {
+            if (aliases_.count(alias->name))
+                result.diagnostics.push_back({22, s->line, "Type alias \"" + alias->name + "\" is already defined."});
+            else aliases_[alias->name] = alias->target;
+        }
+    }
 
     // Structure tags live in their own namespace. Register all tags as
     // incomplete first so self-referential and forward pointers can resolve;
@@ -913,6 +922,17 @@ bool Sema::declareVar(const std::string &name, Type type, bool nativeObject,
 }
 
 Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
+    if (spec.kind == TypeSpecKind::Alias) {
+        auto it = aliases_.find(spec.tag);
+        if (it == aliases_.end()) return Type::voidType();
+        Type result = resolveTypeSpec(it->second);
+        TypeQualifiers q = semanticQualifiers(spec.qualifiers);
+        result.qualifiers.isConst |= q.isConst;
+        result.qualifiers.isVolatile |= q.isVolatile;
+        result.qualifiers.isRestrict |= q.isRestrict;
+        result.qualifiers.isAtomic |= q.isAtomic;
+        return result;
+    }
     Type result;
     switch (spec.kind) {
         case TypeSpecKind::Void: result = Type::voidType(); break;
