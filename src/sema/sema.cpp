@@ -1277,6 +1277,20 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             return Type::integer(IntegerRank::Int);
         }
         else if constexpr (std::is_same_v<T, AddressOfExpr>) {
+            auto proc = procTable_.find(node.name);
+            if (proc != procTable_.end()) {
+                return Type::pointerTo(Type::function(proc->second.returnType,
+                                                      proc->second.parameterTypes,
+                                                      proc->second.variadic));
+            }
+            if (analysis_) {
+                auto imported = analysis_->cFunctionSignatures.find(node.name);
+                if (imported != analysis_->cFunctionSignatures.end()) {
+                    return Type::pointerTo(Type::function(imported->second.returnType,
+                                                          imported->second.parameterTypes,
+                                                          imported->second.variadic));
+                }
+            }
             auto [symbol, found] = lookupVar(node.name, line, diags);
             if (found && !symbol.nativeObject) {
                 diags.push_back({14, line, "I can only take Address of an explicitly declared native object; \"" +

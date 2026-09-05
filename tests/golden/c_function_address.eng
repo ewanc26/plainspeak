@@ -1,0 +1,5 @@
+Procedure answer returns integer:
+    Return 1.
+End procedure.
+Declare callback as pointer to function returning integer with value Address of answer.
+Say 1.
