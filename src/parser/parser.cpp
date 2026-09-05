@@ -1031,6 +1031,27 @@ TypeSpec Parser::parseTypeSpec() {
         type.fixedUnsigned = unsignedValue;
         return finish(std::move(type));
     }
+    if (checkWord("least") || checkWord("fast") ||
+        (checkWord("unsigned") && (checkWordAt(1, "least") || checkWordAt(1, "fast")))) {
+        bool unsignedValue = checkWord("unsigned");
+        int familyOffset = unsignedValue ? 1 : 0;
+        bool fast = checkWordAt(familyOffset, "fast");
+        if (checkWordAt(familyOffset + 1, "integer") &&
+            checkWordAt(familyOffset + 2, "with") &&
+            checkWordAt(familyOffset + 3, "at") &&
+            checkWordAt(familyOffset + 4, "least") &&
+            peek(familyOffset + 5).kind == TokKind::Number &&
+            checkWordAt(familyOffset + 6, "bits")) {
+            advance(); if (unsignedValue) advance(); advance(); advance(); advance(); advance();
+            if (peek().num == 0) error("a least or fast integer needs a positive width");
+            TypeSpec type{TypeSpecKind::StdintInteger};
+            type.exactWidth = static_cast<std::size_t>(advance().num);
+            expectWord("bits");
+            type.stdintUnsigned = unsignedValue;
+            type.stdintFast = fast;
+            return finish(std::move(type));
+        }
+    }
     if (checkWord("function") && (checkWordAt(1, "returning") || checkWordAt(1, "taking"))) {
         advance();
         TypeSpec type{TypeSpecKind::Function};

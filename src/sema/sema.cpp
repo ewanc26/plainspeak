@@ -1099,6 +1099,11 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             result = Type::integer(IntegerRank::Int, spec.fixedUnsigned);
             result.exactWidth = spec.exactWidth;
             break;
+        case TypeSpecKind::StdintInteger:
+            result = Type::integer(IntegerRank::Int, spec.stdintUnsigned);
+            result.exactWidth = spec.exactWidth;
+            result.stdintFamily = spec.stdintFast ? "fast" : "least";
+            break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);

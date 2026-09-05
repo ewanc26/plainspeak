@@ -40,6 +40,10 @@ std::string emitCUnqualifiedBaseType(const Type &type) {
     if (type.kind == TypeKind::Boolean) return "_Bool";
     if (type.kind == TypeKind::Integer) {
         if (type.exactWidth) {
+            if (!type.stdintFamily.empty()) {
+                return std::string(type.isUnsigned ? "uint" : "int") + "_" + type.stdintFamily +
+                       std::to_string(*type.exactWidth) + "_t";
+            }
             return std::string(type.isUnsigned ? "uint" : "int") + std::to_string(*type.exactWidth) + "_t";
         }
         if (type.integerRank == IntegerRank::Char) {

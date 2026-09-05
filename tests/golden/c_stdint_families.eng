@@ -1,0 +1,4 @@
+Declare leastword as least integer with at least 8 bits with value 7.
+Declare fastword as unsigned fast integer with at least 16 bits with value 9.
+Say leastword.
+Say fastword.

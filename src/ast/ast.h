@@ -59,7 +59,8 @@ enum class TypeSpecKind {
     PtrdiffType,
     Complex,
     Function,
-    FixedInteger
+    FixedInteger,
+    StdintInteger
 };
 
 struct TypeSpecQualifiers {
@@ -83,6 +84,8 @@ struct TypeSpec {
     bool variadic = false;
     std::size_t exactWidth = 0;
     bool fixedUnsigned = false;
+    bool stdintUnsigned = false;
+    bool stdintFast = false;
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or };

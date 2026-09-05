@@ -74,6 +74,10 @@ std::string printTypeSpec(const TypeSpec &type) {
         case TypeSpecKind::FixedInteger:
             body = std::string(type.fixedUnsigned ? "unsigned " : "") + "integer with exactly " +
                    std::to_string(type.exactWidth) + " bits"; break;
+        case TypeSpecKind::StdintInteger:
+            body = std::string(type.stdintUnsigned ? "unsigned " : "") +
+                   (type.stdintFast ? "fast" : "least") + " integer with at least " +
+                   std::to_string(type.exactWidth) + " bits"; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;

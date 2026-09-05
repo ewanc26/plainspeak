@@ -40,6 +40,16 @@ TEST_CASE("parser recognises ordinary C scalar type spellings", "[parser][c99]")
     CHECK(sizeKind("long decimal") == TypeSpecKind::LongDecimal);
 }
 
+TEST_CASE("parser recognises stdint least and fast families", "[parser][c99][stdint]") {
+    Arena arena;
+    Expr *expr = parseSayExpr("Say Size of type unsigned fast integer with at least 16 bits.", arena);
+    const auto &type = std::get<SizeOfTypeExpr>(expr->node).type;
+    CHECK(type.kind == TypeSpecKind::StdintInteger);
+    CHECK(type.stdintUnsigned);
+    CHECK(type.stdintFast);
+    CHECK(type.exactWidth == 16);
+}
+
 TEST_CASE("alignment query has its own AST node", "[parser][c11]") {
     Arena arena;
     Expr *expr = parseSayExpr("Say Alignment of type unsigned long integer.", arena);

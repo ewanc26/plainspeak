@@ -216,6 +216,8 @@ The C23 spellings `type of name` and `type of unqualified name` can name the nat
 
 `bit integer with width N` and `unsigned bit integer with width N` spell signed and unsigned C23 `_BitInt(N)` native types. Width must be positive; rank, conversion, and target-support rules remain pending.
 
+`least integer with at least N bits`, `unsigned least integer with at least N bits`, `fast integer with at least N bits`, and `unsigned fast integer with at least N bits` spell the C99 `<stdint.h>` `int_leastN_t`, `uint_leastN_t`, `int_fastN_t`, and `uint_fastN_t` families. The requested width must be positive; the selected target C implementation chooses the concrete representation.
+
 `size type` spells the native unsigned size representation used by the current C backend. The broader `<stddef.h>` surface remains pending.
 
 `difference type` spells the native signed pointer-difference representation. The broader `<stddef.h>` surface remains pending.
