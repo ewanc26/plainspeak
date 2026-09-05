@@ -1,0 +1,4 @@
+Import the C function fegetround taking no parameters, returning an integer, from the header "fenv.h".
+Import the C function feclearexcept taking an integer, returning an integer, from the header "fenv.h".
+Say Call fegetround done.
+Say Call feclearexcept with 0 done.

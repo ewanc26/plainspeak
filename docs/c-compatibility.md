@@ -180,7 +180,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.complex` | foundation | Real/imaginary/magnitude queries use `<complex.h>`; the remaining library surface is pending. |
 | `lib.ctype` | planned | `<ctype.h>` |
 | `lib.errno` | foundation | Typed C object imports can read `errno`; complete error-setting and implementation-specific macro semantics remain pending. |
-| `lib.fenv` | planned | `<fenv.h>` |
+| `lib.fenv` | foundation | Typed C imports can bind `<fenv.h>` environment queries and controls such as `fegetround` and `feclearexcept`; exception/mode constants, pragma interaction and the remaining floating-environment surface remain pending. |
 | `lib.float` | planned | `<float.h>` |
 | `lib.inttypes` | foundation | Typed C imports can bind `<inttypes.h>` conversion functions such as `strtoimax`; format macros, exact `intmax_t`/`uintmax_t` type aliases and the remaining header surface remain pending. |
 | `lib.limits` | planned | `<limits.h>` |
