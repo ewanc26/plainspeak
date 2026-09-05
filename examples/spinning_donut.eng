@@ -1,0 +1,9 @@
+(A tiny PlainSpeak blog post in executable form.)
+(The frames scroll deliberately because terminal-control escape sequences need a future terminal binding.)
+Import the C function printf taking a pointer to character and variadic parameters, returning an integer, from the header "stdio.h".
+(Frame one: the torus leans left.)
+Call printf with "PlainSpeak presents\n\n       .-''''-.\n    .-'        '-.\n  .'     .--.     '.\n /     .'    '.     \\\n;     /  .--.  \\;     ;\n|    ;  (    )  ;    |\n;     \\  '--'  /     ;\n \\     '.____.'     /\n  '.                .'\n    '-.__________.-'\n\nthe spinning doughnut\n" done.
+(Frame two: the torus turns.)
+Call printf with "PlainSpeak presents\n\n       .-''''-.\n    .-'        '-.\n  .'    .--.      '.\n /    .'    '.      \\\n;    /  .--.  \\;      ;\n|   ;  (    )  ;   |\n;    \\  '--'  /    ;\n \\    '.____.'    /\n  '.              .'\n    '-.________.-'\n\nthe spinning doughnut\n" done.
+(Frame three: the torus faces forward.)
+Call printf with "PlainSpeak presents\n\n       .-''''-.\n    .-'        '-.\n  .'      .--.    '.\n /      .'    '.    \\\n;      /  .--.  \\;      ;\n|     ;  (    )  ;     |\n;      \\  '--'  /      ;\n \\      '.____.'      /\n  '.                  .'\n    '-.____________.-'\n\nthe spinning doughnut\n" done.
