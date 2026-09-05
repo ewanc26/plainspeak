@@ -1,0 +1,1 @@
+error[E0030]: A static assertion needs an integer constant expression.

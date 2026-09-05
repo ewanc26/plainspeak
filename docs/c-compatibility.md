@@ -87,7 +87,7 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `decl.initializers` | foundation |
 | `decl.designated-initializers` | foundation |
 | `decl.empty-initialization` | foundation | Native declarations of scalar, pointer, fixed-array, structure, union, enumeration and decimal objects with no initializer clause are zero-initialized in the generated C: integer/boolean/enumeration objects get 0, pointers get the platform null, decimal objects get 0.0, fixed-array elements and aggregate members are recursively zero-initialized. Legacy boxed declarations and the C23 `{}` empty-brace spelling remain pending. |
-| `decl.static-assert` | planned |
+| `decl.static-assert` | implemented | `Assert that` lowers to C11 `_Static_assert` after integer-constant-expression validation. |
 | `decl.attributes` | planned |
 
 `Declare` now introduces native scalar (including complete enumerations), pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer assignment-style initializers plus positional aggregate, named member-designated, and array index-designated initialization are type-checked. Omitted aggregate slots are zeroed. Native declarations with no initializer at all are also zero-initialized (C23-style omitted-initializer behaviour for the native subset); user-controlled linkage, `static`/`extern`/thread storage, allocated storage, the C23 `{}` empty-brace spelling and full C constant-initializer rules remain missing.

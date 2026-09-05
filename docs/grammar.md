@@ -164,6 +164,12 @@ For i from 10 down to 1: Say i. End for.
 
 A `Continue.` transfers control to that loop's own step (the increment or decrement), matching C `continue` in a `for` statement.
 
+`Assert that` introduces a C11 translation-time assertion. Its condition must be an integer constant expression and must be nonzero:
+
+```text
+Assert that 1 is equal to 1.
+```
+
 A `Switch` tests a whole-number value against one or more clauses. `When` clauses need an integer constant expression to label the case; `Otherwise` supplies the default, which may appear anywhere among the clauses and may be written at most once. Clause bodies share one scope and fall through when a body does not end with `Break.`, matching C `switch` exactly:
 
 ```text

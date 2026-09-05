@@ -64,6 +64,7 @@ private:
     Stmt *parseLabel();
     Stmt *parseCall();
     Stmt *parseReturn();
+    Stmt *parseStaticAssert();
     Stmt *parseTopLevelStmt();
     Stmt *parseProcedure();
     std::vector<Stmt *> parseBlockUntil(const std::string &w1, const std::string &w2);

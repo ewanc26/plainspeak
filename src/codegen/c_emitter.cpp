@@ -545,6 +545,8 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 }
                 out << "});\n";
             }
+        } else if constexpr (std::is_same_v<T, StaticAssertStmt>) {
+            out << indent << "_Static_assert(" << emitRawExpr(node.condition, analysis) << ", \"PlainSpeak static assertion\");\n";
         } else if constexpr (std::is_same_v<T, SetStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
                 out << indent << mangle(node.name) << " = " << emitRawExpr(node.expr, analysis) << ";\n";
