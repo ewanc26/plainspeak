@@ -1,0 +1,1 @@
+error[E0004]: Complex values support equality comparison but not relational ordering.

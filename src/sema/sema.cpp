@@ -1416,6 +1416,10 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;
             bool relational = node.op == BinOp::Gt || node.op == BinOp::Lt ||
                               node.op == BinOp::Ge || node.op == BinOp::Le;
+            if (relational && (lhsValue.kind == TypeKind::Complex || rhsValue.kind == TypeKind::Complex)) {
+                diags.push_back({4, line, "Complex values support equality comparison but not relational ordering."});
+                return Type::integer(IntegerRank::Int);
+            }
             if (relational && (lhsValue.kind == TypeKind::Nullptr || rhsValue.kind == TypeKind::Nullptr)) {
                 diags.push_back({4, line,
                     "Relational comparison cannot use null pointer values; C23 permits nullptr_t only in equality comparisons."});

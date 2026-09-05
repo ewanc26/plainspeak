@@ -1,0 +1,3 @@
+Declare left as complex decimal with value 1.0.
+Declare right as complex decimal with value 2.0.
+Say left is less than right.
