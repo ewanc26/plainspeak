@@ -50,7 +50,8 @@ enum class TypeSpecKind {
     Union,
     Enumeration,
     Nullptr,
-    Alias
+    Alias,
+    TypeOf
 };
 
 struct TypeSpecQualifiers {
@@ -65,6 +66,7 @@ struct TypeSpec {
     std::shared_ptr<TypeSpec> pointee{};
     std::size_t arrayBound = 0;
     std::string tag{};
+    std::string typeOfName{};
     TypeSpecQualifiers qualifiers{};
 };
 

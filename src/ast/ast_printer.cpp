@@ -46,6 +46,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "null pointer type"; break;
         case TypeSpecKind::Alias:
             body = type.tag; break;
+        case TypeSpecKind::TypeOf:
+            body = "type of " + type.typeOfName; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;

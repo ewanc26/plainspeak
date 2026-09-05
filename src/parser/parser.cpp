@@ -868,6 +868,12 @@ TypeSpec Parser::parseTypeSpec() {
         advance(); advance(); advance();
         return finish(TypeSpec{TypeSpecKind::Nullptr});
     }
+    if (checkWord("type") && checkWordAt(1, "of")) {
+        advance(); advance();
+        TypeSpec type{TypeSpecKind::TypeOf};
+        type.typeOfName = expectIdentName();
+        return finish(std::move(type));
+    }
     if (checkWord("array") && checkWordAt(1, "of")) {
         advance(); advance();
         TypeSpec element = parseTypeSpec();

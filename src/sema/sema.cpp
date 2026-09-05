@@ -987,6 +987,14 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::Enumeration: result = Type::enumeration(spec.tag); break;
         case TypeSpecKind::Nullptr: result = Type::nullptrType(); break;
         case TypeSpecKind::Alias: result = Type::voidType(); break;
+        case TypeSpecKind::TypeOf: {
+            result = Type::voidType();
+            for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it) {
+                auto found = it->find(spec.typeOfName);
+                if (found != it->end()) { result = found->second.type; break; }
+            }
+            break;
+        }
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);

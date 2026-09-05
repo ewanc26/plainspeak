@@ -198,6 +198,8 @@ Label finish.
 
 ## C type spellings
 
+The C23 spelling `type of name` can name the native type of an earlier object declaration. This foundation form is unevaluated and name-based; expression operands and `type of unqualified` remain pending.
+
 `Define name as type.` creates a deterministic named type alias. Aliases can be used anywhere a native type can be written, including recursively composed pointer and array types; qualifiers written at the use site are added to the aliased type.
 
 PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer, fixed-array, tagged structure, tagged union, and tagged enumeration types:

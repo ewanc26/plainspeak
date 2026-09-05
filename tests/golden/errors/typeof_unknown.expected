@@ -1,0 +1,1 @@
+error[E0013]: I can't Declare "copy" as void because void is not an object type.

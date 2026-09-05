@@ -1,0 +1,3 @@
+Declare original as unsigned integer with value 9.
+Declare copy as type of original with value 4.
+Say copy.
