@@ -110,7 +110,7 @@
     {"id":"lib.stdio","revision":"C99","area":"library","status":"foundation","tests":["tests/golden/hello.eng"],"note":"Say/Read cover a tiny high-level subset; FILE/streams/formatted/binary I/O parity pending."},
     {"id":"lib.stdlib","revision":"C99","area":"library","status":"planned","tests":[],"note":"<stdlib.h> conversions, allocation, environment, sorting/searching and process surface pending."},
     {"id":"lib.stdnoreturn","revision":"C11","area":"library","status":"planned","tests":[],"note":"Noreturn header/spelling parity pending."},
-    {"id":"lib.string","revision":"C99","area":"library","status":"planned","tests":[],"note":"<string.h> byte/string memory APIs pending."},
+    {"id":"lib.string","revision":"C99","area":"library","status":"foundation","tests":["tests/golden/c_string_library.eng"],"note":"Typed C imports can bind string.h strlen and strcmp with PlainSpeak string-literal decay to character pointers; byte-memory APIs, mutation, bounds and the remaining string surface remain pending."},
     {"id":"lib.tgmath","revision":"C99","area":"library","status":"planned","tests":[],"note":"<tgmath.h> type-generic math parity pending."},
     {"id":"lib.threads","revision":"C11","area":"library","status":"planned","tests":[],"note":"<threads.h> parity pending."},
     {"id":"lib.time","revision":"C99","area":"library","status":"planned","tests":[],"note":"<time.h> parity pending."},

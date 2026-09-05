@@ -189,7 +189,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.stdio` | foundation | `<stdio.h>`; `Say`/`Read` are only a small high-level subset. |
 | `lib.stdlib` | planned | `<stdlib.h>` |
 | `lib.stdnoreturn` | planned | `<stdnoreturn.h>` / C23 spelling |
-| `lib.string` | planned | `<string.h>` |
+| `lib.string` | foundation | Typed imports cover `strlen` and `strcmp` with string-literal decay; byte-memory mutation and the remaining `<string.h>` surface remain pending. |
 | `lib.tgmath` | planned | `<tgmath.h>` |
 | `lib.threads` | planned | `<threads.h>` |
 | `lib.time` | planned | `<time.h>` |

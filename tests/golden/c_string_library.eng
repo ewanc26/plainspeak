@@ -1,0 +1,4 @@
+Import the C function strlen taking a pointer to character, returning a size type, from the header "string.h".
+Import the C function strcmp taking a pointer to character and a pointer to character, returning an integer, from the header "string.h".
+Say Call strlen with "hello" done.
+Say Call strcmp with "abc", "abd" done.
