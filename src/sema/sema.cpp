@@ -986,6 +986,7 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::Union: result = Type::unionType(spec.tag); break;
         case TypeSpecKind::Enumeration: result = Type::enumeration(spec.tag); break;
         case TypeSpecKind::Nullptr: result = Type::nullptrType(); break;
+        case TypeSpecKind::Alias: result = Type::voidType(); break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);
