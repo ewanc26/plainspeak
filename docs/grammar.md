@@ -292,6 +292,8 @@ The words map directly to C `const`, `volatile`, `restrict`, and `_Atomic`. Qual
 
 `Atomic exchange value with object` atomically replaces a named atomic native object and returns its previous unqualified value through C11 `atomic_exchange`.
 
+`Atomic fetch add/subtract/and/or/xor value to object` performs the corresponding C11 atomic read-modify-write operation and returns the previous value. Add and subtract also support atomic pointers with an integer offset.
+
 The classification forms `isalpha of`, `isalnum of`, `isblank of`, `iscntrl of`, `isdigit of`, `isgraph of`, `islower of`, `isprint of`, `ispunct of`, `isspace of`, `isupper of`, and `isxdigit of`, plus `tolower of` and `toupper of`, bind to the corresponding `<ctype.h>` functions. Their operands are integer character codes and their results are whole numbers; callers should pass either an unsigned-character value or `EOF` once that constant is exposed.
 
 Reading a qualified scalar follows C value conversion: top-level qualifiers do not become qualifiers on arithmetic results. Pointer conversions may add pointee qualification, such as `pointer to integer` to `pointer to constant integer`, but may not discard it. Nested pointer qualification remains strict, so the unsafe C-style `T **` to `const T **` conversion is not accepted merely because the innermost object can be qualified.

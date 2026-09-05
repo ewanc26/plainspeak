@@ -322,6 +322,10 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             if (isNativeRef(e, analysis)) return isImportedObject(node.name, analysis) ? node.name : mangle(node.name);
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
+        } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
+            std::string fn = "atomic_fetch_" + node.operation;
+            if (node.operation == "subtract") fn = "atomic_fetch_sub";
+            return fn + "(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             bool imported = false;
@@ -471,6 +475,10 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return "ps_int((long)atomic_is_lock_free(&" + mangle(node.name) + "))";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return boxRaw("atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")", exprType(e, analysis));
+        } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
+            std::string fn = "atomic_fetch_" + node.operation;
+            if (node.operation == "subtract") fn = "atomic_fetch_sub";
+            return boxRaw(fn + "(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")", exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             static const std::unordered_map<std::string, std::string> mathFn = {
                 {"sine", "ps_sin"}, {"cosine", "ps_cos"}, {"tangent", "ps_tan"},

@@ -1723,6 +1723,20 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({3, line, "Atomic exchange value does not match the type of \"" + node.name + "\"."});
             return target;
         }
+        else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
+            Type value = inferExpr(node.expr, line, diags);
+            auto [symbol, found] = lookupVar(node.name, line, diags);
+            if (!found || !symbol.nativeObject || !symbol.type.qualifiers.isAtomic) {
+                diags.push_back({24, line, "Atomic fetch operation needs a named atomic native object."});
+                return Type::number();
+            }
+            Type target = stripTopQualifiers(symbol.type);
+            bool arithmetic = node.operation == "add" || node.operation == "subtract";
+            bool valid = arithmetic ? (target.isInteger() || target.isPointer()) && isIntegralType(value)
+                                    : target.isInteger() && isIntegralType(value);
+            if (!valid) diags.push_back({3, line, "Atomic fetch " + node.operation + " value is incompatible with the type of \"" + node.name + "\"."});
+            return target;
+        }
         else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
             if (node.func == "atomic_load") {

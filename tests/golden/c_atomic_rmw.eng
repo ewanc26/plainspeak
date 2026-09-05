@@ -1,0 +1,7 @@
+Declare counter as atomic integer with value 7.
+Say Atomic fetch add 2 to counter.
+Say Atomic fetch and 6 to counter.
+Say Atomic fetch or 8 to counter.
+Say Atomic fetch xor 3 to counter.
+Say Atomic fetch subtract 1 to counter.
+Say Atomic load of counter.

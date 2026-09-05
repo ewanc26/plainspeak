@@ -1305,6 +1305,16 @@ Expr *Parser::parsePrimary() {
         expectWord("with");
         return arena_.makeExpr(AtomicExchangeExpr{expectIdentName(), value}, line);
     }
+    if (checkWord("atomic") && checkWordAt(1, "fetch") &&
+        (checkWordAt(2, "add") || checkWordAt(2, "subtract") || checkWordAt(2, "and") ||
+         checkWordAt(2, "or") || checkWordAt(2, "xor"))) {
+        int line = peek().line;
+        advance(); advance();
+        std::string operation = advance().text;
+        Expr *value = parseExpr();
+        expectWord("to");
+        return arena_.makeExpr(AtomicRmwExpr{std::move(operation), expectIdentName(), value}, line);
+    }
     if (checkWord("list") && checkWordAt(1, "with")) {
         int line = peek().line;
         advance(); advance();
