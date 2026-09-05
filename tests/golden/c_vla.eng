@@ -1,0 +1,7 @@
+Procedure first takes count as integer returns integer:
+    Declare values as array of integer with length count.
+    Set element at 0 in values to 42.
+    Return Element at 0 in values.
+End procedure.
+
+Say Call first with 3 done.

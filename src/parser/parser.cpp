@@ -1036,11 +1036,14 @@ TypeSpec Parser::parseTypeSpec() {
         TypeSpec element = parseTypeSpec();
         expectWord("with");
         expectWord("length");
-        if (peek().kind != TokKind::Number || peek().num <= 0) {
-            error("a fixed native array length must be a positive whole-number literal");
+        TypeSpec type{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element))};
+        if (peek().kind == TokKind::Number) {
+            if (peek().num <= 0) error("a fixed native array length must be a positive whole-number literal");
+            type.arrayBound = static_cast<std::size_t>(advance().num);
+        } else {
+            type.arrayLengthExpr = parseExpr();
         }
-        std::size_t bound = static_cast<std::size_t>(advance().num);
-        return finish(TypeSpec{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element)), bound});
+        return finish(std::move(type));
     }
     if ((checkWord("integer") || (checkWord("unsigned") && checkWordAt(1, "integer"))) &&
         checkWordAt(checkWord("integer") ? 1 : 2, "with") &&

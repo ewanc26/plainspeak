@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+struct Expr;
+
 // PlainSpeak's semantic type model is deliberately richer than the set of
 // types the parser can spell today. The compiler is growing toward the union
 // of C99-C23 capabilities, so semantic analysis needs to be able to represent
@@ -60,6 +62,8 @@ struct Type {
     // functions use returnType/parameterTypes; aggregates/enums use tag.
     std::shared_ptr<Type> elementType;
     std::optional<std::size_t> arrayBound;
+    bool variableLengthArray = false;
+    const Expr *arrayLengthExpr = nullptr;
     std::shared_ptr<Type> returnType;
     std::vector<Type> parameterTypes;
     bool variadic = false;
@@ -149,6 +153,15 @@ struct Type {
         return t;
     }
 
+    static Type variableArrayOf(Type element, const Expr *lengthExpr) {
+        Type t;
+        t.kind = TypeKind::Array;
+        t.elementType = std::make_shared<Type>(std::move(element));
+        t.variableLengthArray = true;
+        t.arrayLengthExpr = lengthExpr;
+        return t;
+    }
+
     static Type function(Type result, std::vector<Type> parameters, bool isVariadic = false) {
         Type t;
         t.kind = TypeKind::Function;
@@ -208,6 +221,7 @@ struct Type {
             floatingRank != other.floatingRank || isUnsigned != other.isUnsigned ||
             bitWidth != other.bitWidth || exactWidth != other.exactWidth ||
             stdintFamily != other.stdintFamily || arrayBound != other.arrayBound ||
+            variableLengthArray != other.variableLengthArray ||
             variadic != other.variadic || tag != other.tag ||
             parameterTypes != other.parameterTypes) {
             return false;

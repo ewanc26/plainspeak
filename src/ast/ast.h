@@ -86,6 +86,7 @@ struct TypeSpec {
     bool fixedUnsigned = false;
     bool stdintUnsigned = false;
     bool stdintFast = false;
+    Expr *arrayLengthExpr = nullptr;
 };
 
 enum class AggregateInitKind { Empty, Scalar, Positional, Members, Elements };

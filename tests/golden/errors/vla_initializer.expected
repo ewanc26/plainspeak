@@ -1,0 +1,1 @@
+error[E0017]: A variable-length native array cannot have an initializer; C requires its bound to be evaluated at declaration.

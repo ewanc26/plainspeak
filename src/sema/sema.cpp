@@ -122,7 +122,8 @@ std::string typeToString(const Type &t) {
             return "pointer to " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown"));
         case TypeKind::Array:
             return "array of " + (t.elementType ? typeToString(*t.elementType) : std::string("unknown")) +
-                   (t.arrayBound ? " with length " + std::to_string(*t.arrayBound) : std::string(" with unknown length"));
+                   (t.arrayBound ? " with length " + std::to_string(*t.arrayBound) :
+                    (t.variableLengthArray ? " with variable length" : " with unknown length"));
         case TypeKind::Function: return "function";
         case TypeKind::Structure: return "structure " + t.tag;
         case TypeKind::Union: return "union " + t.tag;
@@ -1100,8 +1101,13 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             result = Type::pointerTo(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType());
             break;
         case TypeSpecKind::Array:
-            result = Type::arrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
-                                   spec.arrayBound);
+            if (spec.arrayLengthExpr) {
+                result = Type::variableArrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
+                                               spec.arrayLengthExpr);
+            } else {
+                result = Type::arrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
+                                       spec.arrayBound);
+            }
             break;
         case TypeSpecKind::Structure: result = Type::structure(spec.tag); break;
         case TypeSpecKind::Union: result = Type::unionType(spec.tag); break;
@@ -1202,7 +1208,7 @@ bool Sema::isCompleteObjectType(const Type &type) const {
     if (type.kind == TypeKind::Void || type.kind == TypeKind::Function) return false;
     if (type.kind == TypeKind::Complex) return true;
     if (type.isArray()) {
-        return type.arrayBound && type.elementType &&
+        return (type.arrayBound || type.variableLengthArray) && type.elementType &&
                isCompleteObjectType(*type.elementType) &&
                !containsFlexibleArray(*type.elementType);
     }
@@ -2212,6 +2218,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({19, s->line, "Structure member \"" + field.name +
                                               "\" needs a complete object type, not " + typeToString(fieldType) + "."});
                     valid = false;
+                } else if (fieldType.variableLengthArray) {
+                    diags.push_back({17, s->line, "A variable-length array cannot be a Structure member; C variably modified members are not permitted."});
+                    valid = false;
                 } else if (!fieldType.isPointer() && !isCompleteObjectType(fieldType)) {
                     diags.push_back({19, s->line, "Structure member \"" + field.name + "\" has incomplete by-value type " +
                                               typeToString(fieldType) + "; use a pointer for recursive or forward references."});
@@ -2282,6 +2291,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 if (fieldType.kind == TypeKind::Void || fieldType.kind == TypeKind::Function) {
                     diags.push_back({20, s->line, "Union member \"" + field.name +
                                               "\" needs a complete object type, not " + typeToString(fieldType) + "."});
+                    valid = false;
+                } else if (fieldType.variableLengthArray) {
+                    diags.push_back({17, s->line, "A variable-length array cannot be a Union member; C variably modified members are not permitted."});
                     valid = false;
                 } else if (!fieldType.isPointer() && !isCompleteObjectType(fieldType)) {
                     diags.push_back({20, s->line, "Union member \"" + field.name + "\" has incomplete by-value type " +
@@ -2390,6 +2402,31 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
                 declared.qualifiers.isConst = true;
             }
+            if (declared.variableLengthArray) {
+                if (scopes_.size() == 1) {
+                    diags.push_back({17, s->line, "A variable-length native array needs block scope; file-scope C objects cannot have variably modified types."});
+                }
+                if (node.initializer || node.aggregateInitializer) {
+                    diags.push_back({17, s->line, "A variable-length native array cannot have an initializer; C requires its bound to be evaluated at declaration."});
+                }
+                if (node.type.arrayLengthExpr) {
+                    const std::size_t before = diags.size();
+                    Type lengthType = inferExpr(node.type.arrayLengthExpr, s->line, diags);
+                    if (diags.size() == before && !isIntegralType(lengthType)) {
+                        diags.push_back({17, s->line, "A variable-length array length needs a whole-number native expression, not a " + typeToString(lengthType) + "."});
+                    } else if (diags.size() == before && analysis_ &&
+                               std::holds_alternative<VarRef>(node.type.arrayLengthExpr->node) &&
+                               !analysis_->nativeObjectRefs.count(node.type.arrayLengthExpr)) {
+                        diags.push_back({17, s->line, "A variable-length array length cannot use a legacy boxed PlainSpeak value; declare the bound as a native integer."});
+                    } else if (diags.size() == before) {
+                        auto constant = integerConstantValue(node.type.arrayLengthExpr);
+                        if (constant && *constant <= 0) {
+                            diags.push_back({17, s->line, "A variable-length array length must be greater than zero."});
+                        }
+                    }
+                }
+            }
+            if (declared.variableLengthArray && (node.initializer || node.aggregateInitializer)) return;
             if (analysis_) analysis_->declarationTypes[s] = declared;
             if (!validateTypeQualifiers(declared, s->line, diags)) return;
             if (declared.kind == TypeKind::Void) {

@@ -1,0 +1,4 @@
+Procedure bad takes count as integer returns integer:
+    Declare values as array of integer with length count with values 1 done.
+    Return 0.
+End procedure.

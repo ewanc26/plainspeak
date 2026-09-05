@@ -34,7 +34,9 @@ std::string emitQualifierWords(const TypeQualifiers &q) {
 }
 
 std::string emitCBaseType(const Type &type);
-std::string emitCDeclarator(const Type &type, const std::string &name);
+std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
+std::string emitCDeclarator(const Type &type, const std::string &name,
+                            const AnalysisResult *analysis = nullptr);
 
 std::string emitCUnqualifiedBaseType(const Type &type) {
     if (type.kind == TypeKind::Boolean) return "_Bool";
@@ -99,14 +101,15 @@ std::string emitCBaseType(const Type &type) {
     return qualifiers.empty() ? base : qualifiers + " " + base;
 }
 
-std::string emitCDeclarator(const Type &type, const std::string &name) {
+std::string emitCDeclarator(const Type &type, const std::string &name,
+                            const AnalysisResult *analysis) {
     if (type.kind == TypeKind::Function) {
         std::string result = type.returnType ? emitCBaseType(*type.returnType) : "void";
         result += " " + name + "(";
         if (type.parameterTypes.empty()) result += "void";
         for (std::size_t i = 0; i < type.parameterTypes.size(); ++i) {
             if (i) result += ", ";
-            result += emitCDeclarator(type.parameterTypes[i], "");
+            result += emitCDeclarator(type.parameterTypes[i], "", analysis);
         }
         if (type.variadic) {
             if (!type.parameterTypes.empty()) result += ", ";
@@ -116,8 +119,11 @@ std::string emitCDeclarator(const Type &type, const std::string &name) {
         return result;
     }
     if (type.kind == TypeKind::Array && type.elementType) {
-        std::string bound = type.arrayBound ? std::to_string(*type.arrayBound) : "";
-        return emitCDeclarator(*type.elementType, name + "[" + bound + "]");
+        std::string bound;
+        if (type.arrayBound) bound = std::to_string(*type.arrayBound);
+        else if (type.variableLengthArray && type.arrayLengthExpr && analysis)
+            bound = emitRawExpr(type.arrayLengthExpr, *analysis);
+        return emitCDeclarator(*type.elementType, name + "[" + bound + "]", analysis);
     }
     if (type.kind == TypeKind::Pointer && type.elementType) {
         std::string pointerPart = "*";
@@ -134,22 +140,23 @@ std::string emitCDeclarator(const Type &type, const std::string &name) {
         } else {
             pointerName = pointerPart;
         }
-        return emitCDeclarator(*type.elementType, pointerName);
+        return emitCDeclarator(*type.elementType, pointerName, analysis);
     }
     std::string base = emitCBaseType(type);
     return name.empty() ? base : base + " " + name;
 }
 
-std::string emitCType(const Type &type) {
+std::string emitCType(const Type &type, const AnalysisResult *analysis = nullptr) {
     const std::string marker = "__ps_type_marker";
-    std::string text = emitCDeclarator(type, marker);
+    std::string text = emitCDeclarator(type, marker, analysis);
     std::size_t pos = text.find(marker);
     if (pos != std::string::npos) text.erase(pos, marker.size());
     return text;
 }
 
-std::string emitCDeclaration(const Type &type, const std::string &name) {
-    return emitCDeclarator(type, name);
+std::string emitCDeclaration(const Type &type, const std::string &name,
+                             const AnalysisResult *analysis = nullptr) {
+    return emitCDeclarator(type, name, analysis);
 }
 
 std::string emitAggregateFieldDeclaration(const AggregateFieldInfo &field) {
@@ -547,9 +554,9 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, LengthExpr>) {
             return "ps_int(ps_length(" + emitBoxedExpr(node.operand, analysis) + "))";
         } else if constexpr (std::is_same_v<T, SizeOfTypeExpr> || std::is_same_v<T, SizeOfExpr>) {
-            return "ps_int((long)sizeof(" + emitCType(typeOperand(e, analysis)) + "))";
+            return "ps_int((long)sizeof(" + emitCType(typeOperand(e, analysis), &analysis) + "))";
         } else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
-            return "ps_int((long)_Alignof(" + emitCType(typeOperand(e, analysis)) + "))";
+            return "ps_int((long)_Alignof(" + emitCType(typeOperand(e, analysis), &analysis) + "))";
         } else if constexpr (std::is_same_v<T, LimitOfTypeExpr>) {
             Type type = typeOperand(e, analysis);
             std::string macro;
@@ -767,13 +774,17 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             // and procedure prototypes by emitProgram.
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
+            if (type.variableLengthArray && type.arrayLengthExpr) {
+                out << indent << "assert((" << emitRawExpr(type.arrayLengthExpr, analysis)
+                    << ") > 0);\n";
+            }
             out << indent;
             if (node.internalLinkage || node.staticStorage) out << "static ";
             else if (node.externalLinkage && !node.initializer && !node.aggregateInitializer) out << "extern ";
             if (node.alignment) out << "_Alignas(" << *node.alignment << ") ";
             out << (node.threadLocal ? "_Thread_local " : "")
                 << (node.constexprObject ? "const " : "")
-                << emitCDeclaration(type, mangle(node.name));
+                << emitCDeclaration(type, mangle(node.name), &analysis);
             if (node.initializer) {
                 out << " = " << emitRawExpr(node.initializer, analysis);
             } else if (node.aggregateInitializer) {

@@ -1,0 +1,1 @@
+error[E0017]: A variable-length native array needs block scope; file-scope C objects cannot have variably modified types.

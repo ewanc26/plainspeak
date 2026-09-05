@@ -275,7 +275,7 @@ The scalar spellings map to C `_Bool`, `char`, `signed char`, `unsigned char`, `
 Declare p as pointer to integer. Declare pp as pointer to pointer to integer.
 ```
 
-A `void` type may be the pointee of a pointer, but a standalone object or array element cannot be `void`. Fixed array bounds are positive whole-number literals. Arrays and pointers may nest recursively, so `pointer to array of integer with length 4` and `array of pointer to integer with length 4` are distinct types and lower to distinct C declarators.
+A `void` type may be the pointee of a pointer, but a standalone object or array element cannot be `void`. Fixed array bounds are positive whole-number literals; a block-scope native array may instead use a native whole-number expression, such as `array of integer with length count`, to create a C99 variable-length array. Arrays and pointers may nest recursively, so `pointer to array of integer with length 4` and `array of pointer to integer with length 4` are distinct types and lower to distinct C declarators.
 
 ## Native type qualifiers
 
@@ -386,7 +386,7 @@ Declare values as array of integer with length 4. Declare p as pointer to intege
 
 `pointer plus integer`, `integer plus pointer`, and `pointer minus integer` use C element-scaled pointer arithmetic for complete object pointers. Subtracting two pointers to the same element type produces the current PlainSpeak whole-number result. Equality comparison accepts compatible object pointers (including the existing object-pointer/`void *` compatibility); relational comparison requires the same complete element type. `Add` and `Subtract` on an explicitly declared object pointer lower to C `+=` and `-=` with an integer offset.
 
-Whole-array assignment remains intentionally unavailable. Fixed arrays can now be initialized positionally or with zero-based element designators at declaration time. Pointer/null scalar conditions and the current null-pointer conversions are implemented; variable-length arrays, function pointers and allocated storage remain later work.
+Whole-array assignment remains intentionally unavailable. Fixed arrays can be initialized positionally or with zero-based element designators at declaration time. Block-scope variable-length arrays accept native integral bounds and cannot have initializers. Pointer/null scalar conditions and the current null-pointer conversions are implemented; function pointers and allocated storage remain later work.
 
 ## Native structures and members
 
@@ -673,7 +673,7 @@ Legacy PlainSpeak values remain:
 
 Explicit `Declare` objects instead use native C storage for the `CType` written in source. These two representations are intentionally distinct. Reading a native arithmetic object in a legacy expression boxes its current value; assigning a legacy numeric expression into a native arithmetic object converts it back to that object's C type.
 
-The compiler's structural semantic type system also represents functions, qualified recursive native types, aggregates, enums, C23 bit-precise integers and null pointers. Qualifiers are now source-spellable; representation of the remaining shapes is still only a foundation until their syntax/lowering lands. Fixed arrays are now source-spellable native objects; variable-length and incomplete-array source forms remain pending. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
+The compiler's structural semantic type system also represents functions, qualified recursive native types, aggregates, enums, C23 bit-precise integers and null pointers. Qualifiers are now source-spellable; representation of the remaining shapes is still only a foundation until their syntax/lowering lands. Fixed and block-scope variable-length arrays are source-spellable native objects; incomplete-array source forms remain pending. Representation in the compiler is not itself a claim of supported source capability; `docs/c-compatibility.md` is authoritative about status.
 
 ## Known gaps
 

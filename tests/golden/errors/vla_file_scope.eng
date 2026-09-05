@@ -1,0 +1,2 @@
+Declare count as integer with value 3.
+Declare values as array of integer with length count.
