@@ -198,6 +198,8 @@ Label finish.
 
 ## C type spellings
 
+`complex decimal` spells the C99 `double _Complex` native scalar type. Complex literals and the complete complex arithmetic/library surface remain pending.
+
 The C23 spellings `type of name` and `type of unqualified name` can name the native type of an earlier object declaration. These foundation forms are unevaluated and name-based; expression operands and complete qualifier rules remain pending.
 
 `bit integer with width N` and `unsigned bit integer with width N` spell signed and unsigned C23 `_BitInt(N)` native types. Width must be positive; rank, conversion, and target-support rules remain pending.

@@ -56,7 +56,8 @@ enum class TypeSpecKind {
     Auto,
     BitInt,
     SizeType,
-    PtrdiffType
+    PtrdiffType,
+    Complex
 };
 
 struct TypeSpecQualifiers {

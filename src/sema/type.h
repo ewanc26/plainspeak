@@ -26,7 +26,8 @@ enum class TypeKind {
     Union,
     Enumeration,
     BitInt,
-    Nullptr
+    Nullptr,
+    Complex
 };
 
 enum class IntegerRank { Char, Short, Int, Long, LongLong };
@@ -107,6 +108,8 @@ struct Type {
     }
 
     static Type decimal() { return floating(FloatingRank::Double); }
+
+    static Type complex() { Type t; t.kind = TypeKind::Complex; return t; }
 
     static Type string() {
         Type t;
@@ -190,7 +193,7 @@ struct Type {
 
     bool isInteger() const { return kind == TypeKind::Integer || kind == TypeKind::BitInt; }
     bool isFloating() const { return kind == TypeKind::Floating; }
-    bool isNumeric() const { return isInteger() || isFloating(); }
+    bool isNumeric() const { return isInteger() || isFloating() || kind == TypeKind::Complex; }
     bool isList() const { return kind == TypeKind::List; }
     bool isPointer() const { return kind == TypeKind::Pointer; }
     bool isArray() const { return kind == TypeKind::Array; }

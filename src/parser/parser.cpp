@@ -908,6 +908,7 @@ TypeSpec Parser::parseTypeSpec() {
         return finish(std::move(type));
     }
     if (checkWord("void")) { advance(); return finish(TypeSpec{TypeSpecKind::Void}); }
+    if (checkWord("complex") && checkWordAt(1, "decimal")) { advance(); advance(); return finish(TypeSpec{TypeSpecKind::Complex}); }
     if (checkWord("size") && checkWordAt(1, "type")) { advance(); advance(); return finish(TypeSpec{TypeSpecKind::SizeType}); }
     if (checkWord("difference") && checkWordAt(1, "type")) { advance(); advance(); return finish(TypeSpec{TypeSpecKind::PtrdiffType}); }
     if (checkWord("auto")) { advance(); return finish(TypeSpec{TypeSpecKind::Auto}); }

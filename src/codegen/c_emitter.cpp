@@ -58,6 +58,7 @@ std::string emitCUnqualifiedBaseType(const Type &type) {
         if (type.floatingRank == FloatingRank::LongDouble) return "long double";
         return "double";
     }
+    if (type.kind == TypeKind::Complex) return "double _Complex";
     if (type.kind == TypeKind::Void) return "void";
     if (type.kind == TypeKind::Structure) return "struct " + mangle(type.tag);
     if (type.kind == TypeKind::Union) return "union " + mangle(type.tag);
@@ -191,7 +192,7 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
 bool isCArithmeticType(const Type &type) {
     return type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
            type.kind == TypeKind::Floating || type.kind == TypeKind::Enumeration ||
-           type.kind == TypeKind::BitInt;
+           type.kind == TypeKind::BitInt || type.kind == TypeKind::Complex;
 }
 
 bool isCScalarType(const Type &type) {

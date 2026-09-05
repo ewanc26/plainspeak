@@ -101,6 +101,7 @@ std::string typeToString(const Type &t) {
             if (t.floatingRank == FloatingRank::Float) return "float";
             if (t.floatingRank == FloatingRank::LongDouble) return "long decimal";
             return "decimal";
+        case TypeKind::Complex: return "complex decimal";
         case TypeKind::String: return "string";
         case TypeKind::List: return "list of " + typeToString(listElementType(t)) + "s";
         case TypeKind::Pointer:
@@ -548,7 +549,7 @@ bool supportsCObjectQuery(const Type &t) {
            t.kind == TypeKind::Floating || t.kind == TypeKind::Pointer ||
            t.kind == TypeKind::Enumeration || t.kind == TypeKind::BitInt ||
            t.kind == TypeKind::Structure || t.kind == TypeKind::Union ||
-           t.kind == TypeKind::Nullptr;
+           t.kind == TypeKind::Nullptr || t.kind == TypeKind::Complex;
 }
 
 Type signedInteger(IntegerRank rank) { return Type::integer(rank, false); }
@@ -1001,6 +1002,7 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::BitInt: result = Type::bitInt(spec.bitWidth, spec.bitIntUnsigned); break;
         case TypeSpecKind::SizeType: result = Type::integer(IntegerRank::Long, true); break;
         case TypeSpecKind::PtrdiffType: result = Type::integer(IntegerRank::Long, false); break;
+        case TypeSpecKind::Complex: result = Type::complex(); break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);
@@ -1061,6 +1063,7 @@ bool Sema::validateTypeQualifiers(const Type &type, int line, std::vector<Diag> 
 
 bool Sema::isCompleteObjectType(const Type &type) const {
     if (type.kind == TypeKind::Void || type.kind == TypeKind::Function) return false;
+    if (type.kind == TypeKind::Complex) return true;
     if (type.isArray()) {
         return type.arrayBound && type.elementType &&
                isCompleteObjectType(*type.elementType) &&

@@ -20,7 +20,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.integer-model` | foundation | Structural integer ranks/signedness and the ordinary C integer promotions/usual signed-unsigned conversions are executable; C23 `_BitInt` rank interactions and remaining conversion edge cases are incomplete. |
 | `types.bitint` | foundation | C23 bit-precise integer type is structurally representable. |
 | `types.floating-model` | foundation | Float/double/long-double ranks are structurally represented and native objects can use all three; the full C floating environment/model is still incomplete. |
-| `types.complex` | planned | Complex objects and arithmetic. |
+| `types.complex` | foundation | Native complex decimal object representation exists; complete arithmetic and library parity remain pending. |
 | `types.boolean` | foundation | Native `_Bool` objects are spellable; legacy true/false literals still preserve numeric compatibility. |
 | `types.nullptr` | foundation | C23 `null pointer` and `null pointer type` are source-spellable; the distinct scalar type has void-pointer/character-pointer-compatible layout, C23 default initialization, native object storage, and supported null-constant/pointer/bool conversions enforced semantically. |
 | `types.object-representation` | foundation | Explicit scalar, pointer, fixed-array, tagged-structure, tagged-union and tagged-enumeration objects use real C storage, address, size and target layout; padding/effective-type rules and complete lifetime semantics remain pending. |

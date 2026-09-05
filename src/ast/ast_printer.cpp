@@ -58,6 +58,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "size type"; break;
         case TypeSpecKind::PtrdiffType:
             body = "difference type"; break;
+        case TypeSpecKind::Complex:
+            body = "complex decimal"; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;
