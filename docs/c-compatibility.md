@@ -187,7 +187,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.stddef` | foundation | Native `size type` and `difference type` declarations exist; remaining `<stddef.h>` types/macros and exact ABI bindings remain pending. |
 | `lib.stdint` | planned | `<stdint.h>` |
 | `lib.stdio` | foundation | `<stdio.h>`; `Say`/`Read` are only a small high-level subset. |
-| `lib.stdlib` | foundation | Typed imports cover `malloc`/`free` with native void pointers; the remainder of the allocation, conversion, process, sorting and searching surface remains pending. |
+| `lib.stdlib` | foundation | Typed imports cover `malloc`/`calloc`/`realloc`/`free` with native void pointers; the remainder of the allocation, conversion, process, sorting and searching surface remains pending. |
 | `lib.stdnoreturn` | planned | `<stdnoreturn.h>` / C23 spelling |
 | `lib.string` | foundation | Typed imports cover `strlen` and `strcmp` with string-literal decay; byte-memory mutation and the remaining `<string.h>` surface remain pending. |
 | `lib.tgmath` | planned | `<tgmath.h>` |

@@ -114,7 +114,7 @@ Typed calls use raw arguments and native return values; when a typed arithmetic 
 
 Typed C imports use the same native call ABI without emitting a PlainSpeak definition: the declared header is included, the external symbol is left unmangled, string literals decay to character pointers when the imported parameter requires them, and variadic imports retain their fixed native prefix while accepting additional arguments. Library imports append validated `-l` options to the native link command.
 
-Imported allocation functions may return native pointers and receive them through typed calls; the compiler does not wrap or garbage-collect that storage, so ownership follows the imported C API.
+Imported allocation functions such as `malloc`, `calloc`, `realloc`, and `free` may return or receive native pointers through typed calls; the compiler does not wrap or garbage-collect that storage, so ownership follows the imported C API.
 
 
 ## Native structures

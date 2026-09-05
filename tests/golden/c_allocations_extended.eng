@@ -1,0 +1,7 @@
+Import the C function calloc taking a size type and a size type, returning a pointer to void, from the header "stdlib.h".
+Import the C function realloc taking a pointer to void and a size type, returning a pointer to void, from the header "stdlib.h".
+Import the C function free taking a pointer to void, returning void, from the header "stdlib.h".
+Declare storage as pointer to void with value Call calloc with 2, 8 done.
+Set storage to Call realloc with storage, 32 done.
+Call free with storage done.
+Say 1.
