@@ -23,7 +23,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0015 | Dereference/store-through applied to a non-pointer or `void *` without a concrete pointee |
 | E0016 | Invalid or still-unsupported native pointer operation |
 | E0017 | Invalid fixed native array declaration, subscript, element store, or whole-array operation |
-| E0018 | Invalid typed Procedure signature, argument, return, prototype, or return placement |
+| E0018 | Invalid typed Procedure signature, argument, return, prototype, or return placement; typed non-void Procedure reaches its end without a Return on some path |
 | E0019 | Invalid structure definition, completeness, member access, or member store |
 | E0020 | Invalid union definition, shared tag namespace, completeness, member access, or member store |
 | E0021 | Invalid positional or designated aggregate initializer |

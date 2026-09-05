@@ -761,6 +761,17 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
 
     if (!signature || !signature->nativeTyped) {
         out << "    return ps_int(0L);\n";
+    } else if (signature->returnType.kind != TypeKind::Void) {
+        // A typed non-void body whose last statement is not a Return (for
+        // example a loop that returns inside) may still end its lowered C
+        // textually without a return. Sema guarantees the end is unreachable,
+        // so this guard is dead, but it keeps the generated function
+        // well-formed for compilers that do not prove loop guarantees.
+        bool lastIsReturn = !proc.body.empty() &&
+            std::holds_alternative<ReturnStmt>(proc.body.back()->node);
+        if (!lastIsReturn) {
+            out << "    return (" << emitCType(signature->returnType) << "){0};\n";
+        }
     }
     out << "}\n\n";
 }

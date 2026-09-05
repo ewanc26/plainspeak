@@ -265,6 +265,236 @@ std::optional<long> integerConstantValue(const Expr *expr) {
     }, expr->node);
 }
 
+bool isConstTruthyExpr(const Expr *expr) {
+    auto value = integerConstantValue(expr);
+    return value && *value != 0;
+}
+
+bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth);
+bool statementHasLevelBreak(const Stmt *s, int depth) {
+    if (!s) return false;
+    const StmtNode &node = s->node;
+    if (std::holds_alternative<BreakStmt>(node)) return depth == 0;
+    if (const auto *ifStmt = std::get_if<IfStmt>(&node)) {
+        return bodyHasLevelBreak(ifStmt->thenBody, depth) ||
+               bodyHasLevelBreak(ifStmt->elseBody, depth);
+    }
+    const int nested = depth + 1;
+    if (const auto *repeat = std::get_if<RepeatStmt>(&node)) return bodyHasLevelBreak(repeat->body, nested);
+    if (const auto *loop = std::get_if<WhileStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
+    if (const auto *loop = std::get_if<DoWhileStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
+    if (const auto *loop = std::get_if<ForStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
+    if (const auto *loop = std::get_if<ForEachStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
+    if (const auto *sw = std::get_if<SwitchStmt>(&node)) {
+        for (const SwitchCase &clause : sw->cases) {
+            if (bodyHasLevelBreak(clause.body, nested)) return true;
+        }
+    }
+    return false;
+}
+
+bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth) {
+    for (const Stmt *s : stmts) {
+        if (statementHasLevelBreak(s, depth)) return true;
+    }
+    return false;
+}
+
+// Forward reachability over a typed procedure body: can control flow reach the
+// end of the function without passing through a Return? A Return transfers out
+// of the procedure, so it has no successor edge; a Go to jumps directly to its
+// Label; Break and Continue jump to the nearest enclosing loop/switch. Loops
+// whose condition is a non-zero constant and whose body cannot break never fall
+// through, and a Repeat/For with a known non-empty range can only leave through
+// counted completion, which the structural model does not invent. The analysis
+// is deliberately one-sided: it only reports the function end reachable when a
+// real control-flow path exists, so it never rejects a procedure that always
+// returns.
+class ReturnPathChecker {
+public:
+    static bool endIsReachable(const std::vector<Stmt *> &body) {
+        ReturnPathChecker checker;
+        NodeId entry = checker.buildBlock(body, kFuncEnd);
+        checker.resolveGotos();
+        checker.sweepFrom(entry);
+        return checker.reachedEnd_;
+    }
+
+private:
+    using NodeId = int;
+    static constexpr NodeId kFuncEnd = 0;
+
+    std::vector<std::vector<NodeId>> successors_;
+    std::vector<std::pair<NodeId, std::string>> pendingGotos_;
+    std::unordered_map<std::string, NodeId> labelNodes_;
+    std::vector<NodeId> breakStack_;
+    std::vector<NodeId> continueStack_;
+    bool reachedEnd_ = false;
+
+    ReturnPathChecker() { successors_.emplace_back(); } // node 0 is the function end
+
+    NodeId newNode() {
+        successors_.emplace_back();
+        return static_cast<NodeId>(successors_.size() - 1);
+    }
+
+    void addEdge(NodeId from, NodeId to) { successors_[from].push_back(to); }
+
+    NodeId buildBlock(const std::vector<Stmt *> &stmts, NodeId continuation) {
+        NodeId succ = continuation;
+        for (std::size_t i = stmts.size(); i > 0; --i) succ = buildStmt(stmts[i - 1], succ);
+        return succ;
+    }
+
+    NodeId buildStmt(const Stmt *s, NodeId continuation);
+
+    NodeId buildSwitch(const SwitchStmt &node, NodeId continuation) {
+        NodeId head = newNode();
+        bool hasDefault = false;
+        std::vector<NodeId> entries;
+        NodeId fall = continuation;
+        for (std::size_t i = node.cases.size(); i > 0; --i) {
+            const SwitchCase &clause = node.cases[i - 1];
+            if (clause.value == nullptr) hasDefault = true;
+            breakStack_.push_back(fall);
+            NodeId entry = buildBlock(clause.body, fall);
+            breakStack_.pop_back();
+            entries.push_back(entry);
+            fall = entry;
+        }
+        // The backward loop stored case entries in reverse; add head edges in
+        // source order. Fall-through keeps C semantics: each body's natural end
+        // reaches the next case entry (or afterSwitch for the last one).
+        for (std::size_t i = entries.size(); i > 0; --i) addEdge(head, entries[i - 1]);
+        if (!hasDefault) addEdge(head, continuation);
+        return head;
+    }
+
+    void resolveGotos() {
+        for (const auto &[from, name] : pendingGotos_) {
+            auto it = labelNodes_.find(name);
+            if (it != labelNodes_.end()) addEdge(from, it->second);
+        }
+    }
+
+    void sweepFrom(NodeId entry) {
+        std::vector<bool> seen(successors_.size(), false);
+        std::vector<NodeId> work{entry};
+        seen[entry] = true;
+        while (!work.empty()) {
+            NodeId current = work.back();
+            work.pop_back();
+            for (NodeId next : successors_[current]) {
+                if (seen[next]) continue;
+                seen[next] = true;
+                work.push_back(next);
+            }
+        }
+        reachedEnd_ = seen[kFuncEnd];
+    }
+};
+
+ReturnPathChecker::NodeId ReturnPathChecker::buildStmt(const Stmt *s, NodeId continuation) {
+    return std::visit([&](auto &&node) -> NodeId {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, ReturnStmt>) {
+            // Control leaves the procedure; the function end is not reached.
+            return newNode();
+        } else if constexpr (std::is_same_v<T, GotoStmt>) {
+            NodeId jump = newNode();
+            pendingGotos_.push_back({jump, node.label});
+            return jump;
+        } else if constexpr (std::is_same_v<T, BreakStmt>) {
+            NodeId jump = newNode();
+            if (!breakStack_.empty()) addEdge(jump, breakStack_.back());
+            return jump;
+        } else if constexpr (std::is_same_v<T, ContinueStmt>) {
+            NodeId jump = newNode();
+            if (!continueStack_.empty()) addEdge(jump, continueStack_.back());
+            return jump;
+        } else if constexpr (std::is_same_v<T, IfStmt>) {
+            NodeId cond = newNode();
+            addEdge(cond, buildBlock(node.thenBody, continuation));
+            addEdge(cond, node.elseBody.empty() ? continuation : buildBlock(node.elseBody, continuation));
+            return cond;
+        } else if constexpr (std::is_same_v<T, SwitchStmt>) {
+            return buildSwitch(node, continuation);
+        } else if constexpr (std::is_same_v<T, RepeatStmt>) {
+            NodeId head = newNode();
+            breakStack_.push_back(continuation);
+            NodeId bodyEntry = buildBlock(node.body, head);
+            breakStack_.pop_back();
+            addEdge(head, bodyEntry);
+            std::optional<long> count = integerConstantValue(node.count);
+            if (!(count && *count > 0)) addEdge(head, continuation);
+            return head;
+        } else if constexpr (std::is_same_v<T, WhileStmt>) {
+            NodeId head = newNode();
+            breakStack_.push_back(continuation);
+            continueStack_.push_back(head);
+            NodeId bodyEntry = buildBlock(node.body, head);
+            breakStack_.pop_back();
+            continueStack_.pop_back();
+            addEdge(head, bodyEntry);
+            if (!(isConstTruthyExpr(node.cond) && !bodyHasLevelBreak(node.body, 0))) {
+                addEdge(head, continuation);
+            }
+            return head;
+        } else if constexpr (std::is_same_v<T, DoWhileStmt>) {
+            NodeId head = newNode();
+            NodeId cond = newNode();
+            breakStack_.push_back(continuation);
+            continueStack_.push_back(cond);
+            NodeId bodyEntry = buildBlock(node.body, cond);
+            breakStack_.pop_back();
+            continueStack_.pop_back();
+            addEdge(head, bodyEntry);
+            addEdge(cond, head);
+            if (!(isConstTruthyExpr(node.cond) && !bodyHasLevelBreak(node.body, 0))) {
+                addEdge(cond, continuation);
+            }
+            return head;
+        } else if constexpr (std::is_same_v<T, ForStmt>) {
+            NodeId head = newNode();
+            breakStack_.push_back(continuation);
+            continueStack_.push_back(head);
+            NodeId bodyEntry = buildBlock(node.body, head);
+            breakStack_.pop_back();
+            continueStack_.pop_back();
+            addEdge(head, bodyEntry);
+            std::optional<long> from = integerConstantValue(node.from);
+            std::optional<long> to = integerConstantValue(node.to);
+            bool knownRange = from && to;
+            bool knownEmpty = knownRange && (node.descending ? *from < *to : *from > *to);
+            // A known non-empty range always runs at least once, so it can only
+            // leave through counted completion; unknown bounds may be empty.
+            if (!knownRange || knownEmpty) addEdge(head, continuation);
+            return head;
+        } else if constexpr (std::is_same_v<T, ForEachStmt>) {
+            NodeId head = newNode();
+            breakStack_.push_back(continuation);
+            continueStack_.push_back(head);
+            NodeId bodyEntry = buildBlock(node.body, head);
+            breakStack_.pop_back();
+            continueStack_.pop_back();
+            addEdge(head, bodyEntry);
+            addEdge(head, continuation); // the enumerated list may be empty at runtime
+            return head;
+        } else if constexpr (std::is_same_v<T, LabelStmt>) {
+            NodeId label = newNode();
+            labelNodes_[node.name] = label;
+            addEdge(label, continuation);
+            return label;
+        } else {
+            // Declarations, operations, calls, comments and nested procedure
+            // definitions complete normally.
+            NodeId complete = newNode();
+            addEdge(complete, continuation);
+            return complete;
+        }
+    }, s->node);
+}
+
 bool isNullPointerConstantExpr(const Expr *expr) {
     if (!expr) return false;
     if (std::holds_alternative<NullptrLit>(expr->node)) return true;
@@ -2080,11 +2310,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
 
             if (signatureIt->second.nativeTyped &&
                 signatureIt->second.returnType.kind != TypeKind::Void) {
-                bool endsWithReturn = !node.body.empty() &&
-                    std::holds_alternative<ReturnStmt>(node.body.back()->node);
-                if (!endsWithReturn) {
+                if (ReturnPathChecker::endIsReachable(node.body)) {
                     diags.push_back({18, s->line, "Typed Procedure \"" + node.name +
-                                              "\" must end with Return for now; full control-flow return analysis is still pending."});
+                                              "\" can reach its end without a Return on some path; every path must return a value."});
                 }
             }
 

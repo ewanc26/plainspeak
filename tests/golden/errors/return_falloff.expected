@@ -1,0 +1,1 @@
+error[E0018]: Typed Procedure "bad" can reach its end without a Return on some path; every path must return a value.

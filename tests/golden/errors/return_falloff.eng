@@ -1,0 +1,1 @@
+Procedure bad takes n as integer returns integer: If n then: Return 1. End if. End procedure.
