@@ -1,0 +1,4 @@
+Import the C function atoi taking a pointer to character, returning an integer, from the header "stdlib.h".
+Import the C function atol taking a pointer to character, returning a long integer, from the header "stdlib.h".
+Say Call atoi with "123" done.
+Say Call atol with "456" done.
