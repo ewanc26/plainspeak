@@ -27,6 +27,7 @@ struct ProcedureSignature {
     bool deprecated = false;
     std::string deprecationMessage;
     bool maybeUnused = false;
+    std::string variadicLastParameter;
 };
 
 struct AggregateFieldInfo {
@@ -81,6 +82,7 @@ struct AnalysisResult {
     std::unordered_map<const TypeSpec *, Type> genericAssociationTypes;
     std::unordered_map<const Expr *, int> genericSelections;
     std::unordered_set<const Expr *> sequencingDiagnostics;
+    std::unordered_map<const Expr *, Type> variadicArgumentTypes;
 };
 
 class Sema {

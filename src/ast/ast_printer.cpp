@@ -153,6 +153,7 @@ std::string printExpr(const Expr *e) {
                    (prefix ? "before " : "after ") + printExpr(node.operand);
         }
         else if constexpr (std::is_same_v<T, CastExpr>) return "Convert " + printExpr(node.operand) + " to type " + printTypeSpec(node.target);
+        else if constexpr (std::is_same_v<T, VaArgExpr>) return "Next variadic argument as " + printTypeSpec(node.type);
         else if constexpr (std::is_same_v<T, ElementExpr>) return "Element at " + printExpr(node.index) + " in " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, MemberExpr>) return "Member " + node.name + " of " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, EnumeratorExpr>) return "Enumerator " + node.name + " of " + node.enumeration;
@@ -315,6 +316,8 @@ std::string printStmt(const Stmt *s) {
         else if constexpr (std::is_same_v<T, WarningStmt>) return "Warning \"" + node.message + "\". ";
         else if constexpr (std::is_same_v<T, BreakStmt>) return "Break. ";
         else if constexpr (std::is_same_v<T, ContinueStmt>) return "Continue. ";
+        else if constexpr (std::is_same_v<T, VaStartStmt>) return "Start variadic arguments after " + node.lastParameter + ". ";
+        else if constexpr (std::is_same_v<T, VaEndStmt>) return "Finish variadic arguments. ";
         else if constexpr (std::is_same_v<T, GotoStmt>) return "Go to " + node.label + ". ";
         else if constexpr (std::is_same_v<T, LabelStmt>) return "Label " + node.name + ". ";
         else if constexpr (std::is_same_v<T, RepeatStmt>) {
@@ -376,6 +379,7 @@ std::string printStmt(const Stmt *s) {
                     if (node.params[i].type) out += " as " + printTypeSpec(*node.params[i].type);
                 }
             }
+            if (node.variadic) out += " and variadic parameters";
             if (node.returnType) out += " returns " + printTypeSpec(*node.returnType);
             if (node.inlineSpecifier) out += " with inline";
             if (node.noreturnSpecifier) out += " with no return";

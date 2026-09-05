@@ -102,6 +102,8 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
+    if (t.text == "start" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaStart();
+    if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaEnd();
     if (t.text == "import" && (checkWordAt(1, "c") || (checkWordAt(1, "the") && checkWordAt(2, "c")))) return parseCImport();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
@@ -151,6 +153,22 @@ Stmt *Parser::parseAtomicStore() {
     std::string name = expectIdentName();
     expectDot();
     return arena_.makeStmt(AtomicStoreStmt{std::move(name), expr}, line);
+}
+
+Stmt *Parser::parseVaStart() {
+    int line = peek().line;
+    advance(); advance(); advance();
+    expectWord("after");
+    std::string lastParameter = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(VaStartStmt{std::move(lastParameter)}, line);
+}
+
+Stmt *Parser::parseVaEnd() {
+    int line = peek().line;
+    advance(); advance(); advance();
+    expectDot();
+    return arena_.makeStmt(VaEndStmt{}, line);
 }
 
 Stmt *Parser::parseCImport() {
@@ -267,6 +285,8 @@ Stmt *Parser::parseStmt() {
     if (t.text == "procedure") return parseProcedure();
     if (isReturnKeyword(t.text)) return parseReturn();
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
+    if (t.text == "start" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaStart();
+    if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaEnd();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
           "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
@@ -908,10 +928,16 @@ Stmt *Parser::parseProcedure() {
     std::vector<ProcedureParam> params;
     bool sawTypedParam = false;
     bool sawUntypedParam = false;
+    bool variadic = false;
 
     if (checkWord("takes")) {
         advance();
         while (peek().kind != TokKind::Colon && !checkWord("returns")) {
+            if (checkWord("and") && checkWordAt(1, "variadic") && checkWordAt(2, "parameters")) {
+                advance(); advance(); advance();
+                variadic = true;
+                break;
+            }
             std::string paramName = expectIdentName();
             std::optional<TypeSpec> paramType;
             if (checkWord("as")) {
@@ -967,7 +993,7 @@ Stmt *Parser::parseProcedure() {
 
     expectColon();
     auto body = parseBlockUntil("end", "procedure");
-    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused}, line);
+    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused, variadic}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {
@@ -1451,6 +1477,7 @@ Expr *Parser::parsePrimary() {
     const Token &t = peek();
     if (checkWord("compound") && checkWordAt(1, "value")) return parseCompoundLiteral();
     if (checkWord("select") && checkWordAt(1, "by") && checkWordAt(2, "type") && checkWordAt(3, "of")) return parseGenericSelection();
+    if (checkWord("next") && checkWordAt(1, "variadic") && checkWordAt(2, "argument") && checkWordAt(3, "as")) return parseVaArg();
     if (t.kind == TokKind::Number) { advance(); return arena_.makeExpr(IntLit{t.num}, t.line); }
     if (t.kind == TokKind::Float) { advance(); return arena_.makeExpr(FloatLit{t.fval}, t.line); }
     if (t.kind == TokKind::String) { advance(); return arena_.makeExpr(StringLit{t.text}, t.line); }
@@ -1708,4 +1735,10 @@ Expr *Parser::parsePrimary() {
     }
     if (t.kind == TokKind::Ident) { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
     error("expected a number, a decimal, a string, a name, true, false, null pointer, minus, Choose, Compound value, Select by type, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
+}
+
+Expr *Parser::parseVaArg() {
+    int line = peek().line;
+    advance(); advance(); advance(); advance();
+    return arena_.makeExpr(VaArgExpr{parseTypeSpec()}, line);
 }

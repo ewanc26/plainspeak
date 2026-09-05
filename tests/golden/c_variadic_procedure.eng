@@ -1,0 +1,11 @@
+Procedure sum takes count as integer and variadic parameters returns integer:
+    Start variadic arguments after count.
+    Declare total as integer with value 0.
+    For i from 1 to count:
+        Add Next variadic argument as integer to total.
+    End for.
+    Finish variadic arguments.
+    Return total.
+End procedure.
+
+Say Call sum with 3, 10, 20, 12 done.

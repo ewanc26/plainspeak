@@ -135,7 +135,7 @@ PlainSpeak's `For each` is a language extension and is not counted as a replacem
 
 Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer. `with inline` and `with no return` preserve the corresponding C function specifiers, with no-return Procedures restricted to explicit `void` functions whose control flow cannot reach the end and which contain no `Return`; complete C inline/linkage compatibility rules remain pending.
 
-Typed Procedures now have explicit native parameter and return types, recursive native qualifiers, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. `func.typed-signatures`, `func.prototypes`, `func.recursion` and `types.function-types` are **implemented** because the C99 function-type surface used by PlainSpeak is complete and end-to-end tested; variadic definitions/calls, function pointers, C's full compatible-type/prototype rules and complete path-sensitive return analysis remain pending in their own rows.
+Typed Procedures now have explicit native parameter and return types, recursive native qualifiers, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. Variadic typed Procedures can initialize, consume and finish one implicit `va_list` through `Start variadic arguments`, `Next variadic argument as`, and `Finish variadic arguments`. `func.typed-signatures`, `func.prototypes`, `func.recursion` and `types.function-types` are **implemented** because the C99 function-type surface used by PlainSpeak is complete and end-to-end tested; variadic default promotions, `va_copy`, function pointers, C's full compatible-type/prototype rules and complete path-sensitive return analysis remain pending in their own rows.
 
 ## Translation and preprocessing capability
 
@@ -189,7 +189,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.setjmp` | planned | `<setjmp.h>` |
 | `lib.signal` | planned | `<signal.h>` |
 | `lib.stdalign` | foundation | Native `_Alignas` declaration requests are tested; `<stdalign.h>` macro bindings and complete compatibility remain pending. |
-| `lib.stdarg` | planned | `<stdarg.h>` |
+| `lib.stdarg` | foundation | Typed variadic Procedures use `<stdarg.h>` `va_list`, `va_start`, `va_arg`, and `va_end` through deterministic PlainSpeak operations; default argument promotions, `va_copy`, `va_end` control-flow obligations and the remaining header surface remain pending. |
 | `lib.stdatomic` | planned | `<stdatomic.h>` |
 | `lib.stdbool` | foundation | `<stdbool.h>` / C23 boolean spellings |
 | `lib.stddef` | foundation | Native `size type` and `difference type` declarations exist; remaining `<stddef.h>` types/macros and exact ABI bindings remain pending. |

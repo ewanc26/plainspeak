@@ -115,6 +115,21 @@ TEST_CASE("parser represents function specifiers", "[parser][c99][c11]") {
     CHECK(procedure.noreturnSpecifier);
 }
 
+TEST_CASE("parser represents variadic Procedures and stdarg operations", "[parser][c99]") {
+    Tokenizer t("Procedure sum takes count as integer and variadic parameters returns integer: Start variadic arguments after count. Return Next variadic argument as integer. Finish variadic arguments. End procedure.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &procedure = std::get<ProcedureStmt>(program[0]->node);
+    CHECK(procedure.variadic);
+    REQUIRE(procedure.body.size() == 3);
+    CHECK(std::get<VaStartStmt>(procedure.body[0]->node).lastParameter == "count");
+    CHECK(std::holds_alternative<VaArgExpr>(std::get<ReturnStmt>(procedure.body[1]->node).expr->node));
+    CHECK(std::holds_alternative<VaEndStmt>(procedure.body[2]->node));
+}
+
 TEST_CASE("parser represents a warning directive", "[parser][c23]") {
     Tokenizer t("Warn \"check this\".");
     auto tokens = t.tokenize();

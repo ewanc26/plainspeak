@@ -412,6 +412,10 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) return isImportedObject(node.name, analysis) ? node.name : mangle(node.name);
+        } else if constexpr (std::is_same_v<T, VaArgExpr>) {
+            auto it = analysis.variadicArgumentTypes.find(e);
+            Type type = it == analysis.variadicArgumentTypes.end() ? Type::number() : it->second;
+            return "va_arg(ps__va_args, " + emitCType(type, &analysis) + ")";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
@@ -511,6 +515,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
                 return boxRaw(isImportedObject(node.name, analysis) ? node.name : mangle(node.name), exprType(e, analysis));
             }
             return mangle(node.name);
+        } else if constexpr (std::is_same_v<T, VaArgExpr>) {
+            return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, GenericSelectionExpr>) {
@@ -761,6 +767,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
         } else if constexpr (std::is_same_v<T, AtomicStoreStmt>) {
             out << indent << "atomic_store(&" << mangle(node.name) << ", "
                 << emitRawExpr(node.expr, analysis) << ");\n";
+        } else if constexpr (std::is_same_v<T, VaStartStmt>) {
+            out << indent << "va_start(ps__va_args, " << mangle(node.lastParameter) << ");\n";
+        } else if constexpr (std::is_same_v<T, VaEndStmt>) {
+            out << indent << "va_end(ps__va_args);\n";
         } else if constexpr (std::is_same_v<T, SetStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
                 out << indent << nativeName(node.name, analysis) << " = " << emitRawExpr(node.expr, analysis) << ";\n";
@@ -974,11 +984,15 @@ std::string emitProcedureDeclaration(const ProcedureStmt &proc,
     std::string parameters;
     for (size_t i = 0; i < proc.params.size(); ++i) {
         if (i > 0) parameters += ", ";
-        if (typed && i < signature->parameterTypes.size()) {
+    if (typed && i < signature->parameterTypes.size()) {
             parameters += emitCDeclaration(signature->parameterTypes[i], mangle(proc.params[i].name));
         } else {
             parameters += "PsValue " + mangle(proc.params[i].name);
         }
+    }
+    if (typed && signature->variadic) {
+        if (!parameters.empty()) parameters += ", ";
+        parameters += "...";
     }
     if (parameters.empty()) parameters = "void";
 
@@ -1001,8 +1015,11 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
 
     std::set<std::string> localVars;
     collectVars(proc.body, localVars, analysis);
+    if (signature && signature->nativeTyped && signature->variadic) {
+        out << "    va_list ps__va_args;\n";
+    }
     for (const auto &v : localVars) out << "    PsValue " << mangle(v) << ";\n";
-    if (!localVars.empty()) out << "\n";
+    if (!localVars.empty() || (signature && signature->nativeTyped && signature->variadic)) out << "\n";
 
     int loopCounter = 0;
     for (Stmt *inner : proc.body) {

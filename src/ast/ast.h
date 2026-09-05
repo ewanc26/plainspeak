@@ -137,12 +137,13 @@ struct BinaryExpr      { BinOp op; Expr *lhs; Expr *rhs; };
 struct ListExpr        { std::vector<Expr *> items; };
 struct EmptyListExpr   { ListElementKind elementKind; };
 struct ItemExpr        { Expr *index; Expr *list; };
+struct VaArgExpr       { TypeSpec type; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
                               CompoundLiteralExpr, GenericSelectionExpr, ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
-                              UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
+                              UnaryExpr, ListExpr, EmptyListExpr, ItemExpr, VaArgExpr>;
 struct Expr { ExprNode node; int line; };
 
 struct SayStmt       { std::vector<Expr *> args; };
@@ -198,6 +199,8 @@ struct LabelStmt     { std::string name; };
 struct CallStmt      { std::string name; std::vector<Expr *> args; };
 struct IndirectCallStmt { Expr *callee; std::vector<Expr *> args; };
 struct ProcedureParam { std::string name; std::optional<TypeSpec> type; };
+struct VaStartStmt { std::string lastParameter; };
+struct VaEndStmt {};
 struct CFunctionImportStmt {
     std::string name;
     std::vector<TypeSpec> parameterTypes;
@@ -220,6 +223,7 @@ struct ProcedureStmt {
     bool deprecated = false;
     std::string deprecationMessage{};
     bool maybeUnused = false;
+    bool variadic = false;
 };
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
@@ -235,7 +239,7 @@ using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, U
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
-                              DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, ProcedureStmt, ReturnStmt,
+                              DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, VaStartStmt, VaEndStmt, ProcedureStmt, ReturnStmt,
                               CommentStmt, WarningStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt, AtomicStoreStmt, CImportStmt, CFunctionImportStmt, CObjectImportStmt>;
 struct Stmt { StmtNode node; int line; };
 

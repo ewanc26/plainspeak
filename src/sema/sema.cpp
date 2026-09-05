@@ -1035,6 +1035,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         bool typed = proc->returnType.has_value();
         ProcedureSignature signature;
         signature.nativeTyped = typed;
+        signature.variadic = proc->variadic;
         signature.inlineSpecifier = proc->inlineSpecifier;
         signature.noreturnSpecifier = proc->noreturnSpecifier;
         signature.deprecated = proc->deprecated;
@@ -1045,6 +1046,18 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
 
         if (signature.noreturnSpecifier && (!typed || signature.returnType.kind != TypeKind::Void)) {
             result.diagnostics.push_back({18, s->line, "A no-return Procedure must have an explicit void return type."});
+        }
+
+        if (signature.variadic) {
+            if (!typed) {
+                result.diagnostics.push_back({18, s->line, "A variadic Procedure must have typed parameters and an explicit return type."});
+            } else if (proc->params.empty()) {
+                result.diagnostics.push_back({18, s->line, "A variadic Procedure needs at least one named parameter before the variadic arguments."});
+            } else {
+                signature.variadicLastParameter = proc->params.back().name;
+            }
+            if (std::find(result.cHeaders.begin(), result.cHeaders.end(), "stdarg.h") == result.cHeaders.end())
+                result.cHeaders.push_back("stdarg.h");
         }
 
         for (const auto &param : proc->params) {
@@ -1460,6 +1473,20 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({35, line, message, DiagSeverity::Warning});
             }
             return symbol.type;
+        }
+        else if constexpr (std::is_same_v<T, VaArgExpr>) {
+            Type type = resolveTypeSpec(node.type);
+            validateTypeQualifiers(type, line, diags);
+            if (!currentProcedure_ || !currentProcedure_->variadic) {
+                diags.push_back({36, line, "Next variadic argument can only be used inside a variadic typed Procedure."});
+                return Type::number();
+            }
+            if (!isCompleteObjectType(type) || type.isArray()) {
+                diags.push_back({36, line, "A variadic argument needs a complete non-array C object type."});
+                return Type::number();
+            }
+            if (analysis_) analysis_->variadicArgumentTypes[e] = type;
+            return type;
         }
         else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
             Type target = resolveTypeSpec(node.type);
@@ -3094,6 +3121,17 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             gotoTargets_ = std::move(previousGotos);
             if (hadPrevious) currentProcedure_ = previous;
             else currentProcedure_.reset();
+        }
+        else if constexpr (std::is_same_v<T, VaStartStmt>) {
+            if (!currentProcedure_ || !currentProcedure_->variadic) {
+                diags.push_back({36, s->line, "Start variadic arguments can only be used inside a variadic typed Procedure."});
+            } else if (currentProcedure_->variadicLastParameter != node.lastParameter) {
+                diags.push_back({36, s->line, "Start variadic arguments must name the last fixed parameter of this Procedure."});
+            }
+        }
+        else if constexpr (std::is_same_v<T, VaEndStmt>) {
+            if (!currentProcedure_ || !currentProcedure_->variadic)
+                diags.push_back({36, s->line, "Finish variadic arguments can only be used inside a variadic typed Procedure."});
         }
         else if constexpr (std::is_same_v<T, IndirectCallStmt>) {
             Type callee = decayArray(inferExpr(node.callee, s->line, diags));

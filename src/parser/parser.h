@@ -70,6 +70,8 @@ private:
     Stmt *parseRuntimeAssert();
     Stmt *parseAtomicFence();
     Stmt *parseAtomicStore();
+    Stmt *parseVaStart();
+    Stmt *parseVaEnd();
     Stmt *parseCImport();
     Stmt *parseCFunctionImport();
     Stmt *parseCObjectImport();
@@ -94,4 +96,5 @@ private:
     Expr *parsePrimary();
     Expr *parseCompoundLiteral();
     Expr *parseGenericSelection();
+    Expr *parseVaArg();
 };
