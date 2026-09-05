@@ -445,6 +445,13 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return mangle(node.name);
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "ps_int(0L)";
+        } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            std::string call = "(" + emitRawExpr(node.callee, analysis) + ")(";
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                if (i) call += ", ";
+                call += emitRawExpr(node.args[i], analysis);
+            }
+            return boxRaw(call + ")", exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, CastExpr>) {
