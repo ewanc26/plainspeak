@@ -692,6 +692,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 for (Stmt *inner : c.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
             }
             out << indent << "}\n";
+        } else if constexpr (std::is_same_v<T, GotoStmt>) {
+            out << indent << "goto " << mangle(node.label) << ";\n";
+        } else if constexpr (std::is_same_v<T, LabelStmt>) {
+            out << indent << mangle(node.name) << ": ;\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             out << indent << "(void)" << mangle(node.name) << "(";

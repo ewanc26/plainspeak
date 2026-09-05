@@ -629,6 +629,8 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
 
     for (Stmt *s : program) checkStmt(s, result.diagnostics);
 
+    validateLabels(result.diagnostics);
+
     scopes_.pop_back();
     currentProcedure_.reset();
     analysis_ = nullptr;
@@ -641,6 +643,17 @@ std::vector<Diag> Sema::check(const std::vector<Stmt *> &program) {
 
 void Sema::enterScope() { scopes_.emplace_back(); }
 void Sema::leaveScope() { scopes_.pop_back(); }
+
+void Sema::validateLabels(std::vector<Diag> &diags) {
+    for (const auto &[target, line] : gotoTargets_) {
+        if (!labels_.count(target)) {
+            diags.push_back({32, line, "Go to jumps to \"" + target +
+                                      "\" but no Label \"" + target + "\" exists in this function."});
+        }
+    }
+    labels_.clear();
+    gotoTargets_.clear();
+}
 
 Sema::Symbol *Sema::findVar(const std::string &name) {
     for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it) {
@@ -1911,6 +1924,17 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({29, s->line, "Continue can only appear inside a loop."});
             }
         }
+        else if constexpr (std::is_same_v<T, GotoStmt>) {
+            gotoTargets_[node.label] = s->line;
+        }
+        else if constexpr (std::is_same_v<T, LabelStmt>) {
+            if (labels_.count(node.name)) {
+                diags.push_back({32, s->line, "Label \"" + node.name +
+                                          "\" is already defined in this function."});
+            } else {
+                labels_[node.name] = s->line;
+            }
+        }
         else if constexpr (std::is_same_v<T, RepeatStmt>) {
             Type countType = inferExpr(node.count, s->line, diags);
             if (countType != Type::number()) {
@@ -2039,6 +2063,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             bool hadPrevious = currentProcedure_.has_value();
             int previousLoopDepth = loopDepth_;
             int previousBreakableDepth = breakableDepth_;
+            auto previousLabels = std::move(labels_);
+            auto previousGotos = std::move(gotoTargets_);
             currentProcedure_ = signatureIt->second;
             loopDepth_ = 0;
             breakableDepth_ = 0;
@@ -2050,6 +2076,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 declareVar(node.params[i].name, paramType, signatureIt->second.nativeTyped, s->line, diags);
             }
             for (Stmt *inner : node.body) checkStmt(inner, diags);
+            validateLabels(diags);
 
             if (signatureIt->second.nativeTyped &&
                 signatureIt->second.returnType.kind != TypeKind::Void) {
@@ -2064,6 +2091,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             leaveScope();
             loopDepth_ = previousLoopDepth;
             breakableDepth_ = previousBreakableDepth;
+            labels_ = std::move(previousLabels);
+            gotoTargets_ = std::move(previousGotos);
             if (hadPrevious) currentProcedure_ = previous;
             else currentProcedure_.reset();
         }

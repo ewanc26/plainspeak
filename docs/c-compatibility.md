@@ -103,7 +103,7 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `control.switch` | foundation |
 | `control.break` | implemented |
 | `control.continue` | implemented |
-| `control.goto-labels` | planned |
+| `control.goto-labels` | foundation |
 | `control.return` | foundation |
 
 `Do: ... End do while condition.` now supplies C's post-test loop semantics with native scalar conditions, one guaranteed first iteration, and direct C `do { ... } while (...);` lowering. `Break.` and `Continue.` lower directly to C in every current PlainSpeak loop form, including when nested inside conditional blocks. Semantic analysis rejects either statement outside an allowed context and maintains loop context through nested scopes. `control.break` remains **foundation** because C `break` also applies to `switch`, which is still pending; `control.continue` will gain further coverage as general `for` and do-while loops land.
@@ -111,6 +111,8 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 PlainSpeak's `For each` is a language extension and is not counted as a replacement for C's `for`. `For i from bound to bound:` / `For i from bound down to bound:` supplies the common bounded counting form of C's `for` with a native `long` loop variable, once-evaluated bounds, and `Break.`/`Continue.` lowering to C `break;`/`continue;`, but remains **foundation** because arbitrary C `for` init/condition/post-step clauses are not yet source-spellable.
 
 `Switch value: When constant: ... Otherwise: ... End switch.` lowers directly to a C `switch` statement with integer `case` labels and an optional `default`. The condition must be integral; each `When` clause requires an integer constant expression; duplicate `When` values and multiple `Otherwise` clauses are rejected; clause bodies share one block scope and fall through unless ended with `Break.`, matching C's semantics. `control.switch` is **foundation**: the core statement is usable, but C23 `case` range labels, `_BitInt`/enum representation edge cases in label types, and exhaustive implementation-defined label-value rules remain pending.
+
+`Label name.` and `Go to name.` lower directly to C `label:` and `goto`. Labels are function-scoped exactly as in C: forward and backward jumps work, labels resolve only within the enclosing procedure or top-level body, duplicates are rejected, and jumping over an automatic object's declaration leaves that object indeterminate per C. `control.goto-labels` is **foundation** because the current language has no variably-modified types, so the VLA-in-scope prohibition is trivially satisfied rather than diagnosed, and label namespace interplay with C23 `constexpr`/attribute surfaces is still pending.
 
 ## Functions
 

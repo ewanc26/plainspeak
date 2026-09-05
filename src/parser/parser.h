@@ -54,6 +54,8 @@ private:
     Stmt *parseForEach();
     Stmt *parseFor();
     Stmt *parseSwitch();
+    Stmt *parseGoto();
+    Stmt *parseLabel();
     Stmt *parseCall();
     Stmt *parseReturn();
     Stmt *parseTopLevelStmt();

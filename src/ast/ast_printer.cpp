@@ -225,6 +225,8 @@ std::string printStmt(const Stmt *s) {
         else if constexpr (std::is_same_v<T, CommentStmt>) return "(" + node.text + ") ";
         else if constexpr (std::is_same_v<T, BreakStmt>) return "Break. ";
         else if constexpr (std::is_same_v<T, ContinueStmt>) return "Continue. ";
+        else if constexpr (std::is_same_v<T, GotoStmt>) return "Go to " + node.label + ". ";
+        else if constexpr (std::is_same_v<T, LabelStmt>) return "Label " + node.name + ". ";
         else if constexpr (std::is_same_v<T, RepeatStmt>) {
             std::string out = "Repeat " + printExpr(node.count) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);

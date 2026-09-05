@@ -1,0 +1,1 @@
+error[E0032]: Go to jumps to "secret" but no Label "secret" exists in this function.

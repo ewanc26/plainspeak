@@ -88,12 +88,14 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
     if (t.text == "switch") return parseSwitch();
+    if (t.text == "go") return parseGoto();
+    if (t.text == "label") return parseLabel();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
@@ -129,12 +131,14 @@ Stmt *Parser::parseStmt() {
     if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
     if (t.text == "switch") return parseSwitch();
+    if (t.text == "go") return parseGoto();
+    if (t.text == "label") return parseLabel();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, call, procedure, return (see docs/grammar.md)");
+          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -602,6 +606,31 @@ Stmt *Parser::parseSwitch() {
     expectDot();
     if (cases.empty()) error("A Switch block needs at least one When or Otherwise clause.");
     return arena_.makeStmt(SwitchStmt{cond, std::move(cases)}, line);
+}
+
+Stmt *Parser::parseGoto() {
+    int line = peek().line;
+    advance();
+    if (!checkWord("to"))
+        error("expected \"to\" to name where the jump goes, like \"Go to redo.\"");
+    advance();
+    if (peek().kind != TokKind::Ident)
+        error("expected the name of a Label to jump to, like \"Go to redo.\"");
+    std::string label = peek().text;
+    advance();
+    expectDot();
+    return arena_.makeStmt(GotoStmt{label}, line);
+}
+
+Stmt *Parser::parseLabel() {
+    int line = peek().line;
+    advance();
+    if (peek().kind != TokKind::Ident)
+        error("expected a name for the Label, like \"Label redo.\"");
+    std::string name = peek().text;
+    advance();
+    expectDot();
+    return arena_.makeStmt(LabelStmt{name}, line);
 }
 
 Stmt *Parser::parseReturn() {

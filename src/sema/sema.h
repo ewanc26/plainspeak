@@ -85,8 +85,15 @@ private:
     int breakableDepth_ = 0;
     AnalysisResult *analysis_ = nullptr;
 
+    // Function-scoped C label namespace: declaration name -> line, and every
+    // Go to target -> its source line. Both are reset at each function boundary
+    // and validated once the whole body has been walked.
+    std::unordered_map<std::string, int> labels_;
+    std::unordered_map<std::string, int> gotoTargets_;
+
     void enterScope();
     void leaveScope();
+    void validateLabels(std::vector<Diag> &diags);
     Symbol *findVar(const std::string &name);
     std::pair<Symbol, bool> lookupVar(const std::string &name, int line, std::vector<Diag> &diags);
     bool declareVar(const std::string &name, Type type, bool nativeObject,

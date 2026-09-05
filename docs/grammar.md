@@ -38,7 +38,7 @@ Resolved by exact, case-insensitive lookup — never fuzzy matching:
 Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
-       | BreakStmt | ContinueStmt
+| BreakStmt | ContinueStmt | GoToStmt | LabelStmt
         | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt | ForStmt | SwitchStmt
        | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
@@ -70,6 +70,8 @@ ReplaceItemStmt ::= "Replace" "item" "at" Expr "in" IDENT "with" Expr "."
 RemoveItemStmt ::= "Remove" "item" "at" Expr "from" IDENT "."
 BreakStmt ::= "Break" "."
 ContinueStmt ::= "Continue" "."
+GoToStmt ::= "Go" "to" IDENT "."
+LabelStmt ::= "Label" IDENT "."
 CommentStmt ::= "(" COMMENT_TEXT ")"
 RepeatStmt ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
 IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
@@ -137,6 +139,18 @@ Switch code: When 1: Say "one". Break. When 2: Say "two". Break. Otherwise: Say 
 ```
 
 `Switch` is a breakable but not a loop context. `Break.` exits the nearest switch or loop; `Continue.` requires a surrounding loop, and inside a switch that is contained in a loop it jumps to that loop's next step.
+
+`Label name.` marks a target and `Go to name.` jumps to it. Labels live in C's function-scoped label namespace: they are visible everywhere inside the enclosing procedure or the top-level program body, before or after the jump, but never across a procedure boundary. Forward and backward jumps are allowed, and a jump may cross ordinary scopes; jumping over a declaration of an automatic object simply leaves that object's value indeterminate, exactly as C requires. A function may not define the same label twice, and `Go to` a name with no matching `Label` in that function is rejected:
+
+```text
+Set attempts to 0.
+Label try_again.
+Add 1 to attempts.
+If attempts is less than 3 then: Go to try_again. End if.
+Go to finish.
+Say "never printed".
+Label finish.
+```
 
 ## C type spellings
 

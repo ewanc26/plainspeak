@@ -62,6 +62,7 @@ add_executable(unit_tests
     tests/unit/test_do_while.cpp
     tests/unit/test_for_loop.cpp
     tests/unit/test_switch.cpp
+    tests/unit/test_goto.cpp
     tests/unit/test_integer_constant_expressions.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
