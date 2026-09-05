@@ -643,6 +643,9 @@ Type usualArithmeticConversion(Type lhs, Type rhs) {
     lhs = decayArray(std::move(lhs));
     rhs = decayArray(std::move(rhs));
 
+    if (lhs.kind == TypeKind::Complex || rhs.kind == TypeKind::Complex)
+        return Type::complex();
+
     if (lhs.kind == TypeKind::Floating || rhs.kind == TypeKind::Floating) {
         FloatingRank rank = FloatingRank::Float;
         auto raise = [&](const Type &t) {
