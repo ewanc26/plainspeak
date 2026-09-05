@@ -1,0 +1,5 @@
+Declare source as integer with value 9.
+Declare copy as type of (source plus 1) with value 17.
+Declare unqualified_copy as type of unqualified (source) with value 18.
+Say copy.
+Say unqualified_copy.

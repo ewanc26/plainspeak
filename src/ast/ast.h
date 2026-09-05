@@ -76,6 +76,7 @@ struct TypeSpec {
     std::size_t arrayBound = 0;
     std::string tag{};
     std::string typeOfName{};
+    Expr *typeOfExpr = nullptr;
     std::size_t bitWidth = 0;
     bool bitIntUnsigned = false;
     TypeSpecQualifiers qualifiers{};

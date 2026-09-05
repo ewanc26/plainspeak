@@ -61,9 +61,9 @@ std::string printTypeSpec(const TypeSpec &type) {
         case TypeSpecKind::Alias:
             body = type.tag; break;
         case TypeSpecKind::TypeOf:
-            body = "type of " + type.typeOfName; break;
+            body = "type of " + (type.typeOfExpr ? "(" + printExpr(type.typeOfExpr) + ")" : type.typeOfName); break;
         case TypeSpecKind::TypeOfUnqual:
-            body = "type of unqualified " + type.typeOfName; break;
+            body = "type of unqualified " + (type.typeOfExpr ? "(" + printExpr(type.typeOfExpr) + ")" : type.typeOfName); break;
         case TypeSpecKind::Auto:
             body = "auto"; break;
         case TypeSpecKind::BitInt:

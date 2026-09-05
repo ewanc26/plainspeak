@@ -36,7 +36,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.unions` | foundation | Tagged unions have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access and native bit-fields; unions may contain flexible-array structures while inheriting C's placement restrictions; anonymous members remain pending. |
 | `types.enumerations` | foundation | Tagged enumerations have source definitions, implicit/explicit int-range enumerators, native enum storage, qualified enumerator expressions and typed transport; general integer constant expressions and C23 fixed underlying/wider rules remain pending. |
 | `types.aliases` | implemented | Named aliases resolve to the structural native type model. |
-| `types.typeof` | planned | C23 `typeof` / `typeof_unqual` capability. |
+| `types.typeof` | foundation | C23 `typeof` / `typeof_unqual` capability for native object names and parenthesized expressions. |
 | `types.auto-inference` | planned | C23 inferred `auto` capability. |
 | `types.constexpr` | planned | C23 constexpr object capability. |
 

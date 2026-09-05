@@ -212,7 +212,7 @@ Append `and variadic parameters` after the fixed parameter prefix to declare a C
 
 `Conjugate of` queries the complex conjugate of a complex scalar through `<complex.h>` and returns a complex value.
 
-The C23 spellings `type of name` and `type of unqualified name` can name the native type of an earlier object declaration. These foundation forms are unevaluated and name-based; expression operands and complete qualifier rules remain pending.
+The C23 spellings `type of name`, `type of unqualified name`, `type of (expression)`, and `type of unqualified (expression)` can name or infer the native type of an earlier object or expression. Expression operands are unevaluated for lowering; complete qualifier, array, function, and variably modified type rules remain pending.
 
 `bit integer with width N` and `unsigned bit integer with width N` spell signed and unsigned C23 `_BitInt(N)` native types. Width must be positive; rank, conversion, and target-support rules remain pending.
 

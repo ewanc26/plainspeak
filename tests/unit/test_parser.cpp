@@ -138,6 +138,18 @@ TEST_CASE("parser represents a variable-length array bound", "[parser][c99]") {
     CHECK(std::holds_alternative<VarRef>(declaration.type.arrayLengthExpr->node));
 }
 
+TEST_CASE("parser represents an expression type query", "[parser][c23]") {
+    Tokenizer t("Declare copy as type of (1 plus 2) with value 3.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &declaration = std::get<NativeDeclStmt>(program[0]->node);
+    REQUIRE(declaration.type.typeOfExpr);
+    CHECK(std::holds_alternative<BinaryExpr>(declaration.type.typeOfExpr->node));
+}
+
 TEST_CASE("parser handles logical operators", "[parser]") {
     Tokenizer t("Say true and false or true.");
     auto tokens = t.tokenize();

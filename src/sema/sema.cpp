@@ -1238,9 +1238,14 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::TypeOf:
         case TypeSpecKind::TypeOfUnqual: {
             result = Type::voidType();
-            for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it) {
-                auto found = it->find(spec.typeOfName);
-                if (found != it->end()) { result = found->second.type; break; }
+            if (spec.typeOfExpr && analysis_) {
+                auto found = analysis_->exprTypes.find(spec.typeOfExpr);
+                if (found != analysis_->exprTypes.end()) result = found->second;
+            } else {
+                for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it) {
+                    auto found = it->find(spec.typeOfName);
+                    if (found != it->end()) { result = found->second.type; break; }
+                }
             }
             if (spec.kind == TypeSpecKind::TypeOfUnqual) result.qualifiers = {};
             break;
@@ -2078,6 +2083,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             return Type::number();
         }
         else if constexpr (std::is_same_v<T, SizeOfTypeExpr>) {
+            if (node.type.typeOfExpr) inferExpr(node.type.typeOfExpr, line, diags);
             Type queried = resolveTypeSpec(node.type);
             validateTypeQualifiers(queried, line, diags);
             if (analysis_) analysis_->typeOperands[e] = queried;
@@ -2526,6 +2532,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
         }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
+            if (node.type.typeOfExpr) inferExpr(node.type.typeOfExpr, s->line, diags);
             Type declared = resolveTypeSpec(node.type);
             if (node.internalLinkage && node.externalLinkage) {
                 diags.push_back({24, s->line, "A native declaration cannot request both internal and external linkage."});

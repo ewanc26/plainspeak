@@ -1028,7 +1028,14 @@ TypeSpec Parser::parseTypeSpec() {
         bool unqual = false;
         if (checkWord("unqualified")) { advance(); unqual = true; }
         TypeSpec type{unqual ? TypeSpecKind::TypeOfUnqual : TypeSpecKind::TypeOf};
-        type.typeOfName = expectIdentName();
+        if (peek().kind == TokKind::LParen) {
+            advance();
+            type.typeOfExpr = parseExpr();
+            if (peek().kind != TokKind::RParen) error("type of expression needs a closing parenthesis");
+            advance();
+        } else {
+            type.typeOfName = expectIdentName();
+        }
         return finish(std::move(type));
     }
     if (checkWord("array") && checkWordAt(1, "of")) {
