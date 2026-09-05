@@ -1,2 +1,6 @@
 Declare inferred as auto with value 12.
 Say inferred.
+Declare value as integer with value 21.
+Declare inferred_pointer as auto with value Address of value.
+Set value to 22.
+Say Value at inferred_pointer.
