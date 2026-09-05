@@ -136,7 +136,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | ID | Status |
 |---|---|
 | `pp.translation-units` | planned |
-| `pp.header-interop` | planned |
+| `pp.header-interop` | foundation |
 | `pp.conditional-compilation` | planned |
 | `pp.macros` | planned |
 | `pp.variadic-vaopt` | planned |
@@ -145,6 +145,8 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `pp.embed` | planned |
 | `pp.predefined-environment` | planned |
 | `pp.pragma` | planned |
+
+`Import the C header`, `Import the C library`, and typed external C-function declarations provide a deterministic interop foundation: generated C includes validated headers, the native link command receives validated libraries, and imported calls retain native C signatures and symbol names. Full header parsing, macro imports, variadic promotions, and separate translation units remain pending.
 
 ## Concurrency and C memory model
 

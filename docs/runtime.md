@@ -112,6 +112,8 @@ Legacy Procedures keep the `PsValue` ABI. Procedures with explicit parameter typ
 
 Typed calls use raw arguments and native return values; when a typed arithmetic result re-enters a legacy PlainSpeak expression it is boxed through the existing numeric bridge. Pointer results stay on the native/raw path. Typed `void` procedures emit C `void` and bare `return;`.
 
+Typed C imports use the same native call ABI without emitting a PlainSpeak definition: the declared header is included, the external symbol is left unmangled, and variadic imports retain their fixed native prefix while accepting additional arguments. Library imports append validated `-l` options to the native link command.
+
 
 ## Native structures
 
