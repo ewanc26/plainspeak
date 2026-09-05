@@ -638,6 +638,8 @@ Say Increment before x.
 Say Increment after x.
 Say Decrement before x.
 Say Decrement after x.
+
+Native side effects on opposite sides of an ordinary arithmetic or comparison expression are unsequenced, so the compiler diagnoses obvious repeated reads or modifications of the same native object. Logical `and` and `or` preserve C's sequencing point between their operands.
 ```
 
 `before` is the prefix form: the object is changed first and the expression yields the updated value. `after` is the postfix form: the expression yields the previous value and the side effect updates the object afterwards, following C's sequencing rule for postfix increment/decrement.

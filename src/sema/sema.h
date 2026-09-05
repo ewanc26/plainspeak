@@ -77,6 +77,7 @@ struct AnalysisResult {
     // and the statically selected branch for code generation.
     std::unordered_map<const TypeSpec *, Type> genericAssociationTypes;
     std::unordered_map<const Expr *, int> genericSelections;
+    std::unordered_set<const Expr *> sequencingDiagnostics;
 };
 
 class Sema {

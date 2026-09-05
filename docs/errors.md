@@ -38,6 +38,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0030 | Invalid Switch condition, When label, duplicate/default structure, or clause body |
 | E0032 | Invalid Go to / Label: undefined target, duplicate label, or cross-function label use |
 | E0033 | `Warning` directive emitted as a non-fatal compile-time warning |
+| E0034 | Native object is read or modified more than once without a C sequence point |
 
 ## Parse-time errors
 

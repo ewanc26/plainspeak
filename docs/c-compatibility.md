@@ -56,7 +56,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.subscript-member` | foundation |
 | `expr.casts` | foundation |
 | `expr.conditional` | foundation |
-| `expr.sequencing` | planned |
+| `expr.sequencing` | foundation |
 | `expr.function-calls` | foundation |
 | `expr.compound-literals` | foundation |
 | `expr.generic-selection` | foundation |
@@ -73,6 +73,8 @@ Compound values now lower scalar, positional, member-designated and array-elemen
 Type-directed selections now lower to C11 `_Generic`: every association has a complete non-duplicate type, an optional `Otherwise` expression supplies the C default association, and the selected branch retains its native or legacy expression type. The remaining qualifier-compatibility and exhaustive constraint rules remain pending.
 
 Conditional expressions are now source-spellable and lower directly to C `?:`. Arithmetic branches use usual arithmetic conversions; compatible object-pointer branches compose pointed-to qualifiers and `void *`; identical structure/union branches are transported by value. This remains **foundation** because integer null-pointer constants, function pointers, void-valued branches and the remaining exhaustive composite-type rules are pending.
+
+Obvious unsequenced native side effects are diagnosed before lowering: a binary expression cannot read or modify the same native object on both unsequenced sides. `and` and `or` retain their C short-circuit sequencing. This is a foundation for the complete C sequencing model; aliasing through arbitrary pointers and every C23 sequencing edge case remain pending.
 
 Prefix/postfix increment and decrement are now source-spellable over native modifiable arithmetic/pointer lvalues, including array elements, dereferences, named bit-fields and C11 atomic scalar objects. The operators lower directly to C, preserving prefix/postfix value timing and pointer scaling. This remains **foundation** because function-pointer operands are not yet source-spellable and the repository has not yet completed the broader C sequencing model.
 

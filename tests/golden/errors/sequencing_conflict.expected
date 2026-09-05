@@ -1,0 +1,1 @@
+error[E0034]: This expression reads or modifies native object "x" more than once without a C sequence point.

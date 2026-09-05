@@ -4,6 +4,7 @@
 #include <climits>
 #include <limits>
 #include <functional>
+#include <set>
 #include <type_traits>
 #include <utility>
 
@@ -293,6 +294,126 @@ std::optional<long> integerConstantValue(const Expr *expr) {
 bool isConstTruthyExpr(const Expr *expr) {
     auto value = integerConstantValue(expr);
     return value && *value != 0;
+}
+
+struct ExpressionEffects {
+    std::set<std::string> reads;
+    std::set<std::string> writes;
+};
+
+std::optional<std::string> nativeModificationTarget(const Expr *expr,
+                                                    const AnalysisResult &analysis) {
+    if (!expr) return std::nullopt;
+    return std::visit([&](auto &&node) -> std::optional<std::string> {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, VarRef>) {
+            if (analysis.nativeObjectRefs.count(expr)) return node.name;
+        } else if constexpr (std::is_same_v<T, MemberExpr>) {
+            auto base = nativeModificationTarget(node.base, analysis);
+            if (base) return *base + "." + node.name;
+        } else if constexpr (std::is_same_v<T, ElementExpr>) {
+            auto base = nativeModificationTarget(node.base, analysis);
+            if (base) return *base + "[]";
+        } else if constexpr (std::is_same_v<T, DerefExpr>) {
+            auto base = nativeModificationTarget(node.pointer, analysis);
+            if (base) return "*" + *base;
+        }
+        return std::nullopt;
+    }, expr->node);
+}
+
+ExpressionEffects expressionEffects(const Expr *expr, const AnalysisResult &analysis) {
+    if (!expr) return {};
+    return std::visit([&](auto &&node) -> ExpressionEffects {
+        using T = std::decay_t<decltype(node)>;
+        ExpressionEffects effects;
+        if constexpr (std::is_same_v<T, VarRef>) {
+            if (analysis.nativeObjectRefs.count(expr)) effects.reads.insert(node.name);
+        } else if constexpr (std::is_same_v<T, IncDecExpr>) {
+            effects = expressionEffects(node.operand, analysis);
+            if (auto target = nativeModificationTarget(node.operand, analysis)) {
+                effects.reads.insert(*target);
+                effects.writes.insert(*target);
+            }
+        } else if constexpr (std::is_same_v<T, BinaryExpr>) {
+            ExpressionEffects lhs = expressionEffects(node.lhs, analysis);
+            ExpressionEffects rhs = expressionEffects(node.rhs, analysis);
+            effects.reads.insert(lhs.reads.begin(), lhs.reads.end());
+            effects.reads.insert(rhs.reads.begin(), rhs.reads.end());
+            effects.writes.insert(lhs.writes.begin(), lhs.writes.end());
+            effects.writes.insert(rhs.writes.begin(), rhs.writes.end());
+        } else if constexpr (std::is_same_v<T, UnaryExpr>) {
+            effects = expressionEffects(node.rhs, analysis);
+        } else if constexpr (std::is_same_v<T, ConditionalExpr>) {
+            ExpressionEffects condition = expressionEffects(node.condition, analysis);
+            ExpressionEffects whenTrue = expressionEffects(node.whenTrue, analysis);
+            ExpressionEffects whenFalse = expressionEffects(node.whenFalse, analysis);
+            effects.reads.insert(condition.reads.begin(), condition.reads.end());
+            effects.writes.insert(condition.writes.begin(), condition.writes.end());
+            effects.reads.insert(whenTrue.reads.begin(), whenTrue.reads.end());
+            effects.reads.insert(whenFalse.reads.begin(), whenFalse.reads.end());
+            effects.writes.insert(whenTrue.writes.begin(), whenTrue.writes.end());
+            effects.writes.insert(whenFalse.writes.begin(), whenFalse.writes.end());
+        } else if constexpr (std::is_same_v<T, CallExpr>) {
+            for (Expr *arg : node.args) {
+                ExpressionEffects argEffects = expressionEffects(arg, analysis);
+                effects.reads.insert(argEffects.reads.begin(), argEffects.reads.end());
+                effects.writes.insert(argEffects.writes.begin(), argEffects.writes.end());
+            }
+        } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            effects = expressionEffects(node.callee, analysis);
+            for (Expr *arg : node.args) {
+                ExpressionEffects argEffects = expressionEffects(arg, analysis);
+                effects.reads.insert(argEffects.reads.begin(), argEffects.reads.end());
+                effects.writes.insert(argEffects.writes.begin(), argEffects.writes.end());
+            }
+        }
+        return effects;
+    }, expr->node);
+}
+
+std::optional<std::string> findUnsequencedConflict(const Expr *expr,
+                                                  const AnalysisResult &analysis) {
+    if (!expr) return std::nullopt;
+    return std::visit([&](auto &&node) -> std::optional<std::string> {
+        using T = std::decay_t<decltype(node)>;
+        if constexpr (std::is_same_v<T, BinaryExpr>) {
+            if (auto conflict = findUnsequencedConflict(node.lhs, analysis)) return conflict;
+            if (auto conflict = findUnsequencedConflict(node.rhs, analysis)) return conflict;
+            if (node.op == BinOp::And || node.op == BinOp::Or) return std::nullopt;
+            ExpressionEffects lhs = expressionEffects(node.lhs, analysis);
+            ExpressionEffects rhs = expressionEffects(node.rhs, analysis);
+            for (const auto &written : lhs.writes) {
+                if (rhs.reads.count(written) || rhs.writes.count(written)) return written;
+            }
+            for (const auto &written : rhs.writes) {
+                if (lhs.reads.count(written)) return written;
+            }
+        } else if constexpr (std::is_same_v<T, ConditionalExpr>) {
+            if (auto conflict = findUnsequencedConflict(node.condition, analysis)) return conflict;
+            if (auto conflict = findUnsequencedConflict(node.whenTrue, analysis)) return conflict;
+            return findUnsequencedConflict(node.whenFalse, analysis);
+        } else if constexpr (std::is_same_v<T, CallExpr>) {
+            for (Expr *arg : node.args)
+                if (auto conflict = findUnsequencedConflict(arg, analysis)) return conflict;
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                ExpressionEffects left = expressionEffects(node.args[i], analysis);
+                for (std::size_t j = i + 1; j < node.args.size(); ++j) {
+                    ExpressionEffects right = expressionEffects(node.args[j], analysis);
+                    for (const auto &written : left.writes) {
+                        if (right.reads.count(written) || right.writes.count(written)) return written;
+                    }
+                    for (const auto &written : right.writes)
+                        if (left.reads.count(written)) return written;
+                }
+            }
+        } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            if (auto conflict = findUnsequencedConflict(node.callee, analysis)) return conflict;
+            for (Expr *arg : node.args)
+                if (auto conflict = findUnsequencedConflict(arg, analysis)) return conflict;
+        }
+        return std::nullopt;
+    }, expr->node);
 }
 
 bool containsReturnStatement(const std::vector<Stmt *> &statements) {
@@ -1732,6 +1853,31 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, BinaryExpr>) {
             Type lhs = inferExpr(node.lhs, line, diags);
             Type rhs = inferExpr(node.rhs, line, diags);
+            if (analysis_ && node.op != BinOp::And && node.op != BinOp::Or &&
+                !findUnsequencedConflict(node.lhs, *analysis_) &&
+                !findUnsequencedConflict(node.rhs, *analysis_)) {
+                ExpressionEffects lhsEffects = expressionEffects(node.lhs, *analysis_);
+                ExpressionEffects rhsEffects = expressionEffects(node.rhs, *analysis_);
+                std::optional<std::string> conflict;
+                for (const auto &written : lhsEffects.writes) {
+                    if (rhsEffects.reads.count(written) || rhsEffects.writes.count(written)) {
+                        conflict = written;
+                        break;
+                    }
+                }
+                if (!conflict) {
+                    for (const auto &written : rhsEffects.writes) {
+                        if (lhsEffects.reads.count(written)) {
+                            conflict = written;
+                            break;
+                        }
+                    }
+                }
+                if (conflict && analysis_->sequencingDiagnostics.insert(e).second) {
+                    diags.push_back({34, line, "This expression reads or modifies native object \"" +
+                                              *conflict + "\" more than once without a C sequence point."});
+                }
+            }
             Type lhsValue = decayArray(lhs);
             Type rhsValue = decayArray(rhs);
             bool lhsPointer = lhsValue.isPointer();
