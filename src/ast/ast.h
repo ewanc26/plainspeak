@@ -53,6 +53,7 @@ enum class TypeSpecKind {
     Alias,
     TypeOf,
     TypeOfUnqual
+    , Auto
 };
 
 struct TypeSpecQualifiers {

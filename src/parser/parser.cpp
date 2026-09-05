@@ -893,6 +893,7 @@ TypeSpec Parser::parseTypeSpec() {
         return finish(TypeSpec{TypeSpecKind::Pointer, std::make_shared<TypeSpec>(std::move(pointee))});
     }
     if (checkWord("void")) { advance(); return finish(TypeSpec{TypeSpecKind::Void}); }
+    if (checkWord("auto")) { advance(); return finish(TypeSpec{TypeSpecKind::Auto}); }
     if (checkWord("boolean")) { advance(); return finish(TypeSpec{TypeSpecKind::Boolean}); }
     if (checkWord("character")) { advance(); return finish(TypeSpec{TypeSpecKind::Character}); }
     if (checkWord("signed") && checkWordAt(1, "character")) {

@@ -997,6 +997,7 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             if (spec.kind == TypeSpecKind::TypeOfUnqual) result.qualifiers = {};
             break;
         }
+        case TypeSpecKind::Auto: result = Type::voidType(); break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);
@@ -1914,6 +1915,17 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type declared = resolveTypeSpec(node.type);
+            if (node.type.kind == TypeSpecKind::Auto) {
+                if (!node.initializer) {
+                    diags.push_back({13, s->line, "A native auto declaration needs an initializer to infer its type."});
+                    return;
+                }
+                declared = inferExpr(node.initializer, s->line, diags);
+                if (declared.kind == TypeKind::String || declared.kind == TypeKind::List || declared.kind == TypeKind::Void) {
+                    diags.push_back({13, s->line, "C23 auto inference needs a native object type, not " + typeToString(declared) + "."});
+                    return;
+                }
+            }
             if (analysis_) analysis_->declarationTypes[s] = declared;
             if (!validateTypeQualifiers(declared, s->line, diags)) return;
             if (declared.kind == TypeKind::Void) {

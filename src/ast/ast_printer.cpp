@@ -50,6 +50,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "type of " + type.typeOfName; break;
         case TypeSpecKind::TypeOfUnqual:
             body = "type of unqualified " + type.typeOfName; break;
+        case TypeSpecKind::Auto:
+            body = "auto"; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;
