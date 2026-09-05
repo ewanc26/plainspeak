@@ -166,7 +166,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 
 | ID | Status | C surface |
 |---|---|---|
-| `lib.assert` | planned | `<assert.h>` |
+| `lib.assert` | implemented | Runtime `Assert` uses the conforming `<assert.h>` facility for scalar conditions. |
 | `lib.complex` | planned | `<complex.h>` |
 | `lib.ctype` | planned | `<ctype.h>` |
 | `lib.errno` | planned | `<errno.h>` |

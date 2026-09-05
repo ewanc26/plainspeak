@@ -97,7 +97,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (isReturnKeyword(t.text)) return parseReturn();
-    if (t.text == "assert") return parseStaticAssert();
+    if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
           "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
@@ -110,6 +110,14 @@ Stmt *Parser::parseStaticAssert() {
     Expr *condition = parseExpr();
     expectDot();
     return arena_.makeStmt(StaticAssertStmt{condition}, line);
+}
+
+Stmt *Parser::parseRuntimeAssert() {
+    int line = peek().line;
+    advance();
+    Expr *condition = parseExpr();
+    expectDot();
+    return arena_.makeStmt(RuntimeAssertStmt{condition}, line);
 }
 
 Stmt *Parser::parseStmt() {
@@ -154,7 +162,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (isReturnKeyword(t.text)) return parseReturn();
-    if (t.text == "assert") return parseStaticAssert();
+    if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
           "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");

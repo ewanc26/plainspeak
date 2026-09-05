@@ -1617,6 +1617,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 else if (*value == 0) diags.push_back({30, s->line, "Static assertion failed."});
             }
         }
+        else if constexpr (std::is_same_v<T, RuntimeAssertStmt>) {
+            Type type = inferExpr(node.condition, s->line, diags);
+            if (!(isArithmeticScalar(type) || type.isPointer() || type.kind == TypeKind::Nullptr))
+                diags.push_back({3, s->line, "An assertion needs a scalar condition."});
+        }
         else if constexpr (std::is_same_v<T, SetStmt>) {
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (Symbol *existing = findVar(node.name)) {
