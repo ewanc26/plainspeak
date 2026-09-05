@@ -50,7 +50,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
 | BreakStmt | ContinueStmt | GoToStmt | LabelStmt
-        | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt | ForStmt | SwitchStmt
+        | RepeatStmt | IfStmt | CompileIfStmt | WhileStmt | DoWhileStmt | ForEachStmt | ForStmt | SwitchStmt
        | CallStmt | ProcedureStmt | VaStartStmt | VaEndStmt | VaCopyStmt | VaCopyEndStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
 SayStmt ::= ("Say" | "Print" | "Show" | "Display" | "Write" | "Output") Expr ("followed" "by" Expr)* "."
@@ -89,6 +89,7 @@ LabelStmt ::= "Label" IDENT "."
 CommentStmt ::= "(" COMMENT_TEXT ")"
 RepeatStmt ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
 IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
+CompileIfStmt ::= "Compile" "if" IDENT "is" "defined" ":" Stmt* ("Otherwise" ":" Stmt*)? "End" "compile" "if" "."
 UnlessStmt ::= "Unless" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "unless" "."
 WhileStmt ::= "While" Expr ":" Stmt* "End" "while" "."
 UntilStmt ::= "Until" Expr ":" Stmt* ("End" "until" | "End" "while") "."
@@ -110,6 +111,8 @@ ReturnStmt ::= ("Return" | "Yield") Expr? "."
 ```
 
 `Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, `Do`/`while`, `For each`, and `For`) and, for `Break.`, inside a `Switch` block as well. `Continue.` is loop-only: inside a `Switch` body it is allowed only when that switch itself sits inside a loop, where it continues the enclosing loop just as C does. Both lower directly to C `break;` / `continue;`.
+
+`Compile if FEATURE is defined:` selects one source branch before semantic analysis and code generation. `Otherwise:` is optional, and the block closes with `End compile if.`. The command-line option `--define FEATURE` (or `--define FEATURE=VALUE`) marks the case-sensitive C identifier as defined; this foundation currently tests presence, while value expressions and `elif` forms remain future work. Physical line breaks do not affect the block.
 
 `Set` has two related roles. If its name does not exist in the current visible scopes, it creates the existing inferred boxed PlainSpeak variable. If that name already denotes a variable, `Set` assigns a new value to it instead. Explicit C-compatible objects are introduced only with `Declare`.
 

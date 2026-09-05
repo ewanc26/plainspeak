@@ -89,6 +89,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "repeat") return parseRepeat();
     if (isUnlessKeyword(t.text)) return parseUnless();
     if (t.text == "if") return parseIf();
+    if (t.text == "compile" && checkWordAt(1, "if")) return parseCompileIf();
     if (isUntilKeyword(t.text)) return parseUntil();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
@@ -314,6 +315,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "repeat") return parseRepeat();
     if (isUnlessKeyword(t.text)) return parseUnless();
     if (t.text == "if") return parseIf();
+    if (t.text == "compile" && checkWordAt(1, "if")) return parseCompileIf();
     if (isUntilKeyword(t.text)) return parseUntil();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
@@ -743,6 +745,40 @@ Stmt *Parser::parseRepeat() {
 
 Stmt *Parser::parseIf() {
     return parseConditional(false);
+}
+
+Stmt *Parser::parseCompileIf() {
+    int line = peek().line;
+    advance(); advance();
+    if (peek().kind != TokKind::Ident) error("Compile if needs a macro name");
+    const Token &macroToken = peek();
+    std::string macroName = macroToken.sourceText.empty() ? macroToken.text : macroToken.sourceText;
+    advance();
+    expectWord("is");
+    expectWord("defined");
+    expectColon();
+
+    std::vector<Stmt *> thenBody;
+    while (!(checkWord("end") && checkWordAt(1, "compile") && checkWordAt(2, "if")) &&
+           !checkWord("otherwise")) {
+        if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"End compile if.\"");
+        thenBody.push_back(parseStmt());
+    }
+
+    std::vector<Stmt *> elseBody;
+    if (checkWord("otherwise")) {
+        advance();
+        expectColon();
+        while (!(checkWord("end") && checkWordAt(1, "compile") && checkWordAt(2, "if"))) {
+            if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"End compile if.\"");
+            elseBody.push_back(parseStmt());
+        }
+    }
+    expectWord("end");
+    expectWord("compile");
+    expectWord("if");
+    expectDot();
+    return arena_.makeStmt(CompileIfStmt{std::move(macroName), std::move(thenBody), std::move(elseBody)}, line);
 }
 
 Stmt *Parser::parseUnless() {

@@ -188,6 +188,7 @@ struct BreakStmt       {};
 struct ContinueStmt    {};
 struct RepeatStmt    { Expr *count; std::vector<Stmt *> body; };
 struct IfStmt        { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
+struct CompileIfStmt { std::string macroName; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
 struct WhileStmt     { Expr *cond; std::vector<Stmt *> body; };
 struct DoWhileStmt   { std::vector<Stmt *> body; Expr *cond; };
 struct ForEachStmt   { std::string itemName; Expr *list; std::vector<Stmt *> body; };
@@ -247,7 +248,7 @@ using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, U
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
-                              DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, VaStartStmt, VaEndStmt, VaCopyStmt, VaCopyEndStmt, ProcedureStmt, ReturnStmt,
+                              DoWhileStmt, CompileIfStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, VaStartStmt, VaEndStmt, VaCopyStmt, VaCopyEndStmt, ProcedureStmt, ReturnStmt,
                               CommentStmt, WarningStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt, AtomicStoreStmt, CImportStmt, CFunctionImportStmt, CObjectImportStmt, CConstantImportStmt>;
 struct Stmt { StmtNode node; int line; };
 

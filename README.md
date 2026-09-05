@@ -51,11 +51,18 @@ Inspect or lint a program without building a binary:
 ```sh
 ./plainspeak examples/hello.eng --lint
 ./plainspeak examples/hello.eng --show-generated-c
+./plainspeak examples/feature.eng --define FEATURE
 ```
 
 The native compiler defaults to `cc`. Set `PLAINSPEAK_CC` when a program uses
 a target-specific C23 facility such as `_BitInt` and needs a different C
 compiler, for example `PLAINSPEAK_CC=clang ./plainspeak program.eng`.
+
+`Compile if FEATURE is defined:` and `Otherwise:` provide deterministic
+compile-time branch selection. Pass `--define FEATURE` (or
+`--define FEATURE=VALUE`) to select the defined branch; the current foundation
+tests whether the name is present, while expression-valued conditions and
+`elif` forms remain pending.
 
 PlainSpeak source highlighting for VS Code is provided in
 `editors/vscode-plainspeak`.

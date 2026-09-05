@@ -53,6 +53,7 @@ private:
     Stmt *parseWarning();
     Stmt *parseRepeat();
     Stmt *parseIf();
+    Stmt *parseCompileIf();
     Stmt *parseUnless();
     Stmt *parseConditional(bool negateCond);
     Stmt *parseWhile();

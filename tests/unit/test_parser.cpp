@@ -46,6 +46,19 @@ TEST_CASE("parser parses While loop", "[parser]") {
     CHECK(std::holds_alternative<WhileStmt>(program[0]->node));
 }
 
+TEST_CASE("parser represents compile-time conditional", "[parser][c99]") {
+    Tokenizer t("Compile if FEATURE is defined: Say \"on\". Otherwise: Say \"off\". End compile if.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &conditional = std::get<CompileIfStmt>(program[0]->node);
+    CHECK(conditional.macroName == "FEATURE");
+    CHECK(conditional.thenBody.size() == 1);
+    CHECK(conditional.elseBody.size() == 1);
+}
+
 TEST_CASE("parser parses Procedure and Call", "[parser]") {
     Tokenizer t("Procedure greet takes name:\n    Say name.\nEnd procedure.\nCall greet with \"world\" done.");
     auto tokens = t.tokenize();

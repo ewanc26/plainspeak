@@ -16,7 +16,15 @@ for src in "$DIR"/tests/golden/*.eng; do
     [ -f "$expected" ] || { echo "SKIP $name (no .expected file)"; continue; }
 
     out_bin="$TMP/$name"
-    if ! "$BIN" "$src" -o "$out_bin" > "$TMP/$name.compile.log" 2>&1; then
+    define_file="$DIR/tests/golden/$name.defines"
+    compile_status=0
+    if [ -f "$define_file" ]; then
+        define_value="$(sed -n '1p' "$define_file")"
+        "$BIN" "$src" --define "$define_value" -o "$out_bin" > "$TMP/$name.compile.log" 2>&1 || compile_status=$?
+    else
+        "$BIN" "$src" -o "$out_bin" > "$TMP/$name.compile.log" 2>&1 || compile_status=$?
+    fi
+    if [ "$compile_status" -ne 0 ]; then
         echo "FAIL $name: did not compile"
         cat "$TMP/$name.compile.log"
         fail=1

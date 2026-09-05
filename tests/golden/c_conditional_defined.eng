@@ -1,0 +1,6 @@
+Compile if FEATURE is defined:
+    Say "enabled".
+Otherwise:
+    Say "disabled".
+End compile if.
+Say "base".

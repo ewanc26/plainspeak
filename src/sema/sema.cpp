@@ -416,55 +416,71 @@ std::optional<std::string> findUnsequencedConflict(const Expr *expr,
     }, expr->node);
 }
 
-bool containsReturnStatement(const std::vector<Stmt *> &statements) {
+bool containsReturnStatement(const std::vector<Stmt *> &statements,
+                             const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
     for (const Stmt *statement : statements) {
         if (std::holds_alternative<ReturnStmt>(statement->node)) return true;
         if (const auto *ifStmt = std::get_if<IfStmt>(&statement->node)) {
-            if (containsReturnStatement(ifStmt->thenBody) || containsReturnStatement(ifStmt->elseBody)) return true;
+            if (containsReturnStatement(ifStmt->thenBody, compileIfSelected) ||
+                containsReturnStatement(ifStmt->elseBody, compileIfSelected)) return true;
+        } else if (const auto *compileIf = std::get_if<CompileIfStmt>(&statement->node)) {
+            auto selected = compileIfSelected.find(statement);
+            const auto &body = selected != compileIfSelected.end() && selected->second
+                             ? compileIf->thenBody : compileIf->elseBody;
+            if (containsReturnStatement(body, compileIfSelected)) return true;
         } else if (const auto *loop = std::get_if<RepeatStmt>(&statement->node)) {
-            if (containsReturnStatement(loop->body)) return true;
+            if (containsReturnStatement(loop->body, compileIfSelected)) return true;
         } else if (const auto *loop = std::get_if<WhileStmt>(&statement->node)) {
-            if (containsReturnStatement(loop->body)) return true;
+            if (containsReturnStatement(loop->body, compileIfSelected)) return true;
         } else if (const auto *loop = std::get_if<DoWhileStmt>(&statement->node)) {
-            if (containsReturnStatement(loop->body)) return true;
+            if (containsReturnStatement(loop->body, compileIfSelected)) return true;
         } else if (const auto *loop = std::get_if<ForStmt>(&statement->node)) {
-            if (containsReturnStatement(loop->body)) return true;
+            if (containsReturnStatement(loop->body, compileIfSelected)) return true;
         } else if (const auto *loop = std::get_if<ForEachStmt>(&statement->node)) {
-            if (containsReturnStatement(loop->body)) return true;
+            if (containsReturnStatement(loop->body, compileIfSelected)) return true;
         } else if (const auto *sw = std::get_if<SwitchStmt>(&statement->node)) {
             for (const auto &clause : sw->cases)
-                if (containsReturnStatement(clause.body)) return true;
+                if (containsReturnStatement(clause.body, compileIfSelected)) return true;
         }
     }
     return false;
 }
 
-bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth);
-bool statementHasLevelBreak(const Stmt *s, int depth) {
+bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth,
+                       const std::unordered_map<const Stmt *, bool> &compileIfSelected);
+bool statementHasLevelBreak(const Stmt *s, int depth,
+                            const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
     if (!s) return false;
     const StmtNode &node = s->node;
     if (std::holds_alternative<BreakStmt>(node)) return depth == 0;
     if (const auto *ifStmt = std::get_if<IfStmt>(&node)) {
-        return bodyHasLevelBreak(ifStmt->thenBody, depth) ||
-               bodyHasLevelBreak(ifStmt->elseBody, depth);
+        return bodyHasLevelBreak(ifStmt->thenBody, depth, compileIfSelected) ||
+               bodyHasLevelBreak(ifStmt->elseBody, depth, compileIfSelected);
+    }
+    if (const auto *compileIf = std::get_if<CompileIfStmt>(&node)) {
+        auto selected = compileIfSelected.find(s);
+        const auto &body = selected != compileIfSelected.end() && selected->second
+                         ? compileIf->thenBody : compileIf->elseBody;
+        return bodyHasLevelBreak(body, depth, compileIfSelected);
     }
     const int nested = depth + 1;
-    if (const auto *repeat = std::get_if<RepeatStmt>(&node)) return bodyHasLevelBreak(repeat->body, nested);
-    if (const auto *loop = std::get_if<WhileStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
-    if (const auto *loop = std::get_if<DoWhileStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
-    if (const auto *loop = std::get_if<ForStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
-    if (const auto *loop = std::get_if<ForEachStmt>(&node)) return bodyHasLevelBreak(loop->body, nested);
+    if (const auto *repeat = std::get_if<RepeatStmt>(&node)) return bodyHasLevelBreak(repeat->body, nested, compileIfSelected);
+    if (const auto *loop = std::get_if<WhileStmt>(&node)) return bodyHasLevelBreak(loop->body, nested, compileIfSelected);
+    if (const auto *loop = std::get_if<DoWhileStmt>(&node)) return bodyHasLevelBreak(loop->body, nested, compileIfSelected);
+    if (const auto *loop = std::get_if<ForStmt>(&node)) return bodyHasLevelBreak(loop->body, nested, compileIfSelected);
+    if (const auto *loop = std::get_if<ForEachStmt>(&node)) return bodyHasLevelBreak(loop->body, nested, compileIfSelected);
     if (const auto *sw = std::get_if<SwitchStmt>(&node)) {
         for (const SwitchCase &clause : sw->cases) {
-            if (bodyHasLevelBreak(clause.body, nested)) return true;
+            if (bodyHasLevelBreak(clause.body, nested, compileIfSelected)) return true;
         }
     }
     return false;
 }
 
-bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth) {
+bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth,
+                       const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
     for (const Stmt *s : stmts) {
-        if (statementHasLevelBreak(s, depth)) return true;
+        if (statementHasLevelBreak(s, depth, compileIfSelected)) return true;
     }
     return false;
 }
@@ -481,8 +497,9 @@ bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth) {
 // returns.
 class ReturnPathChecker {
 public:
-    static bool endIsReachable(const std::vector<Stmt *> &body) {
-        ReturnPathChecker checker;
+    static bool endIsReachable(const std::vector<Stmt *> &body,
+                               const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
+        ReturnPathChecker checker(compileIfSelected);
         NodeId entry = checker.buildBlock(body, kFuncEnd);
         checker.resolveGotos();
         checker.sweepFrom(entry);
@@ -498,9 +515,13 @@ private:
     std::unordered_map<std::string, NodeId> labelNodes_;
     std::vector<NodeId> breakStack_;
     std::vector<NodeId> continueStack_;
+    const std::unordered_map<const Stmt *, bool> &compileIfSelected_;
     bool reachedEnd_ = false;
 
-    ReturnPathChecker() { successors_.emplace_back(); } // node 0 is the function end
+    explicit ReturnPathChecker(const std::unordered_map<const Stmt *, bool> &compileIfSelected)
+        : compileIfSelected_(compileIfSelected) {
+        successors_.emplace_back(); // node 0 is the function end
+    }
 
     NodeId newNode() {
         successors_.emplace_back();
@@ -586,6 +607,11 @@ ReturnPathChecker::NodeId ReturnPathChecker::buildStmt(const Stmt *s, NodeId con
             addEdge(cond, buildBlock(node.thenBody, continuation));
             addEdge(cond, node.elseBody.empty() ? continuation : buildBlock(node.elseBody, continuation));
             return cond;
+        } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
+            auto selected = compileIfSelected_.find(s);
+            const bool enabled = selected != compileIfSelected_.end() && selected->second;
+            const auto &body = enabled ? node.thenBody : node.elseBody;
+            return buildBlock(body, continuation);
         } else if constexpr (std::is_same_v<T, SwitchStmt>) {
             return buildSwitch(node, continuation);
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
@@ -605,7 +631,7 @@ ReturnPathChecker::NodeId ReturnPathChecker::buildStmt(const Stmt *s, NodeId con
             breakStack_.pop_back();
             continueStack_.pop_back();
             addEdge(head, bodyEntry);
-            if (!(isConstTruthyExpr(node.cond) && !bodyHasLevelBreak(node.body, 0))) {
+            if (!(isConstTruthyExpr(node.cond) && !bodyHasLevelBreak(node.body, 0, compileIfSelected_))) {
                 addEdge(head, continuation);
             }
             return head;
@@ -619,7 +645,7 @@ ReturnPathChecker::NodeId ReturnPathChecker::buildStmt(const Stmt *s, NodeId con
             continueStack_.pop_back();
             addEdge(head, bodyEntry);
             addEdge(cond, head);
-            if (!(isConstTruthyExpr(node.cond) && !bodyHasLevelBreak(node.body, 0))) {
+            if (!(isConstTruthyExpr(node.cond) && !bodyHasLevelBreak(node.body, 0, compileIfSelected_))) {
                 addEdge(cond, continuation);
             }
             return head;
@@ -3142,18 +3168,18 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             if (signatureIt->second.nativeTyped &&
                 !signatureIt->second.noreturnSpecifier &&
                 signatureIt->second.returnType.kind != TypeKind::Void) {
-                if (ReturnPathChecker::endIsReachable(node.body)) {
+                if (ReturnPathChecker::endIsReachable(node.body, analysis_->compileIfSelected)) {
                     diags.push_back({18, s->line, "Typed Procedure \"" + node.name +
                                               "\" can reach its end without a Return on some path; every path must return a value."});
                 }
             }
 
             if (signatureIt->second.noreturnSpecifier) {
-                if (ReturnPathChecker::endIsReachable(node.body)) {
+                if (ReturnPathChecker::endIsReachable(node.body, analysis_->compileIfSelected)) {
                     diags.push_back({18, s->line, "No-return Procedure \"" + node.name +
                                               "\" can reach its end; every path must leave without returning."});
                 }
-                if (containsReturnStatement(node.body)) {
+                if (containsReturnStatement(node.body, analysis_->compileIfSelected)) {
                     diags.push_back({18, s->line, "No-return Procedure \"" + node.name + "\" cannot contain a Return."});
                 }
             }
@@ -3167,6 +3193,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             gotoTargets_ = std::move(previousGotos);
             if (hadPrevious) currentProcedure_ = previous;
             else currentProcedure_.reset();
+        }
+        else if constexpr (std::is_same_v<T, CompileIfStmt>) {
+            const bool selected = defines_.count(node.macroName) != 0;
+            if (analysis_) analysis_->compileIfSelected[s] = selected;
+            const auto &body = selected ? node.thenBody : node.elseBody;
+            for (Stmt *inner : body) checkStmt(inner, diags);
         }
         else if constexpr (std::is_same_v<T, VaStartStmt>) {
             if (!currentProcedure_ || !currentProcedure_->variadic) {

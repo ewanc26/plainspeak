@@ -3,6 +3,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <utility>
 #include <vector>
 
 #include "../ast/ast.h"
@@ -85,10 +86,13 @@ struct AnalysisResult {
     std::unordered_map<const Expr *, int> genericSelections;
     std::unordered_set<const Expr *> sequencingDiagnostics;
     std::unordered_map<const Expr *, Type> variadicArgumentTypes;
+    std::unordered_map<const Stmt *, bool> compileIfSelected;
 };
 
 class Sema {
 public:
+    explicit Sema(std::unordered_map<std::string, long> defines = {})
+        : defines_(std::move(defines)) {}
     AnalysisResult analyze(const std::vector<Stmt *> &program);
     std::vector<Diag> check(const std::vector<Stmt *> &program);
 
@@ -113,6 +117,7 @@ private:
     AnalysisResult *analysis_ = nullptr;
     bool variadicStarted_ = false;
     std::unordered_set<std::string> activeVariadicCopies_;
+    std::unordered_map<std::string, long> defines_;
 
     // Function-scoped C label namespace: declaration name -> line, and every
     // Go to target -> its source line. Both are reset at each function boundary

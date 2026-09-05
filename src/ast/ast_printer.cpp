@@ -335,6 +335,14 @@ std::string printStmt(const Stmt *s) {
                 for (Stmt *inner : node.elseBody) out += printStmt(inner);
             }
             return out + "End if. ";
+        } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
+            std::string out = "Compile if " + node.macroName + " is defined: ";
+            for (Stmt *inner : node.thenBody) out += printStmt(inner);
+            if (!node.elseBody.empty()) {
+                out += "Otherwise: ";
+                for (Stmt *inner : node.elseBody) out += printStmt(inner);
+            }
+            return out + "End compile if. ";
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             std::string out = "While " + printExpr(node.cond) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);

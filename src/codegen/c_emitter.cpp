@@ -276,6 +276,15 @@ bool isImportedObject(const std::string &name, const AnalysisResult &analysis) {
     return analysis.cObjectTypes.count(name) != 0;
 }
 
+bool isImportedConstant(const std::string &name, const AnalysisResult &analysis) {
+    return analysis.cConstantNames.count(name) != 0;
+}
+
+std::string importedConstantName(const std::string &name, const AnalysisResult &analysis) {
+    auto it = analysis.cConstantNames.find(name);
+    return it == analysis.cConstantNames.end() ? name : it->second;
+}
+
 std::string nativeName(const std::string &name, const AnalysisResult &analysis) {
     return isImportedObject(name, analysis) ? name : mangle(name);
 }
@@ -415,7 +424,11 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
             return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
-            if (isNativeRef(e, analysis)) return isImportedObject(node.name, analysis) ? node.name : mangle(node.name);
+            if (isNativeRef(e, analysis)) {
+                if (isImportedObject(node.name, analysis)) return node.name;
+                if (isImportedConstant(node.name, analysis)) return importedConstantName(node.name, analysis);
+                return mangle(node.name);
+            }
         } else if constexpr (std::is_same_v<T, VaArgExpr>) {
             auto it = analysis.variadicArgumentTypes.find(e);
             Type type = it == analysis.variadicArgumentTypes.end() ? Type::number() : it->second;
@@ -516,7 +529,10 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return "ps_str(\"" + escaped + "\")";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) {
-                return boxRaw(isImportedObject(node.name, analysis) ? node.name : mangle(node.name), exprType(e, analysis));
+                std::string name = isImportedObject(node.name, analysis) ? node.name :
+                                   isImportedConstant(node.name, analysis) ? importedConstantName(node.name, analysis) :
+                                   mangle(node.name);
+                return boxRaw(name, exprType(e, analysis));
             }
             return mangle(node.name);
         } else if constexpr (std::is_same_v<T, VaArgExpr>) {
@@ -728,6 +744,12 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
                 collectVars(node.thenBody, out, analysis);
                 collectVars(node.elseBody, out, analysis);
             }
+            else if constexpr (std::is_same_v<T, CompileIfStmt>) {
+                auto selected = analysis.compileIfSelected.find(s);
+                const auto &body = selected != analysis.compileIfSelected.end() && selected->second
+                                 ? node.thenBody : node.elseBody;
+                collectVars(body, out, analysis);
+            }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, ForEachStmt>) collectVars(node.body, out, analysis);
@@ -739,21 +761,29 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
     }
 }
 
-void collectVariadicCopies(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
+void collectVariadicCopies(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
+                           const AnalysisResult &analysis) {
     for (Stmt *s : stmts) {
         std::visit([&](auto &&node) {
             using T = std::decay_t<decltype(node)>;
             if constexpr (std::is_same_v<T, VaCopyStmt>) out.insert(node.destination);
-            else if constexpr (std::is_same_v<T, RepeatStmt>) collectVariadicCopies(node.body, out);
+            else if constexpr (std::is_same_v<T, RepeatStmt>) collectVariadicCopies(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, IfStmt>) {
-                collectVariadicCopies(node.thenBody, out);
-                collectVariadicCopies(node.elseBody, out);
-            } else if constexpr (std::is_same_v<T, WhileStmt>) collectVariadicCopies(node.body, out);
-            else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVariadicCopies(node.body, out);
-            else if constexpr (std::is_same_v<T, ForEachStmt>) collectVariadicCopies(node.body, out);
-            else if constexpr (std::is_same_v<T, ForStmt>) collectVariadicCopies(node.body, out);
+                collectVariadicCopies(node.thenBody, out, analysis);
+                collectVariadicCopies(node.elseBody, out, analysis);
+            } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
+                // Compile-time conditionals are resolved before codegen; do
+                // not declare va_list cursors for an inactive branch.
+                auto selected = analysis.compileIfSelected.find(s);
+                const auto &body = selected != analysis.compileIfSelected.end() && selected->second
+                                 ? node.thenBody : node.elseBody;
+                collectVariadicCopies(body, out, analysis);
+            } else if constexpr (std::is_same_v<T, WhileStmt>) collectVariadicCopies(node.body, out, analysis);
+            else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVariadicCopies(node.body, out, analysis);
+            else if constexpr (std::is_same_v<T, ForEachStmt>) collectVariadicCopies(node.body, out, analysis);
+            else if constexpr (std::is_same_v<T, ForStmt>) collectVariadicCopies(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, SwitchStmt>) {
-                for (const auto &c : node.cases) collectVariadicCopies(c.body, out);
+                for (const auto &c : node.cases) collectVariadicCopies(c.body, out, analysis);
             }
         }, s->node);
     }
@@ -912,6 +942,12 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             } else {
                 out << "\n";
             }
+        } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
+            auto selected = analysis.compileIfSelected.find(s);
+            const bool enabled = selected != analysis.compileIfSelected.end() && selected->second;
+            const auto &body = enabled ? node.thenBody : node.elseBody;
+            for (Stmt *inner : body)
+                emitStmt(inner, out, indent, loopCounter, analysis, sourceLines, currentProcedure);
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             Type condType = exprType(node.cond, analysis);
             if (isCScalarType(condType)) {
@@ -1046,7 +1082,7 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
     if (signature && signature->nativeTyped && signature->variadic) {
         out << "    va_list ps__va_args;\n";
         std::set<std::string> variadicCopies;
-        collectVariadicCopies(proc.body, variadicCopies);
+        collectVariadicCopies(proc.body, variadicCopies, analysis);
         for (const auto &copy : variadicCopies)
             out << "    va_list " << variadicListName(copy) << ";\n";
     }
