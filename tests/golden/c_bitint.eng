@@ -1,2 +1,4 @@
 Declare value as bit integer with width 17 with value 123.
 Say value.
+Declare unsigned_value as unsigned bit integer with width 17 with value 321.
+Say unsigned_value.

@@ -71,6 +71,7 @@ struct TypeSpec {
     std::string tag{};
     std::string typeOfName{};
     std::size_t bitWidth = 0;
+    bool bitIntUnsigned = false;
     TypeSpecQualifiers qualifiers{};
 };
 
