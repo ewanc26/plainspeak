@@ -71,6 +71,9 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "difference type"; break;
         case TypeSpecKind::Complex:
             body = "complex decimal"; break;
+        case TypeSpecKind::FixedInteger:
+            body = std::string(type.fixedUnsigned ? "unsigned " : "") + "integer with exactly " +
+                   std::to_string(type.exactWidth) + " bits"; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;

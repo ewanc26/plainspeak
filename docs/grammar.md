@@ -328,6 +328,8 @@ This is still a foundation for the full constant-expression model: the evaluator
 
 Native declarations may request C11 thread-local storage with `Declare name as thread local type.`. The spelling lowers to `_Thread_local`; full C constant-initializer and storage-duration constraints remain under conformance review.
 
+Exact-width integers use prose such as `unsigned integer with exactly 8 bits` or `integer with exactly 16 bits`. They lower through `<stdint.h>` and preserve the requested signedness and width in the semantic type.
+
 Native declarations may request C11 alignment with `Declare name with alignment N as type.`. The positive constant `N` lowers to `_Alignas(N)`; target-invalid alignment requests remain subject to the selected C implementation.
 
 `Declare` creates an object with actual C storage and layout rather than a boxed `PsValue`:

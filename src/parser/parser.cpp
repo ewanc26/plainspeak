@@ -1002,6 +1002,21 @@ TypeSpec Parser::parseTypeSpec() {
         std::size_t bound = static_cast<std::size_t>(advance().num);
         return finish(TypeSpec{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element)), bound});
     }
+    if ((checkWord("integer") || (checkWord("unsigned") && checkWordAt(1, "integer"))) &&
+        checkWordAt(checkWord("integer") ? 1 : 2, "with") &&
+        checkWordAt(checkWord("integer") ? 2 : 3, "exactly") &&
+        peek(checkWord("integer") ? 3 : 4).kind == TokKind::Number &&
+        checkWordAt(checkWord("integer") ? 4 : 5, "bits")) {
+        bool unsignedValue = checkWord("unsigned");
+        advance(); if (unsignedValue) advance(); advance(); advance();
+        if (peek().kind != TokKind::Number || peek().num == 0)
+            error("an exact-width integer needs a positive width");
+        TypeSpec type{TypeSpecKind::FixedInteger};
+        type.exactWidth = static_cast<std::size_t>(advance().num);
+        expectWord("bits");
+        type.fixedUnsigned = unsignedValue;
+        return finish(std::move(type));
+    }
     if (checkWord("function") && (checkWordAt(1, "returning") || checkWordAt(1, "taking"))) {
         advance();
         TypeSpec type{TypeSpecKind::Function};

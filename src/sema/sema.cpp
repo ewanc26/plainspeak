@@ -1095,6 +1095,10 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
                                         std::move(parameters), spec.variadic);
             }
             break;
+        case TypeSpecKind::FixedInteger:
+            result = Type::integer(IntegerRank::Int, spec.fixedUnsigned);
+            result.exactWidth = spec.exactWidth;
+            break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);

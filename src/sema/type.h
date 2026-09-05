@@ -53,6 +53,7 @@ struct Type {
     FloatingRank floatingRank = FloatingRank::Double;
     bool isUnsigned = false;
     std::size_t bitWidth = 0;
+    std::optional<std::size_t> exactWidth;
 
     // Recursive type metadata. Lists, pointers and arrays use elementType;
     // functions use returnType/parameterTypes; aggregates/enums use tag.
