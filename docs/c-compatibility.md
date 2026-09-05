@@ -182,7 +182,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.errno` | foundation | Typed C object imports can read `errno`; complete error-setting and implementation-specific macro semantics remain pending. |
 | `lib.fenv` | planned | `<fenv.h>` |
 | `lib.float` | planned | `<float.h>` |
-| `lib.inttypes` | planned | `<inttypes.h>` |
+| `lib.inttypes` | foundation | Typed C imports can bind `<inttypes.h>` conversion functions such as `strtoimax`; format macros, exact `intmax_t`/`uintmax_t` type aliases and the remaining header surface remain pending. |
 | `lib.limits` | planned | `<limits.h>` |
 | `lib.locale` | planned | `<locale.h>` |
 | `lib.math` | foundation | `<math.h>`; current runtime exposes only a small subset. |

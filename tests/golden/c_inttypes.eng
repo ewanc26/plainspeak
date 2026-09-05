@@ -1,0 +1,3 @@
+Import the C function strtoimax taking a pointer to character and a pointer to pointer to character and an integer, returning a long long integer, from the header "inttypes.h".
+Declare end as pointer to character.
+Say Call strtoimax with "123", Address of end, 10 done.
