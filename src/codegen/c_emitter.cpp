@@ -831,6 +831,8 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << emitBoxedExpr(node.index, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, CommentStmt>) {
             out << indent << "/* " << node.text << " */\n";
+        } else if constexpr (std::is_same_v<T, WarningStmt>) {
+            // Warning is a frontend-only diagnostic and emits no C statement.
         } else if constexpr (std::is_same_v<T, BreakStmt>) {
             out << indent << "break;\n";
         } else if constexpr (std::is_same_v<T, ContinueStmt>) {

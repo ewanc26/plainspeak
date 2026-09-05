@@ -73,6 +73,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (isAppendKeyword(t.text)) return parseAppend();
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
+    if (t.text == "warn" || t.text == "warning") return parseWarning();
     if (t.text == "break") {
         int line = peek().line;
         advance();
@@ -106,7 +107,16 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
+          "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, warn, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
+}
+
+Stmt *Parser::parseWarning() {
+    int line = peek().line;
+    advance();
+    if (peek().kind != TokKind::String) error("a Warning needs a quoted message");
+    std::string message = advance().text;
+    expectDot();
+    return arena_.makeStmt(WarningStmt{std::move(message)}, line);
 }
 
 Stmt *Parser::parseStaticAssert() {
@@ -230,6 +240,7 @@ Stmt *Parser::parseStmt() {
     if (isAppendKeyword(t.text)) return parseAppend();
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
+    if (t.text == "warn" || t.text == "warning") return parseWarning();
     if (t.text == "break") {
         int line = peek().line;
         advance();

@@ -2988,5 +2988,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, CommentStmt>) {
         }
+        else if constexpr (std::is_same_v<T, WarningStmt>) {
+            diags.push_back({33, s->line, node.message, DiagSeverity::Warning});
+        }
     }, s->node);
 }

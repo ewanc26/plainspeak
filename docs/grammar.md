@@ -224,6 +224,8 @@ The C23 spellings `type of name` and `type of unqualified name` can name the nat
 
 `Procedure name ... returns void with no return:` declares a C11 `_Noreturn` Procedure. Its body must have no reachable end and may not contain a `Return`. Add `with inline` to request the C99 `inline` function specifier; these modifiers are preserved in generated prototypes and definitions.
 
+`Warning "message".` (or `Warn "message".`) emits a non-fatal, deterministic compiler warning. It is the PlainSpeak equivalent of the C23 `#warning` directive and does not add code to the generated translation unit.
+
 `size type` spells the native unsigned size representation used by the current C backend. The broader `<stddef.h>` surface remains pending.
 
 `difference type` spells the native signed pointer-difference representation. The broader `<stddef.h>` surface remains pending.

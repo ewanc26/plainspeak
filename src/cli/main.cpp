@@ -76,10 +76,13 @@ int main(int argc, char **argv) {
 
     Sema sema;
     AnalysisResult analysis = sema.analyze(program);
+    bool hasErrors = false;
     for (const auto &d : analysis.diagnostics) {
-        std::cerr << "error[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
+        std::cerr << (d.severity == DiagSeverity::Warning ? "warning" : "error")
+                  << "[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
+        if (d.severity == DiagSeverity::Error) hasErrors = true;
     }
-    if (!analysis.diagnostics.empty()) return 1;
+    if (hasErrors) return 1;
 
     if (printAstOnly) {
         std::cout << printAST(program);

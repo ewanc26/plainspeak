@@ -8,10 +8,13 @@
 #include "../ast/ast.h"
 #include "type.h"
 
+enum class DiagSeverity { Error, Warning };
+
 struct Diag {
     int code;
     int line;
     std::string message;
+    DiagSeverity severity = DiagSeverity::Error;
 };
 
 struct ProcedureSignature {

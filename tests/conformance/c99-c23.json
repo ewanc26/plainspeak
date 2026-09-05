@@ -76,7 +76,7 @@
     {"id":"pp.macros","revision":"C99","area":"preprocessor","status":"planned","tests":[],"note":"Capability equivalent to C object/function-like preprocessing substitution pending."},
     {"id":"pp.variadic-vaopt","revision":"C23","area":"preprocessor","status":"planned","tests":[],"note":"Variadic preprocessing and __VA_OPT__ capability pending."},
     {"id":"pp.elifdef","revision":"C23","area":"preprocessor","status":"planned","tests":[],"note":"C23 elifdef/elifndef capability pending."},
-    {"id":"pp.warning","revision":"C23","area":"preprocessor","status":"planned","tests":[],"note":"C23 #warning-equivalent diagnostic directive pending."},
+    {"id":"pp.warning","revision":"C23","area":"preprocessor","status":"foundation","tests":["tests/unit/test_parser.cpp","tests/golden/c_warning.eng"],"note":"Warning/Warn sentences produce non-fatal deterministic E0033 compiler warnings and no generated C; preprocessing placement and implementation-specific warning controls remain pending."},
     {"id":"pp.embed","revision":"C23","area":"preprocessor","status":"planned","tests":[],"note":"C23 #embed-equivalent binary resource inclusion pending."},
     {"id":"pp.predefined-environment","revision":"C23","area":"preprocessor","status":"planned","tests":[],"note":"Useful predefined implementation/environment queries pending."},
     {"id":"pp.pragma","revision":"C99","area":"preprocessor","status":"planned","tests":[],"note":"Target pragma/implementation-control capability pending."},

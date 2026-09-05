@@ -115,6 +115,16 @@ TEST_CASE("parser represents function specifiers", "[parser][c99][c11]") {
     CHECK(procedure.noreturnSpecifier);
 }
 
+TEST_CASE("parser represents a warning directive", "[parser][c23]") {
+    Tokenizer t("Warn \"check this\".");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    CHECK(std::get<WarningStmt>(program[0]->node).message == "check this");
+}
+
 TEST_CASE("parser handles logical operators", "[parser]") {
     Tokenizer t("Say true and false or true.");
     auto tokens = t.tokenize();

@@ -50,6 +50,7 @@ private:
     Stmt *parseReplaceItem();
     Stmt *parseRemoveItem();
     Stmt *parseComment();
+    Stmt *parseWarning();
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseUnless();
