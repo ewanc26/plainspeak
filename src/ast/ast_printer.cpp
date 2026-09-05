@@ -54,6 +54,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "auto"; break;
         case TypeSpecKind::BitInt:
             body = std::string(type.bitIntUnsigned ? "unsigned " : "") + "bit integer with width " + std::to_string(type.bitWidth); break;
+        case TypeSpecKind::SizeType:
+            body = "size type"; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;

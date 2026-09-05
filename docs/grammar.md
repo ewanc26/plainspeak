@@ -202,6 +202,8 @@ The C23 spellings `type of name` and `type of unqualified name` can name the nat
 
 `bit integer with width N` and `unsigned bit integer with width N` spell signed and unsigned C23 `_BitInt(N)` native types. Width must be positive; rank, conversion, and target-support rules remain pending.
 
+`size type` spells the native unsigned size representation used by the current C backend. The broader `<stddef.h>` surface remains pending.
+
 `Declare name as auto with value expression.` provides C23-style initializer-based inference for native scalar declarations. An initializer is required; complete C23 deduction rules remain pending.
 
 `Declare name as constexpr type with value expression.` requests a C23 constexpr native object. The current foundation requires an integer constant initializer and lowers it as a read-only C object.
