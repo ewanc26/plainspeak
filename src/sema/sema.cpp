@@ -19,6 +19,12 @@ bool isIntegralType(const Type &t) {
     return t.kind == TypeKind::Boolean || t.kind == TypeKind::Enumeration || t.isInteger();
 }
 
+bool acceptsCString(const Type &t) {
+    return t.kind == TypeKind::Pointer && t.elementType &&
+           t.elementType->kind == TypeKind::Integer &&
+           t.elementType->integerRank == IntegerRank::Char;
+}
+
 bool hasAnyQualifiers(const TypeQualifiers &q) {
     return q.isConst || q.isVolatile || q.isRestrict || q.isAtomic;
 }
@@ -1605,6 +1611,8 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 Type argType = inferExpr(node.args[i], line, diags);
                 if (signature.nativeTyped) {
                     if (i < signature.parameterTypes.size() && diags.size() == before &&
+                        !(imported && std::holds_alternative<StringLit>(node.args[i]->node) &&
+                          acceptsCString(signature.parameterTypes[i])) &&
                         !assignableExprTo(signature.parameterTypes[i], argType, node.args[i])) {
                         diags.push_back({18, line, "Argument " + std::to_string(i + 1) + " to typed C function \"" +
                                                  node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +

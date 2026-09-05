@@ -256,6 +256,14 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             std::string literal(buf);
             if (literal.find_first_of(".eE") == std::string::npos) literal += ".0";
             return literal;
+        } else if constexpr (std::is_same_v<T, StringLit>) {
+            std::string escaped;
+            for (char c : node.value) {
+                if (c == '"' || c == '\\') escaped += '\\';
+                if (c == '\n') { escaped += "\\n"; continue; }
+                escaped += c;
+            }
+            return "\"" + escaped + "\"";
         } else if constexpr (std::is_same_v<T, NullptrLit>) {
             // Keep the predefined null literal as an integer null pointer
             // constant on the C11 backend. Stored nullptr_t objects use

@@ -1,2 +1,4 @@
 Import the C function abs taking an integer, returning an integer, from the header "stdlib.h".
 Say Call abs with minus 7 done.
+Import C function strlen taking a pointer to character, returning a size type, from the header "string.h".
+Say Call strlen with "hello" done.
