@@ -871,7 +871,13 @@ std::string emitProgram(const std::vector<Stmt *> &program,
     // PlainSpeak initializers are executed in main below.
     for (Stmt *s : program) {
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
-            out << emitCDeclaration(analysis.declarationTypes.at(s), mangle(decl->name)) << ";\n";
+            if (decl->alignment) out << "_Alignas(" << *decl->alignment << ") ";
+            if (decl->threadLocal) out << "_Thread_local ";
+            if (decl->constexprObject) out << "const ";
+            out << emitCDeclaration(analysis.declarationTypes.at(s), mangle(decl->name));
+            if (decl->constexprObject && decl->initializer)
+                out << " = " << emitRawExpr(decl->initializer, analysis);
+            out << ";\n";
         }
     }
     if (!vars.empty()) out << "\n";
@@ -902,7 +908,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             std::holds_alternative<UnionStmt>(s->node) ||
             std::holds_alternative<EnumerationStmt>(s->node)) continue;
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
-            if (decl->initializer) {
+            if (decl->initializer && !decl->constexprObject) {
                 out << "    " << mangle(decl->name) << " = "
                     << emitRawExpr(decl->initializer, analysis) << ";\n";
             } else if (decl->aggregateInitializer) {

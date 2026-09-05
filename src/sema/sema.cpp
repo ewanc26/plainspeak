@@ -1932,6 +1932,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({24, s->line, "A constexpr native object needs an integer constant initializer."});
                     return;
                 }
+                declared.qualifiers.isConst = true;
             }
             if (analysis_) analysis_->declarationTypes[s] = declared;
             if (!validateTypeQualifiers(declared, s->line, diags)) return;
@@ -1949,7 +1950,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 return;
             }
             bool created = declareVar(node.name, declared, true, s->line, diags);
-            if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer) {
+            if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer && !node.constexprObject) {
                 diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
                 return;
             }
