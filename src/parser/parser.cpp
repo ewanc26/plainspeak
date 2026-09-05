@@ -1256,6 +1256,10 @@ Expr *Parser::parsePrimary() {
         int line = peek().line; advance(); advance();
         return arena_.makeExpr(MathCallExpr{"magnitude", parsePrimary()}, line);
     }
+    if (checkWord("conjugate") && checkWordAt(1, "of")) {
+        int line = peek().line; advance(); advance();
+        return arena_.makeExpr(MathCallExpr{"conjugate", parsePrimary()}, line);
+    }
     if (checkWord("absolute") && checkWordAt(1, "value") && checkWordAt(2, "of")) {
         int line = peek().line;
         advance(); advance(); advance();

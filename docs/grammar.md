@@ -202,6 +202,8 @@ Label finish.
 
 `Real part of`, `Imaginary part of`, and `Magnitude of` query a complex scalar through `<complex.h>` and return a decimal value.
 
+`Conjugate of` queries the complex conjugate of a complex scalar through `<complex.h>` and returns a complex value.
+
 The C23 spellings `type of name` and `type of unqualified name` can name the native type of an earlier object declaration. These foundation forms are unevaluated and name-based; expression operands and complete qualifier rules remain pending.
 
 `bit integer with width N` and `unsigned bit integer with width N` spell signed and unsigned C23 `_BitInt(N)` native types. Width must be positive; rank, conversion, and target-support rules remain pending.

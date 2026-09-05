@@ -5,3 +5,5 @@ Say Size of sum.
 Say Real part of z.
 Say Imaginary part of z.
 Say Magnitude of z.
+Declare conjugated as complex decimal with value Conjugate of z.
+Say Size of conjugated.

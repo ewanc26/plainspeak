@@ -426,6 +426,7 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             if (node.func == "real") return "ps_double(creal(" + emitRawExpr(node.arg, analysis) + "))";
             if (node.func == "imaginary") return "ps_double(cimag(" + emitRawExpr(node.arg, analysis) + "))";
             if (node.func == "magnitude") return "ps_double(cabs(" + emitRawExpr(node.arg, analysis) + "))";
+            if (node.func == "conjugate") return "conj(" + emitRawExpr(node.arg, analysis) + ")";
             auto it = mathFn.find(node.func);
             std::string fn = it != mathFn.end() ? it->second : "ps_" + node.func;
             return fn + "(" + emitBoxedExpr(node.arg, analysis) + ")";
