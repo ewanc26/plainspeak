@@ -892,6 +892,14 @@ TypeSpec Parser::parseTypeSpec() {
         TypeSpec pointee = parseTypeSpec();
         return finish(TypeSpec{TypeSpecKind::Pointer, std::make_shared<TypeSpec>(std::move(pointee))});
     }
+    if (checkWord("bit") && checkWordAt(1, "integer") && checkWordAt(2, "with") && checkWordAt(3, "width")) {
+        advance(); advance(); advance(); advance();
+        if (peek().kind != TokKind::Number || peek().num == 0)
+            error("a bit integer needs a positive width");
+        TypeSpec type{TypeSpecKind::BitInt};
+        type.bitWidth = static_cast<std::size_t>(advance().num);
+        return finish(std::move(type));
+    }
     if (checkWord("void")) { advance(); return finish(TypeSpec{TypeSpecKind::Void}); }
     if (checkWord("auto")) { advance(); return finish(TypeSpec{TypeSpecKind::Auto}); }
     if (checkWord("boolean")) { advance(); return finish(TypeSpec{TypeSpecKind::Boolean}); }

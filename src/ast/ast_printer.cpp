@@ -52,6 +52,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "type of unqualified " + type.typeOfName; break;
         case TypeSpecKind::Auto:
             body = "auto"; break;
+        case TypeSpecKind::BitInt:
+            body = "bit integer with width " + std::to_string(type.bitWidth); break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;

@@ -52,8 +52,9 @@ enum class TypeSpecKind {
     Nullptr,
     Alias,
     TypeOf,
-    TypeOfUnqual
-    , Auto
+    TypeOfUnqual,
+    Auto,
+    BitInt
 };
 
 struct TypeSpecQualifiers {
@@ -69,6 +70,7 @@ struct TypeSpec {
     std::size_t arrayBound = 0;
     std::string tag{};
     std::string typeOfName{};
+    std::size_t bitWidth = 0;
     TypeSpecQualifiers qualifiers{};
 };
 

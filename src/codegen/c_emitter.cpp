@@ -50,6 +50,9 @@ std::string emitCUnqualifiedBaseType(const Type &type) {
             case IntegerRank::LongLong: return out + "long long";
         }
     }
+    if (type.kind == TypeKind::BitInt) {
+        return std::string(type.isUnsigned ? "unsigned _BitInt(" : "_BitInt(") + std::to_string(type.bitWidth) + ")";
+    }
     if (type.kind == TypeKind::Floating) {
         if (type.floatingRank == FloatingRank::Float) return "float";
         if (type.floatingRank == FloatingRank::LongDouble) return "long double";

@@ -998,6 +998,7 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             break;
         }
         case TypeSpecKind::Auto: result = Type::voidType(); break;
+        case TypeSpecKind::BitInt: result = Type::bitInt(spec.bitWidth); break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);
