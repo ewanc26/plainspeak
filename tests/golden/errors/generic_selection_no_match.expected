@@ -1,0 +1,1 @@
+error[E0031]: A generic selection has no matching type association and no Otherwise expression.

@@ -1356,9 +1356,45 @@ Expr *Parser::parseCompoundLiteral() {
     return arena_.makeExpr(CompoundLiteralExpr{std::move(type), std::move(initializer)}, line);
 }
 
+Expr *Parser::parseGenericSelection() {
+    int line = peek().line;
+    advance(); // select
+    expectWord("by");
+    expectWord("type");
+    expectWord("of");
+    Expr *control = parseExpr();
+    expectWord("with");
+
+    std::vector<GenericAssociation> associations;
+    Expr *defaultExpr = nullptr;
+    while (!checkWord("done")) {
+        if (checkWord("otherwise")) {
+            advance();
+            defaultExpr = parseExpr();
+            break;
+        }
+        TypeSpec type = parseTypeSpec();
+        expectWord("as");
+        associations.push_back(GenericAssociation{std::move(type), parseExpr()});
+        if (checkWord("followed") && checkWordAt(1, "by")) {
+            advance(); advance();
+            continue;
+        }
+        if (checkWord("otherwise")) {
+            advance();
+            defaultExpr = parseExpr();
+        }
+        break;
+    }
+    if (associations.empty()) error("a generic selection needs at least one type association");
+    expectWord("done");
+    return arena_.makeExpr(GenericSelectionExpr{control, std::move(associations), defaultExpr}, line);
+}
+
 Expr *Parser::parsePrimary() {
     const Token &t = peek();
     if (checkWord("compound") && checkWordAt(1, "value")) return parseCompoundLiteral();
+    if (checkWord("select") && checkWordAt(1, "by") && checkWordAt(2, "type") && checkWordAt(3, "of")) return parseGenericSelection();
     if (t.kind == TokKind::Number) { advance(); return arena_.makeExpr(IntLit{t.num}, t.line); }
     if (t.kind == TokKind::Float) { advance(); return arena_.makeExpr(FloatLit{t.fval}, t.line); }
     if (t.kind == TokKind::String) { advance(); return arena_.makeExpr(StringLit{t.text}, t.line); }
@@ -1615,5 +1651,5 @@ Expr *Parser::parsePrimary() {
         return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
     }
     if (t.kind == TokKind::Ident) { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
-    error("expected a number, a decimal, a string, a name, true, false, null pointer, minus, Choose, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
+    error("expected a number, a decimal, a string, a name, true, false, null pointer, minus, Choose, Compound value, Select by type, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
 }

@@ -92,4 +92,5 @@ private:
     Expr *parsePower();
     Expr *parsePrimary();
     Expr *parseCompoundLiteral();
+    Expr *parseGenericSelection();
 };

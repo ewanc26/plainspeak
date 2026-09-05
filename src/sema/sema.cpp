@@ -1407,6 +1407,54 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return target;
         }
+        else if constexpr (std::is_same_v<T, GenericSelectionExpr>) {
+            Type control = inferExpr(node.control, line, diags);
+            if (const auto *name = std::get_if<VarRef>(&node.control->node)) {
+                if (!analysis_ || analysis_->nativeObjectRefs.count(node.control) == 0) {
+                    diags.push_back({31, line, "A generic selection needs a native C expression; \"" + name->name +
+                                             "\" is a legacy PlainSpeak value."});
+                }
+            }
+            if (control.kind == TypeKind::Void || control.kind == TypeKind::Function) {
+                diags.push_back({31, line, "A generic selection cannot inspect a void or function type."});
+            }
+
+            std::vector<Type> associationTypes;
+            std::vector<Type> resultTypes;
+            int selected = -1;
+            for (std::size_t i = 0; i < node.associations.size(); ++i) {
+                const auto &association = node.associations[i];
+                Type associationType = resolveTypeSpec(association.type);
+                validateTypeQualifiers(associationType, line, diags);
+                if (!isCompleteObjectType(associationType)) {
+                    diags.push_back({31, line, "A generic association needs a complete object type, not " +
+                                             typeToString(associationType) + "."});
+                }
+                Type comparable = stripTopQualifiers(associationType);
+                for (const Type &previous : associationTypes) {
+                    if (comparable == stripTopQualifiers(previous)) {
+                        diags.push_back({31, line, "A generic selection cannot list the same compatible type more than once."});
+                        break;
+                    }
+                }
+                associationTypes.push_back(associationType);
+                if (analysis_) analysis_->genericAssociationTypes[&association.type] = associationType;
+                resultTypes.push_back(inferExpr(association.expr, line, diags));
+                if (selected < 0 && stripTopQualifiers(control) == comparable)
+                    selected = static_cast<int>(i);
+            }
+
+            Type resultType = Type::number();
+            if (node.defaultExpr) {
+                Type defaultType = inferExpr(node.defaultExpr, line, diags);
+                if (selected < 0) resultType = defaultType;
+            } else if (selected < 0) {
+                diags.push_back({31, line, "A generic selection has no matching type association and no Otherwise expression."});
+            }
+            if (selected >= 0) resultType = resultTypes[static_cast<std::size_t>(selected)];
+            if (analysis_) analysis_->genericSelections[e] = selected;
+            return resultType;
+        }
         else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
             auto found = enumerationTable_.find(node.enumeration);
             if (found == enumerationTable_.end()) {

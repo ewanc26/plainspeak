@@ -87,6 +87,22 @@ TEST_CASE("parser represents a compound literal expression", "[parser][c99]") {
     CHECK(std::get<IntLit>(literal.initializer.entries[0].expr->node).value == 7);
 }
 
+TEST_CASE("parser represents a generic selection expression", "[parser][c11]") {
+    Tokenizer t("Say Select by type of 7 with integer as 1 followed by decimal as 2 otherwise 3 done.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    auto &say = std::get<SayStmt>(program[0]->node);
+    const auto &selection = std::get<GenericSelectionExpr>(say.args[0]->node);
+    CHECK(std::holds_alternative<IntLit>(selection.control->node));
+    REQUIRE(selection.associations.size() == 2);
+    CHECK(selection.associations[0].type.kind == TypeSpecKind::Integer);
+    CHECK(selection.associations[1].type.kind == TypeSpecKind::Decimal);
+    REQUIRE(selection.defaultExpr);
+}
+
 TEST_CASE("parser handles logical operators", "[parser]") {
     Tokenizer t("Say true and false or true.");
     auto tokens = t.tokenize();

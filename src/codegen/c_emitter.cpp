@@ -237,6 +237,26 @@ std::string emitCompoundLiteral(const Type &type, const AggregateInitializer &in
     return result + "})";
 }
 
+std::string emitGenericSelection(const GenericSelectionExpr &selection,
+                                 const AnalysisResult &analysis, bool boxed) {
+    std::string result = "_Generic((" + emitRawExpr(selection.control, analysis) + "), ";
+    for (std::size_t i = 0; i < selection.associations.size(); ++i) {
+        if (i) result += ", ";
+        const auto &association = selection.associations[i];
+        auto typeIt = analysis.genericAssociationTypes.find(&association.type);
+        if (typeIt != analysis.genericAssociationTypes.end())
+            result += emitCType(typeIt->second) + ": ";
+        result += boxed ? emitBoxedExpr(association.expr, analysis)
+                        : emitRawExpr(association.expr, analysis);
+    }
+    if (selection.defaultExpr) {
+        if (!selection.associations.empty()) result += ", ";
+        result += "default: " + (boxed ? emitBoxedExpr(selection.defaultExpr, analysis)
+                                         : emitRawExpr(selection.defaultExpr, analysis));
+    }
+    return result + ")";
+}
+
 bool isNativeRef(const Expr *e, const AnalysisResult &analysis) {
     return analysis.nativeObjectRefs.count(e) != 0;
 }
@@ -341,6 +361,8 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return "0";
         } else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
             return emitCompoundLiteral(exprType(e, analysis), node.initializer, analysis);
+        } else if constexpr (std::is_same_v<T, GenericSelectionExpr>) {
+            return emitGenericSelection(node, analysis, false);
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "(&" + (cFunctionSignature(node.name, analysis) ? node.name : mangle(node.name)) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
@@ -484,6 +506,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return mangle(node.name);
         } else if constexpr (std::is_same_v<T, CompoundLiteralExpr>) {
             return boxRaw(emitRawExpr(e, analysis), exprType(e, analysis));
+        } else if constexpr (std::is_same_v<T, GenericSelectionExpr>) {
+            return emitGenericSelection(node, analysis, true);
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
             return "ps_int(0L)";
         } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {

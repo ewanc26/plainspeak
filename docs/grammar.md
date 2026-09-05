@@ -220,6 +220,8 @@ The C23 spellings `type of name` and `type of unqualified name` can name the nat
 
 `Compound value of type CType with value expression done` creates a scalar C99 compound literal. `with values expression followed by expression done` creates a positional array, structure, or union literal; `with members name as expression followed by name as expression done` uses C99 member designators; and `with elements at index as expression followed by at index as expression done` uses C99 array designators. `with empty braces done` supplies the C23 empty initializer form. Compound values have their native C type and lvalue semantics, and the type must be complete.
 
+`Select by type of expression with CType as result followed by CType as result otherwise result done` is a C11 generic selection. Each type association is checked at compile time and only the association matching the controlling expression's native type is evaluated at run time; `otherwise` is optional when an association is guaranteed to match.
+
 `size type` spells the native unsigned size representation used by the current C backend. The broader `<stddef.h>` surface remains pending.
 
 `difference type` spells the native signed pointer-difference representation. The broader `<stddef.h>` surface remains pending.

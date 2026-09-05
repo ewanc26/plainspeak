@@ -118,6 +118,12 @@ enum class IncDecKind { PrefixIncrement, PrefixDecrement, PostfixIncrement, Post
 struct IncDecExpr      { IncDecKind kind; Expr *operand; };
 struct ConditionalExpr { Expr *whenTrue; Expr *condition; Expr *whenFalse; };
 struct CompoundLiteralExpr { TypeSpec type; AggregateInitializer initializer; };
+struct GenericAssociation { TypeSpec type; Expr *expr; };
+struct GenericSelectionExpr {
+    Expr *control;
+    std::vector<GenericAssociation> associations;
+    Expr *defaultExpr;
+};
 struct ElementExpr     { Expr *index; Expr *base; };
 struct MemberExpr      { std::string name; Expr *base; };
 struct EnumeratorExpr  { std::string name; std::string enumeration; };
@@ -133,7 +139,7 @@ struct ItemExpr        { Expr *index; Expr *list; };
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
-                              CompoundLiteralExpr, ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
+                              CompoundLiteralExpr, GenericSelectionExpr, ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 

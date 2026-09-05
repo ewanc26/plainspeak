@@ -67,6 +67,11 @@ struct AnalysisResult {
     // Existing Set/Add/Sub statements whose target is an explicitly declared
     // C object. C itself performs the already-checked assignment conversion.
     std::unordered_set<const Stmt *> nativeMutationTargets;
+
+    // C11 generic-selection lowering retains the resolved association types
+    // and the statically selected branch for code generation.
+    std::unordered_map<const TypeSpec *, Type> genericAssociationTypes;
+    std::unordered_map<const Expr *, int> genericSelections;
 };
 
 class Sema {

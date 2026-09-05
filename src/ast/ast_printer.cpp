@@ -131,6 +131,16 @@ std::string printExpr(const Expr *e) {
             }
             return out + " done";
         }
+        else if constexpr (std::is_same_v<T, GenericSelectionExpr>) {
+            std::string out = "Select by type of " + printExpr(node.control) + " with ";
+            for (std::size_t i = 0; i < node.associations.size(); ++i) {
+                if (i) out += " followed by ";
+                out += printTypeSpec(node.associations[i].type) + " as " +
+                       printExpr(node.associations[i].expr);
+            }
+            if (node.defaultExpr) out += " otherwise " + printExpr(node.defaultExpr);
+            return out + " done";
+        }
         else if constexpr (std::is_same_v<T, IncDecExpr>) {
             const bool increment = node.kind == IncDecKind::PrefixIncrement ||
                                    node.kind == IncDecKind::PostfixIncrement;
