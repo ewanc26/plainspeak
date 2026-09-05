@@ -206,7 +206,8 @@ struct Type {
         if (kind != other.kind || qualifiers != other.qualifiers ||
             integerRank != other.integerRank || charSignedness != other.charSignedness ||
             floatingRank != other.floatingRank || isUnsigned != other.isUnsigned ||
-            bitWidth != other.bitWidth || arrayBound != other.arrayBound ||
+            bitWidth != other.bitWidth || exactWidth != other.exactWidth ||
+            stdintFamily != other.stdintFamily || arrayBound != other.arrayBound ||
             variadic != other.variadic || tag != other.tag ||
             parameterTypes != other.parameterTypes) {
             return false;

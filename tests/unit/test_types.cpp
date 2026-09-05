@@ -18,6 +18,23 @@ TEST_CASE("integer rank and signedness are part of type identity", "[types][c99]
     CHECK(Type::integer(IntegerRank::LongLong, false).isInteger());
 }
 
+TEST_CASE("explicit-width integer families are part of type identity", "[types][c99][stdint]") {
+    Type exact8 = Type::integer(IntegerRank::Int);
+    exact8.exactWidth = 8;
+    Type exact16 = exact8;
+    exact16.exactWidth = 16;
+    Type fast8 = exact8;
+    fast8.stdintFamily = "fast";
+    Type least8 = exact8;
+    least8.stdintFamily = "least";
+
+    CHECK(exact8 != exact16);
+    CHECK(exact8 != fast8);
+    CHECK(exact8 != least8);
+    CHECK(fast8 != least8);
+    CHECK(exact8 == exact8);
+}
+
 TEST_CASE("plain char is distinct from signed and unsigned char", "[types][c99]") {
     Type plain = Type::character();
     Type signedChar = Type::integer(IntegerRank::Char, false);

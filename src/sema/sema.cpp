@@ -103,7 +103,14 @@ std::string typeToString(const Type &t) {
     switch (t.kind) {
         case TypeKind::Void: return "void";
         case TypeKind::Boolean: return "boolean";
-        case TypeKind::Integer: return integerName(t);
+        case TypeKind::Integer:
+            if (t.exactWidth) {
+                std::string family = t.stdintFamily.empty() ? "exactly" :
+                                      (t.stdintFamily == "fast" ? "fast with at least" : "least with at least");
+                return std::string(t.isUnsigned ? "unsigned " : "") + "integer with " + family +
+                       " " + std::to_string(*t.exactWidth) + " bits";
+            }
+            return integerName(t);
         case TypeKind::Floating:
             if (t.floatingRank == FloatingRank::Float) return "float";
             if (t.floatingRank == FloatingRank::LongDouble) return "long decimal";
