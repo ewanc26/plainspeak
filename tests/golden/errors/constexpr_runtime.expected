@@ -1,0 +1,1 @@
+error[E0024]: A constexpr native object needs an integer constant initializer.

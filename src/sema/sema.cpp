@@ -1927,6 +1927,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     return;
                 }
             }
+            if (node.constexprObject) {
+                if (!node.initializer || !integerConstantValue(node.initializer)) {
+                    diags.push_back({24, s->line, "A constexpr native object needs an integer constant initializer."});
+                    return;
+                }
+            }
             if (analysis_) analysis_->declarationTypes[s] = declared;
             if (!validateTypeQualifiers(declared, s->line, diags)) return;
             if (declared.kind == TypeKind::Void) {

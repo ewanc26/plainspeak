@@ -204,6 +204,8 @@ The C23 spellings `type of name` and `type of unqualified name` can name the nat
 
 `Declare name as auto with value expression.` provides C23-style initializer-based inference for native scalar declarations. An initializer is required; complete C23 deduction rules remain pending.
 
+`Declare name as constexpr type with value expression.` requests a C23 constexpr native object. The current foundation requires an integer constant initializer and lowers it as a read-only C object.
+
 `Define name as type.` creates a deterministic named type alias. Aliases can be used anywhere a native type can be written, including recursively composed pointer and array types; qualifiers written at the use site are added to the aliased type.
 
 PlainSpeak exposes the ordinary C scalar family through deterministic prose spellings, plus recursive object-pointer, fixed-array, tagged structure, tagged union, and tagged enumeration types:

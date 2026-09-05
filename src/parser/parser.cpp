@@ -237,6 +237,8 @@ Stmt *Parser::parseDeclare() {
         advance(); advance();
         threadLocal = true;
     }
+    bool constexprObject = false;
+    if (checkWord("constexpr")) { advance(); constexprObject = true; }
     TypeSpec type = parseTypeSpec();
     Expr *initializer = nullptr;
     std::optional<AggregateInitializer> aggregateInitializer;
@@ -303,7 +305,7 @@ Stmt *Parser::parseDeclare() {
         }
     }
     expectDot();
-    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal, alignment}, line);
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal, alignment, constexprObject}, line);
 }
 
 Stmt *Parser::parseStructure() {

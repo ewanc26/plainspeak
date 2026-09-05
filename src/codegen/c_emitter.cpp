@@ -568,6 +568,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             if (node.alignment) out << indent << "_Alignas(" << *node.alignment << ") ";
             else out << indent;
             out << (node.threadLocal ? "_Thread_local " : "")
+                << (node.constexprObject ? "const " : "")
                 << emitCDeclaration(type, mangle(node.name));
             if (node.initializer) {
                 out << " = " << emitRawExpr(node.initializer, analysis);

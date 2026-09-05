@@ -1,0 +1,2 @@
+Declare value as integer with value 4.
+Declare limit as constexpr integer with value value.
