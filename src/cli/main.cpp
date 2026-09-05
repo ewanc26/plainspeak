@@ -101,7 +101,9 @@ int main(int argc, char **argv) {
     // supplies the standard _Alignof operator used by PlainSpeak's alignment
     // query. C99 programs remain valid C11 programs.
     std::string cmd = "cc -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR
-                       " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm -o \"" + outPath + "\"";
+                       " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm";
+    for (const auto &library : analysis.cLibraries) cmd += " -l" + library;
+    cmd += " -o \"" + outPath + "\"";
     int rc = std::system(cmd.c_str());
     if (rc != 0) {
         std::cerr << "error: generated C failed to compile (this is a plainspeak bug, "

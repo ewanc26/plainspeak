@@ -1,0 +1,3 @@
+Import C header "errno.h".
+Import C library "m".
+Say 42.

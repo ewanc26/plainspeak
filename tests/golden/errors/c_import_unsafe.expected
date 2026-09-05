@@ -1,0 +1,1 @@
+error[E0007]: C import name contains an unsafe character: "bad;rm".

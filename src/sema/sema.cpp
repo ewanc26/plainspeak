@@ -1,5 +1,6 @@
 #include "sema.h"
 #include <algorithm>
+#include <cctype>
 #include <climits>
 #include <limits>
 #include <functional>
@@ -895,6 +896,23 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
     }
 
     for (Stmt *s : program) checkStmt(s, result.diagnostics);
+
+    for (Stmt *s : program) {
+        auto *import = std::get_if<CImportStmt>(&s->node);
+        if (!import) continue;
+        if (import->name.empty()) {
+            result.diagnostics.push_back({7, s->line, "A C import name cannot be empty."});
+            continue;
+        }
+        for (char c : import->name) {
+            if (!(std::isalnum(static_cast<unsigned char>(c)) || c == '_' || c == '.' || c == '/' || c == '-' || c == '+')) {
+                result.diagnostics.push_back({7, s->line, "C import name contains an unsafe character: \"" + import->name + "\"."});
+                break;
+            }
+        }
+        auto &dest = import->kind == CImportKind::Header ? result.cHeaders : result.cLibraries;
+        if (std::find(dest.begin(), dest.end(), import->name) == dest.end()) dest.push_back(import->name);
+    }
 
     validateLabels(result.diagnostics);
 

@@ -101,6 +101,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
+    if (t.text == "import" && checkWordAt(1, "c")) return parseCImport();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
 
@@ -140,6 +141,20 @@ Stmt *Parser::parseAtomicStore() {
     std::string name = expectIdentName();
     expectDot();
     return arena_.makeStmt(AtomicStoreStmt{std::move(name), expr}, line);
+}
+
+Stmt *Parser::parseCImport() {
+    int line = peek().line;
+    advance(); expectWord("c");
+    CImportKind kind;
+    if (checkWord("header")) kind = CImportKind::Header;
+    else if (checkWord("library")) kind = CImportKind::Library;
+    else error("expected \"header\" or \"library\" after \"Import C\"");
+    advance();
+    if (peek().kind != TokKind::String) error("a C import needs a quoted header or library name");
+    std::string name = advance().text;
+    expectDot();
+    return arena_.makeStmt(CImportStmt{kind, std::move(name)}, line);
 }
 
 Stmt *Parser::parseStmt() {

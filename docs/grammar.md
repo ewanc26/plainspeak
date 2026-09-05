@@ -198,6 +198,8 @@ Label finish.
 
 ## C type spellings
 
+`Import C header "name.h".` adds a validated quoted header to generated C. `Import C library "name".` adds the corresponding `-lname` linker option. Imports are deterministic and do not declare PlainSpeak symbols by themselves; typed C declarations/calls are a separate interop layer.
+
 `complex decimal` spells the C99 `double _Complex` native scalar type. Complex literals and the complete complex arithmetic/library surface remain pending.
 
 `Real part of`, `Imaginary part of`, and `Magnitude of` query a complex scalar through `<complex.h>` and return a decimal value.
