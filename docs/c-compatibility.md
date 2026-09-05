@@ -99,7 +99,7 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `control.if` | implemented |
 | `control.while` | implemented |
 | `control.do-while` | implemented |
-| `control.for` | planned |
+| `control.for` | foundation |
 | `control.switch` | planned |
 | `control.break` | foundation |
 | `control.continue` | foundation |
@@ -108,7 +108,7 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 
 `Do: ... End do while condition.` now supplies C's post-test loop semantics with native scalar conditions, one guaranteed first iteration, and direct C `do { ... } while (...);` lowering. `Break.` and `Continue.` lower directly to C in every current PlainSpeak loop form, including when nested inside conditional blocks. Semantic analysis rejects either statement outside an allowed context and maintains loop context through nested scopes. `control.break` remains **foundation** because C `break` also applies to `switch`, which is still pending; `control.continue` will gain further coverage as general `for` and do-while loops land.
 
-PlainSpeak's `Repeat` and `For each` remain useful language extensions, but they are not counted as replacements for every general C `for` loop.
+PlainSpeak's `For each` is a language extension and is not counted as a replacement for C's `for`. `For i from bound to bound:` / `For i from bound down to bound:` supplies the common bounded counting form of C's `for` with a native `long` loop variable, once-evaluated bounds, and `Break.`/`Continue.` lowering to C `break;`/`continue;`, but remains **foundation** because arbitrary C `for` init/condition/post-step clauses are not yet source-spellable.
 
 ## Functions
 

@@ -1979,6 +1979,23 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             --breakableDepth_;
             --loopDepth_;
         }
+        else if constexpr (std::is_same_v<T, ForStmt>) {
+            std::size_t before = diags.size();
+            Type fromType = inferExpr(node.from, s->line, diags);
+            Type toType = inferExpr(node.to, s->line, diags);
+            if (diags.size() == before && (!isIntegralType(fromType) || !isIntegralType(toType))) {
+                diags.push_back({5, s->line, "For needs whole-number start and end bounds, not a " +
+                                            typeToString(fromType) + " and a " + typeToString(toType) + "."});
+            }
+            ++loopDepth_;
+            ++breakableDepth_;
+            enterScope();
+            declareVar(node.varName, Type::number(), true, s->line, diags);
+            for (Stmt *inner : node.body) checkStmt(inner, diags);
+            leaveScope();
+            --breakableDepth_;
+            --loopDepth_;
+        }
         else if constexpr (std::is_same_v<T, ProcedureStmt>) {
             auto signatureIt = procTable_.find(node.name);
             if (signatureIt == procTable_.end()) return;

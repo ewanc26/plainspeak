@@ -249,6 +249,11 @@ std::string printStmt(const Stmt *s) {
             std::string out = "For each " + node.itemName + " in " + printExpr(node.list) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End for. ";
+        } else if constexpr (std::is_same_v<T, ForStmt>) {
+            std::string out = "For " + node.varName + " from " + printExpr(node.from) +
+                              (node.descending ? " down to " : " to ") + printExpr(node.to) + ": ";
+            for (Stmt *inner : node.body) out += printStmt(inner);
+            return out + "End for. ";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             std::string out = "Call " + node.name;
             if (!node.args.empty()) {

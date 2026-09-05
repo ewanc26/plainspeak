@@ -514,6 +514,7 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, ForEachStmt>) collectVars(node.body, out, analysis);
+            else if constexpr (std::is_same_v<T, ForStmt>) collectVars(node.body, out, analysis);
         }, s->node);
     }
 }
@@ -661,6 +662,19 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "    long " << n << " = ps_length(" << list << ");\n";
             out << indent << "    for (long " << i << " = 1; " << i << " <= " << n << "; " << i << "++) {\n";
             out << indent << "        PsValue " << mangle(node.itemName) << " = ps_list_get(" << list << ", ps_int(" << i << "));\n";
+            for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines, currentProcedure);
+            out << indent << "    }\n";
+            out << indent << "}\n";
+        } else if constexpr (std::is_same_v<T, ForStmt>) {
+            int id = loopCounter++;
+            std::string from = "ps__from" + std::to_string(id);
+            std::string to = "ps__to" + std::to_string(id);
+            out << indent << "{\n";
+            out << indent << "    long " << from << " = ps_as_int(" << emitBoxedExpr(node.from, analysis) << ");\n";
+            out << indent << "    long " << to << " = ps_as_int(" << emitBoxedExpr(node.to, analysis) << ");\n";
+            out << indent << "    for (long " << mangle(node.varName) << " = " << from << "; "
+                << mangle(node.varName) << " " << (node.descending ? ">=" : "<=") << " " << to << "; "
+                << mangle(node.varName) << (node.descending ? "--" : "++") << ") {\n";
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "    }\n";
             out << indent << "}\n";

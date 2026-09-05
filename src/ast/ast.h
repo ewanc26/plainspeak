@@ -143,6 +143,7 @@ struct IfStmt        { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stm
 struct WhileStmt     { Expr *cond; std::vector<Stmt *> body; };
 struct DoWhileStmt   { std::vector<Stmt *> body; Expr *cond; };
 struct ForEachStmt   { std::string itemName; Expr *list; std::vector<Stmt *> body; };
+struct ForStmt       { std::string varName; Expr *from; Expr *to; bool descending; std::vector<Stmt *> body; };
 struct CallStmt      { std::string name; std::vector<Expr *> args; };
 struct ProcedureParam { std::string name; std::optional<TypeSpec> type; };
 struct ProcedureStmt {
@@ -158,7 +159,7 @@ using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, U
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
-                              DoWhileStmt, ForEachStmt, CallStmt, ProcedureStmt, ReturnStmt,
+                              DoWhileStmt, ForEachStmt, ForStmt, CallStmt, ProcedureStmt, ReturnStmt,
                               CommentStmt>;
 struct Stmt { StmtNode node; int line; };
 

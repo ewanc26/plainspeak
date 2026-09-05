@@ -1,0 +1,3 @@
+For i from 1 to 5:
+    Say i.
+End for.

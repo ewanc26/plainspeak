@@ -39,7 +39,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
        | AddStmt | SubStmt | ReadStmt | ReadFloatStmt
        | AppendStmt | ReplaceItemStmt | RemoveItemStmt | CommentStmt
        | BreakStmt | ContinueStmt
-       | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt
+        | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt | ForStmt | SwitchStmt
        | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
 SayStmt ::= ("Say" | "Print") Expr "."
@@ -76,6 +76,7 @@ IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
 WhileStmt ::= "While" Expr ":" Stmt* "End" "while" "."
 DoWhileStmt ::= "Do" ":" Stmt* "End" "do" "while" Expr "."
 ForEachStmt ::= "For" "each" IDENT "in" Expr ":" Stmt* "End" "for" "."
+ForStmt ::= "For" IDENT "from" Expr ("to" Expr | "down" "to" Expr) ":" Stmt* "End" "for" "."
 CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
 ProcedureParam ::= IDENT ("as" CType)?
 ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? ":" Stmt* "End" "procedure" "."
@@ -117,6 +118,15 @@ Set names to Empty list of strings. Append "Ada" to names. For each name in name
 ```
 
 `For each` evaluates the list expression once and snapshots its current values when iteration begins. Mutating the original list inside the loop does not change which values remain to be visited. Lists are otherwise reference values at runtime.
+
+A numeric `For` counts over a whole-number range with an inclusive upper bound. The loop variable is a native `long` (`number`) integer scoped to the body, and both bounds are evaluated once before iteration begins. `to` counts upward, `down to` counts downward:
+
+```text
+For i from 1 to 5: Say i. End for.
+For i from 10 down to 1: Say i. End for.
+```
+
+A `Continue.` transfers control to that loop's own step (the increment or decrement), matching C `continue` in a `for` statement.
 
 ## C type spellings
 

@@ -52,6 +52,7 @@ private:
     Stmt *parseWhile();
     Stmt *parseDoWhile();
     Stmt *parseForEach();
+    Stmt *parseFor();
     Stmt *parseCall();
     Stmt *parseReturn();
     Stmt *parseTopLevelStmt();

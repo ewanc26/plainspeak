@@ -86,7 +86,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
-    if (t.text == "for") return parseForEach();
+    if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
@@ -126,7 +126,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "if") return parseIf();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
-    if (t.text == "for") return parseForEach();
+    if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
@@ -543,6 +543,26 @@ Stmt *Parser::parseForEach() {
     expectColon();
     auto body = parseBlockUntil("end", "for");
     return arena_.makeStmt(ForEachStmt{itemName, list, std::move(body)}, line);
+}
+
+Stmt *Parser::parseFor() {
+    int line = peek().line;
+    advance();
+    std::string varName = expectIdentName();
+    expectWord("from");
+    Expr *from = parseExpr();
+    bool descending = false;
+    if (checkWord("down")) {
+        advance();
+        expectWord("to");
+        descending = true;
+    } else {
+        expectWord("to");
+    }
+    Expr *to = parseExpr();
+    expectColon();
+    auto body = parseBlockUntil("end", "for");
+    return arena_.makeStmt(ForStmt{varName, from, to, descending, std::move(body)}, line);
 }
 
 Stmt *Parser::parseReturn() {

@@ -1,0 +1,1 @@
+Set start to 2. Set limit to 4. For j from start to limit: Say j. End for. For m from 4 down to 1: Say m. End for. For n from 1 to 5: If n is equal to 3 then: Continue. End if. If n is equal to 5 then: Break. End if. Say n. End for. Set total to 0. For k from 1 to 4: Add k to total. End for. Say total. For a from 1 to 3: For b from 1 to 3: Say a times b. End for. End for.
