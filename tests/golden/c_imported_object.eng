@@ -1,0 +1,2 @@
+Import the C object errno as an integer from the header "errno.h".
+Say errno.

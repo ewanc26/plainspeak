@@ -931,6 +931,25 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             result.cHeaders.push_back(import->header);
     }
 
+    for (Stmt *s : program) {
+        auto *import = std::get_if<CObjectImportStmt>(&s->node);
+        if (!import) continue;
+        if (findVar(import->name) || result.cObjectTypes.count(import->name)) {
+            result.diagnostics.push_back({18, s->line, "C object \"" + import->name + "\" is already declared."});
+            continue;
+        }
+        Type type = resolveTypeSpec(import->type);
+        validateTypeQualifiers(type, s->line, result.diagnostics);
+        if (type.kind == TypeKind::Void || type.isArray() || type.isFunction()) {
+            result.diagnostics.push_back({18, s->line, "An imported C object needs a complete non-function object type."});
+            continue;
+        }
+        result.cObjectTypes[import->name] = type;
+        scopes_.front()[import->name] = Symbol{type, true};
+        if (std::find(result.cHeaders.begin(), result.cHeaders.end(), import->header) == result.cHeaders.end())
+            result.cHeaders.push_back(import->header);
+    }
+
     for (Stmt *s : program) checkStmt(s, result.diagnostics);
 
     for (Stmt *s : program) {

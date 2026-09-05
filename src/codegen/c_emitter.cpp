@@ -180,6 +180,10 @@ bool isNativeRef(const Expr *e, const AnalysisResult &analysis) {
     return analysis.nativeObjectRefs.count(e) != 0;
 }
 
+bool isImportedObject(const std::string &name, const AnalysisResult &analysis) {
+    return analysis.cObjectTypes.count(name) != 0;
+}
+
 const ProcedureSignature *procedureSignature(const std::string &name,
                                              const AnalysisResult &analysis) {
     auto it = analysis.procedureSignatures.find(name);
@@ -311,7 +315,7 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
             return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
-            if (isNativeRef(e, analysis)) return mangle(node.name);
+            if (isNativeRef(e, analysis)) return isImportedObject(node.name, analysis) ? node.name : mangle(node.name);
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             bool imported = false;
@@ -395,7 +399,7 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return "ps_str(\"" + escaped + "\")";
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) {
-                return boxRaw(mangle(node.name), exprType(e, analysis));
+                return boxRaw(isImportedObject(node.name, analysis) ? node.name : mangle(node.name), exprType(e, analysis));
             }
             return mangle(node.name);
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {

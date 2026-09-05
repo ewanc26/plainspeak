@@ -202,6 +202,8 @@ Label finish.
 
 `Import the C function name taking a C type [and another C type ...], returning a C type, from the header "name.h".` declares a typed external C function (the articles, commas, and `type` words are optional). Use `no parameters` for a zero-argument function. Calls use the ordinary `Call name ... done` expression and preserve the imported C symbol spelling rather than PlainSpeak mangling it.
 
+`Import the C object name as a C type from the header "name.h".` declares a typed external C object. Reads use the ordinary object name and preserve the symbol spelling; imported objects are read-only declarations until external-object assignment semantics are added.
+
 Append `and variadic parameters` after the fixed parameter prefix to declare a C variadic function. Calls must provide the fixed prefix and may then provide additional arguments; complete `va_list` construction and format-safe string interop remain pending.
 
 `complex decimal` spells the C99 `double _Complex` native scalar type. Complex literals and the complete complex arithmetic/library surface remain pending.

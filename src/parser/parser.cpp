@@ -149,6 +149,7 @@ Stmt *Parser::parseCImport() {
     if (checkWord("the")) advance();
     expectWord("c");
     if (checkWord("function")) return parseCFunctionImport();
+    if (checkWord("object")) return parseCObjectImport();
     CImportKind kind;
     if (checkWord("header")) kind = CImportKind::Header;
     else if (checkWord("library")) kind = CImportKind::Library;
@@ -158,6 +159,23 @@ Stmt *Parser::parseCImport() {
     std::string name = advance().text;
     expectDot();
     return arena_.makeStmt(CImportStmt{kind, std::move(name)}, line);
+}
+
+Stmt *Parser::parseCObjectImport() {
+    int line = peek().line;
+    advance(); // object
+    std::string name = expectIdentName();
+    expectWord("as");
+    if (checkWord("a") || checkWord("an") || checkWord("the")) advance();
+    if (checkWord("type")) advance();
+    TypeSpec type = parseTypeSpec();
+    expectWord("from");
+    if (checkWord("the")) advance();
+    expectWord("header");
+    if (peek().kind != TokKind::String) error("a C object import needs a quoted header name");
+    std::string header = advance().text;
+    expectDot();
+    return arena_.makeStmt(CObjectImportStmt{std::move(name), std::move(type), std::move(header)}, line);
 }
 
 Stmt *Parser::parseCFunctionImport() {
