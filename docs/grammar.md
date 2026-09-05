@@ -25,12 +25,23 @@ Standalone parentheticals are comments. A `(` encountered where a statement can 
 
 ## Synonyms
 
-Resolved by exact, case-insensitive lookup — never fuzzy matching:
+Resolved by exact, case-insensitive lookup — never fuzzy matching. Each verb has one canonical form; the alternatives below it are exact aliases that the lexer accepts interchangeably. There is no fuzzy, statistical, or substring matching anywhere in the toolchain.
 
 | Canonical | Accepted words |
 |---|---|
-| Set | `set`, `let`, `make` |
-| Say | `say`, `print` |
+| Set | `set`, `let`, `make`, `assign`, `put` |
+| Say | `say`, `print`, `show`, `display`, `write`, `output` |
+| Declare | `declare`, `create` |
+| Add | `add`, `sum` |
+| Subtract | `subtract`, `deduct`, `take` |
+| Increase | `increase`, `raise`, `grow` |
+| Decrease | `decrease`, `reduce`, `lower` |
+| Append | `append`, `push` |
+| Return | `return`, `yield` |
+| Unless | `unless` (closes with `End unless.`) |
+| Until | `until` (closes with `End until.`) |
+
+The antonym-style sentences reuse the existing `AddStmt` and `SubStmt` AST nodes, and the negated `IfStmt` / `WhileStmt` AST nodes (with a `UnaryExpr { Not, cond }` condition). They lower to the same generated C as their positive counterparts, so existing diagnostic coverage and codegen paths apply unchanged.
 
 ## Statements
 
@@ -42,16 +53,16 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
         | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt | ForStmt | SwitchStmt
        | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
-SayStmt ::= ("Say" | "Print") Expr ("followed" "by" Expr)* "."
-SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
-DeclareStmt ::= "Declare" IDENT "as" CType NativeInitializer? "."
+SayStmt ::= ("Say" | "Print" | "Show" | "Display" | "Write" | "Output") Expr ("followed" "by" Expr)* "."
+SetStmt ::= ("Set" | "Let" | "Make" | "Assign" | "Put") IDENT "to" Expr "."
+DeclareStmt ::= ("Declare" | "Create") IDENT "as" CType NativeInitializer? "."
 NativeInitializer ::= "with" "value" Expr
                     | "with" "values" Expr ("followed" "by" Expr)* "done"
                     | "with" "members" IDENT "as" Expr ("followed" "by" IDENT "as" Expr)* "done"
                     | "with" "elements" "at" NUMBER "as" Expr ("followed" "by" "at" NUMBER "as" Expr)* "done"
-StoreThroughStmt ::= ("Set" | "Let" | "Make") "value" "at" Expr "to" Expr "."
-StoreElementStmt ::= ("Set" | "Let" | "Make") "element" "at" Expr "in" Expr "to" Expr "."
-StoreMemberStmt ::= ("Set" | "Let" | "Make") "member" IDENT "of" Expr "to" Expr "."
+StoreThroughStmt ::= ("Set" | "Let" | "Make" | "Assign" | "Put") "value" "at" Expr "to" Expr "."
+StoreElementStmt ::= ("Set" | "Let" | "Make" | "Assign" | "Put") "element" "at" Expr "in" Expr "to" Expr "."
+StoreMemberStmt ::= ("Set" | "Let" | "Make" | "Assign" | "Put") "member" IDENT "of" Expr "to" Expr "."
 OrdinaryField ::= "Field" IDENT "as" CType "."
 BitField ::= "Bit" "field" IDENT? "as" CType "with" "width" NUMBER "."
 FlexibleField ::= "Flexible" "field" IDENT "as" CType "."
@@ -61,11 +72,13 @@ StructureStmt ::= "Structure" IDENT ":" StructureMember+ "End" "structure" "."
 UnionStmt ::= "Union" IDENT ":" UnionMember+ "End" "union" "."
 EnumeratorDef ::= "Enumerator" IDENT ("as" ("minus")? NUMBER)? "."
 EnumerationStmt ::= "Enumeration" IDENT ":" EnumeratorDef+ "End" "enumeration" "."
-AddStmt ::= "Add" Expr "to" IDENT "."
-SubStmt ::= "Subtract" Expr "from" IDENT "."
+AddStmt ::= ("Add" | "Sum") Expr "to" IDENT "."
+SubStmt ::= ("Subtract" | "Deduct" | "Take") Expr "from" IDENT "."
+IncreaseStmt ::= ("Increase" | "Raise" | "Grow") IDENT "by" Expr "."
+DecreaseStmt ::= ("Decrease" | "Reduce" | "Lower") IDENT "by" Expr "."
 ReadStmt ::= "Read" IDENT "."
 ReadFloatStmt ::= "ReadFloat" IDENT "."
-AppendStmt ::= "Append" Expr "to" IDENT "."
+AppendStmt ::= ("Append" | "Push") Expr "to" IDENT "."
 ReplaceItemStmt ::= "Replace" "item" "at" Expr "in" IDENT "with" Expr "."
 RemoveItemStmt ::= "Remove" "item" "at" Expr "from" IDENT "."
 BreakStmt ::= "Break" "."
@@ -75,7 +88,9 @@ LabelStmt ::= "Label" IDENT "."
 CommentStmt ::= "(" COMMENT_TEXT ")"
 RepeatStmt ::= "Repeat" Expr ":" Stmt* "End" "repeat" "."
 IfStmt ::= "If" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "if" "."
+UnlessStmt ::= "Unless" Expr "then" ":" Stmt* ("Else" ":" Stmt*)? "End" "unless" "."
 WhileStmt ::= "While" Expr ":" Stmt* "End" "while" "."
+UntilStmt ::= "Until" Expr ":" Stmt* ("End" "until" | "End" "while") "."
 DoWhileStmt ::= "Do" ":" Stmt* "End" "do" "while" Expr "."
 ForEachStmt ::= "For" "each" IDENT "in" Expr ":" Stmt* "End" "for" "."
 ForStmt ::= "For" IDENT "from" Expr ("to" Expr | "down" "to" Expr) ":" Stmt* "End" "for" "."
@@ -84,7 +99,7 @@ SwitchStmt ::= "Switch" Expr ":" SwitchCase+ "End" "switch" "."
 CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
 ProcedureParam ::= IDENT ("as" CType)?
 ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? ":" Stmt* "End" "procedure" "."
-ReturnStmt ::= "Return" Expr? "."
+ReturnStmt ::= ("Return" | "Yield") Expr? "."
 ```
 
 `Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, `Do`/`while`, `For each`, and `For`) and, for `Break.`, inside a `Switch` block as well. `Continue.` is loop-only: inside a `Switch` body it is allowed only when that switch itself sits inside a loop, where it continues the enclosing loop just as C does. Both lower directly to C `break;` / `continue;`.
@@ -114,6 +129,17 @@ Do: Add 1 to total. End do while total is less than 10.
 ```
 
 The body runs before the first condition test, and `Continue.` transfers control to that trailing condition just as C `continue` does in a `do ... while` loop.
+
+Antonym-style sentence forms reuse the existing condition and statement ASTs:
+
+```text
+Increase counter by 3.
+Decrease counter by 1.
+Unless done then: Say "still working". End unless.
+Until counter is at least 10: Add 1 to counter. End until.
+```
+
+`Increase` and `Decrease` map to the same `AddStmt` / `SubStmt` AST as the positive `Add ... to ...` and `Subtract ... from ...` sentences, so generated C, type checks, and diagnostics are unchanged. `Unless` and `Until` are equivalent to `If not ... then ... End if.` and `While not ... ... End while.` respectively: their conditions are wrapped in a `UnaryExpr { Not, cond }` and lower to the same C.
 
 ## Lists
 

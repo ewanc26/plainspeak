@@ -55,19 +55,21 @@ std::vector<Stmt *> Parser::parseProgram() {
 Stmt *Parser::parseTopLevelStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call, Procedure)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, Unless, While, Until, For, Call, Procedure)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
-    if (t.text == "declare") return parseDeclare();
+    if (isDeclareKeyword(t.text)) return parseDeclare();
     if (t.text == "structure") return parseStructure();
     if (t.text == "union") return parseUnion();
     if (t.text == "enumeration") return parseEnumeration();
-    if (t.text == "add") return parseAdd();
-    if (t.text == "subtract") return parseSub();
+    if (isAddKeyword(t.text)) return parseAdd();
+    if (isSubtractKeyword(t.text)) return parseSub();
+    if (isIncreaseKeyword(t.text)) return parseIncrease();
+    if (isDecreaseKeyword(t.text)) return parseDecrease();
     if (t.text == "readfloat") return parseReadFloat();
     if (t.text == "read") return parseRead();
-    if (t.text == "append") return parseAppend();
+    if (isAppendKeyword(t.text)) return parseAppend();
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "break") {
@@ -83,7 +85,9 @@ Stmt *Parser::parseTopLevelStmt() {
         return arena_.makeStmt(ContinueStmt{}, line);
     }
     if (t.text == "repeat") return parseRepeat();
+    if (isUnlessKeyword(t.text)) return parseUnless();
     if (t.text == "if") return parseIf();
+    if (isUntilKeyword(t.text)) return parseUntil();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
@@ -92,25 +96,27 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "label") return parseLabel();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
-    if (t.text == "return") return parseReturn();
+    if (isReturnKeyword(t.text)) return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
+          "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseStmt() {
     const Token &t = peek();
     if (t.kind == TokKind::Comment) return parseComment();
-    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, While, For, Call)");
+    if (t.kind != TokKind::Ident) error("expected a sentence starting with a verb (Say, Set, Declare, Add, Append, Repeat, If, Unless, While, Until, For, Call)");
 
     if (isSayKeyword(t.text)) return parseSay();
     if (isSetKeyword(t.text)) return parseSet();
-    if (t.text == "declare") return parseDeclare();
-    if (t.text == "add") return parseAdd();
-    if (t.text == "subtract") return parseSub();
+    if (isDeclareKeyword(t.text)) return parseDeclare();
+    if (isAddKeyword(t.text)) return parseAdd();
+    if (isSubtractKeyword(t.text)) return parseSub();
+    if (isIncreaseKeyword(t.text)) return parseIncrease();
+    if (isDecreaseKeyword(t.text)) return parseDecrease();
     if (t.text == "readfloat") return parseReadFloat();
     if (t.text == "read") return parseRead();
-    if (t.text == "append") return parseAppend();
+    if (isAppendKeyword(t.text)) return parseAppend();
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "break") {
@@ -126,7 +132,9 @@ Stmt *Parser::parseStmt() {
         return arena_.makeStmt(ContinueStmt{}, line);
     }
     if (t.text == "repeat") return parseRepeat();
+    if (isUnlessKeyword(t.text)) return parseUnless();
     if (t.text == "if") return parseIf();
+    if (isUntilKeyword(t.text)) return parseUntil();
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
@@ -135,10 +143,10 @@ Stmt *Parser::parseStmt() {
     if (t.text == "label") return parseLabel();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
-    if (t.text == "return") return parseReturn();
+    if (isReturnKeyword(t.text)) return parseReturn();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
-          "say, set/let/make, declare, add, subtract, read, append, replace, remove, break, continue, repeat, if, while, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
+          "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
 }
 
 Stmt *Parser::parseSay() {
@@ -417,6 +425,26 @@ Stmt *Parser::parseSub() {
     return arena_.makeStmt(SubStmt{expr, name}, line);
 }
 
+Stmt *Parser::parseIncrease() {
+    int line = peek().line;
+    advance();
+    std::string name = expectIdentName();
+    expectWord("by");
+    Expr *expr = parseExpr();
+    expectDot();
+    return arena_.makeStmt(AddStmt{expr, name}, line);
+}
+
+Stmt *Parser::parseDecrease() {
+    int line = peek().line;
+    advance();
+    std::string name = expectIdentName();
+    expectWord("by");
+    Expr *expr = parseExpr();
+    expectDot();
+    return arena_.makeStmt(SubStmt{expr, name}, line);
+}
+
 Stmt *Parser::parseRead() {
     int line = peek().line;
     advance();
@@ -485,6 +513,14 @@ Stmt *Parser::parseRepeat() {
 }
 
 Stmt *Parser::parseIf() {
+    return parseConditional(false);
+}
+
+Stmt *Parser::parseUnless() {
+    return parseConditional(true);
+}
+
+Stmt *Parser::parseConditional(bool negateCond) {
     int line = peek().line;
     advance();
     Expr *cond = parseExpr();
@@ -492,7 +528,7 @@ Stmt *Parser::parseIf() {
     expectColon();
 
     std::vector<Stmt *> thenBody;
-    while (!(checkWord("else") || (checkWord("end") && checkWordAt(1, "if")))) {
+    while (!(checkWord("else") || (checkWord("end") && (checkWordAt(1, "if") || checkWordAt(1, "unless"))))) {
         if (peek().kind == TokKind::Eof)
             error("reached end of file while looking for \"else\" or \"end if\" to close this block");
         thenBody.push_back(parseStmt());
@@ -502,7 +538,7 @@ Stmt *Parser::parseIf() {
     if (checkWord("else")) {
         advance();
         expectColon();
-        while (!(checkWord("end") && checkWordAt(1, "if"))) {
+        while (!(checkWord("end") && (checkWordAt(1, "if") || checkWordAt(1, "unless")))) {
             if (peek().kind == TokKind::Eof)
                 error("reached end of file while looking for \"end if\" to close this block");
             elseBody.push_back(parseStmt());
@@ -512,15 +548,34 @@ Stmt *Parser::parseIf() {
     advance();
     advance();
     expectDot();
+    if (negateCond) cond = arena_.makeExpr(UnaryExpr{UnaryOp::Not, cond}, cond->line);
     return arena_.makeStmt(IfStmt{cond, std::move(thenBody), std::move(elseBody)}, line);
 }
 
 Stmt *Parser::parseWhile() {
+    return parseLoop(false);
+}
+
+Stmt *Parser::parseUntil() {
+    return parseLoop(true);
+}
+
+Stmt *Parser::parseLoop(bool negateCond) {
     int line = peek().line;
     advance();
     Expr *cond = parseExpr();
     expectColon();
-    auto body = parseBlockUntil("end", "while");
+
+    std::vector<Stmt *> body;
+    while (!(checkWord("end") && (checkWordAt(1, "while") || checkWordAt(1, "until")))) {
+        if (peek().kind == TokKind::Eof)
+            error("reached end of file while looking for \"End while.\" or \"End until.\" to close this block");
+        body.push_back(parseStmt());
+    }
+    advance();
+    advance();
+    expectDot();
+    if (negateCond) cond = arena_.makeExpr(UnaryExpr{UnaryOp::Not, cond}, cond->line);
     return arena_.makeStmt(WhileStmt{cond, std::move(body)}, line);
 }
 

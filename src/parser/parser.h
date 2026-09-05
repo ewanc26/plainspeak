@@ -41,6 +41,8 @@ private:
     Stmt *parseEnumeration();
     Stmt *parseAdd();
     Stmt *parseSub();
+    Stmt *parseIncrease();
+    Stmt *parseDecrease();
     Stmt *parseRead();
     Stmt *parseReadFloat();
     Stmt *parseAppend();
@@ -49,7 +51,11 @@ private:
     Stmt *parseComment();
     Stmt *parseRepeat();
     Stmt *parseIf();
+    Stmt *parseUnless();
+    Stmt *parseConditional(bool negateCond);
     Stmt *parseWhile();
+    Stmt *parseUntil();
+    Stmt *parseLoop(bool negateCond);
     Stmt *parseDoWhile();
     Stmt *parseForEach();
     Stmt *parseFor();

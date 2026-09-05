@@ -266,3 +266,64 @@ TEST_CASE("parser handles parameterless procedure", "[parser]") {
     CHECK(proc.params.empty());
     CHECK(std::holds_alternative<CallStmt>(program[1]->node));
 }
+
+TEST_CASE("parser accepts Set synonyms assign and put", "[parser][synonyms]") {
+    Tokenizer t("Put x to 1. Assign y to 2.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 2);
+    CHECK(std::holds_alternative<SetStmt>(program[0]->node));
+    CHECK(std::holds_alternative<SetStmt>(program[1]->node));
+}
+
+TEST_CASE("parser accepts Say synonyms show display write output", "[parser][synonyms]") {
+    Tokenizer t("Show 1. Display 2. Write 3. Output 4.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 4);
+    for (auto *s : program) CHECK(std::holds_alternative<SayStmt>(s->node));
+}
+
+TEST_CASE("parser accepts Increase and Decrease as AddStmt/SubStmt", "[parser][antonyms]") {
+    Tokenizer t("Increase x by 3. Decrease y by 1.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 2);
+    CHECK(std::holds_alternative<AddStmt>(program[0]->node));
+    CHECK(std::holds_alternative<SubStmt>(program[1]->node));
+}
+
+TEST_CASE("parser accepts Unless and Until with negated conditions", "[parser][antonyms]") {
+    Tokenizer t("Unless x is equal to 1 then: Say \"a\". End unless. Until x is equal to 2: Say \"b\". End until.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 2);
+    CHECK(std::holds_alternative<IfStmt>(program[0]->node));
+    CHECK(std::holds_alternative<WhileStmt>(program[1]->node));
+    auto &iff = std::get<IfStmt>(program[0]->node);
+    CHECK(std::holds_alternative<UnaryExpr>(iff.cond->node));
+    auto &wh = std::get<WhileStmt>(program[1]->node);
+    CHECK(std::holds_alternative<UnaryExpr>(wh.cond->node));
+}
+
+TEST_CASE("parser accepts Declare synonym create and Return synonym yield", "[parser][synonyms]") {
+    Tokenizer t("Create n as integer with value 5. Procedure double takes n as integer returns integer: Yield n times 2. End procedure.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 2);
+    CHECK(std::holds_alternative<NativeDeclStmt>(program[0]->node));
+    CHECK(std::holds_alternative<ProcedureStmt>(program[1]->node));
+    auto &pnode = std::get<ProcedureStmt>(program[1]->node);
+    REQUIRE(!pnode.body.empty());
+    CHECK(std::holds_alternative<ReturnStmt>(pnode.body.back()->node));
+}

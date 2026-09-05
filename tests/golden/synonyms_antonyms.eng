@@ -1,0 +1,39 @@
+Declare counter as integer with value 0.
+Put counter to 10.
+Assign counter to 20.
+Say "after put/assign:" followed by counter.
+
+Display "first line".
+Show "middle line".
+Write "last line".
+Output "and output".
+
+Create tally as integer with value 5.
+Sum 7 to tally.
+Take 3 from tally.
+Say "after sum/take:" followed by tally.
+
+Increase tally by 4.
+Decrease tally by 1.
+Say "after increase/decrease:" followed by tally.
+
+Set numbers to Empty list of numbers.
+Push 42 to numbers.
+Push 7 to numbers.
+Say "numbers first item is" followed by Item at 1 in numbers.
+
+Set done to 0.
+Unless done is equal to 1 then: Set done to 1. Say "unless fired". End unless.
+Say "done is" followed by done.
+
+Set i to 0.
+Until i is equal to 3: Say "until step" followed by i. Add 1 to i. End until.
+
+Set i to 0.
+Until i is equal to 2: Say "until ends while" followed by i. Add 1 to i. End while.
+
+Procedure double takes n as integer returns integer:
+  Yield n times 2.
+End procedure.
+
+Say "double 21 is" followed by Call double with 21 done.
