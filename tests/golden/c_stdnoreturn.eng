@@ -1,0 +1,8 @@
+Import C header "stdnoreturn.h".
+
+Procedure never returns void with no return:
+    While true:
+    End while.
+End procedure.
+
+Say 1.

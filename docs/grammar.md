@@ -225,6 +225,8 @@ The C23 spellings `type of name`, `type of unqualified name`, `type of (expressi
 
 `Procedure name ... returns void with no return:` declares a C11 `_Noreturn` Procedure. Its body must have no reachable end and may not contain a `Return`. Add `with inline` to request the C99 `inline` function specifier; these modifiers are preserved in generated prototypes and definitions.
 
+`Import C header "stdnoreturn.h".` makes the standard noreturn header available to generated C. PlainSpeak's `with no return` spelling supplies the corresponding typed Procedure specifier directly.
+
 `Warning "message".` (or `Warn "message".`) emits a non-fatal, deterministic compiler warning. It is the PlainSpeak equivalent of the C23 `#warning` directive and does not add code to the generated translation unit.
 
 `with deprecated` and `with maybe unused` are C23 declaration attributes. A declaration may say `Declare old with deprecated "use new" with maybe unused as integer.`; a Procedure may place the same attributes after its return type. Deprecated objects and Procedures emit warnings when used, while `maybe unused` is accepted for portable source and has no runtime effect.

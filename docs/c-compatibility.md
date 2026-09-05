@@ -196,7 +196,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.stdint` | foundation | `<stdint.h>` exact-width and least/fast signed and unsigned integer declarations lower to the corresponding `intN_t`/`uintN_t` and `int_leastN_t`/`uint_leastN_t`/`int_fastN_t`/`uint_fastN_t` types; limit macros and the remaining conversion surface remain pending. |
 | `lib.stdio` | foundation | `<stdio.h>`; typed imports cover `fopen`, `fputs`, and `fclose` with string literals and opaque native stream pointers. Formatted/binary I/O, buffering, `FILE` typing, and full stream-error semantics remain pending. |
 | `lib.stdlib` | foundation | Typed imports cover allocation plus `atoi`/`atol`/`atof`/`strtoll` string conversions; the remainder of the conversion, process, sorting and searching surface remains pending. |
-| `lib.stdnoreturn` | planned | `<stdnoreturn.h>` / C23 spelling |
+| `lib.stdnoreturn` | foundation | `<stdnoreturn.h>` can be imported, and typed Procedures can request the C11/C23 noreturn function specifier with `with no return`; the complete macro compatibility and all declaration contexts remain pending. |
 | `lib.string` | foundation | Typed imports cover `strlen` and `strcmp` with string-literal decay; byte-memory mutation and the remaining `<string.h>` surface remain pending. |
 | `lib.tgmath` | planned | `<tgmath.h>` |
 | `lib.threads` | planned | `<threads.h>` |
