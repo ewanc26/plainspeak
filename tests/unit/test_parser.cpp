@@ -167,6 +167,18 @@ TEST_CASE("parser represents declaration attributes", "[parser][c23]") {
     CHECK(declaration.maybeUnused);
 }
 
+TEST_CASE("parser preserves case-sensitive C constant spelling", "[parser][c99]") {
+    Tokenizer t("Import C constant SIGTERM as integer from header \"signal.h\".");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &constant = std::get<CConstantImportStmt>(program[0]->node);
+    CHECK(constant.name == "sigterm");
+    CHECK(constant.cName == "SIGTERM");
+}
+
 TEST_CASE("parser represents a variable-length array bound", "[parser][c99]") {
     Tokenizer t("Procedure f takes count as integer returns integer:\nDeclare values as array of integer with length count.\nReturn 0.\nEnd procedure.");
     auto tokens = t.tokenize();

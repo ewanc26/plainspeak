@@ -211,6 +211,8 @@ Label finish.
 
 `Import the C object name as a C type from the header "name.h".` declares a typed external C object. Reads and assignment-compatible writes use the ordinary object name and preserve the symbol spelling; C `const` qualification remains enforced by sema.
 
+`Import the C constant NAME as a C type from the header "name.h".` imports a typed object-like C macro. The PlainSpeak name is case-insensitive, while `NAME` is emitted with its original spelling so standard macros such as `SIGTERM` remain usable without an arbitrary-C escape hatch.
+
 Append `and variadic parameters` after the fixed parameter prefix to declare a C variadic function. Calls must provide the fixed prefix and may then provide additional arguments. Inside a typed variadic Procedure, `Start variadic arguments after name.`, `Next variadic argument as CType`, and `Finish variadic arguments.` lower to C `va_start`, `va_arg`, and `va_end` through an implicit `va_list`. `Copy variadic arguments to name.`, `Next variadic argument from name as CType`, and `Finish variadic arguments copy name.` lower to `va_copy`, `va_arg`, and `va_end` for an additional cursor. Requested argument types must be complete non-array object types.
 
 `complex decimal` spells the C99 `double _Complex` native scalar type. Complex literals and the complete complex arithmetic/library surface remain pending.

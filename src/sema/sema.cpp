@@ -1132,6 +1132,31 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             result.cHeaders.push_back(import->header);
     }
 
+    for (Stmt *s : program) {
+        auto *import = std::get_if<CConstantImportStmt>(&s->node);
+        if (!import) continue;
+        if (findVar(import->name) || result.cObjectTypes.count(import->name) ||
+            result.cConstantTypes.count(import->name) || procTable_.count(import->name) ||
+            result.cFunctionSignatures.count(import->name)) {
+            result.diagnostics.push_back({18, s->line, "C constant \"" + import->cName + "\" is already declared."});
+            continue;
+        }
+        Type type = resolveTypeSpec(import->type);
+        validateTypeQualifiers(type, s->line, result.diagnostics);
+        const bool scalar = type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
+                            type.kind == TypeKind::Floating || type.kind == TypeKind::Enumeration ||
+                            type.kind == TypeKind::BitInt || type.kind == TypeKind::Complex ||
+                            type.kind == TypeKind::Pointer || type.kind == TypeKind::Nullptr;
+        if (!scalar) {
+            result.diagnostics.push_back({18, s->line, "An imported C constant needs a C scalar type."});
+            continue;
+        }
+        result.cConstantTypes[import->name] = type;
+        result.cConstantNames[import->name] = import->cName;
+        if (std::find(result.cHeaders.begin(), result.cHeaders.end(), import->header) == result.cHeaders.end())
+            result.cHeaders.push_back(import->header);
+    }
+
     for (Stmt *s : program) checkStmt(s, result.diagnostics);
 
     for (Stmt *s : program) {
@@ -1464,6 +1489,13 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, StringLit>) return Type::string();
         else if constexpr (std::is_same_v<T, NullptrLit>) return Type::nullptrType();
         else if constexpr (std::is_same_v<T, VarRef>) {
+            if (analysis_) {
+                auto constant = analysis_->cConstantTypes.find(node.name);
+                if (constant != analysis_->cConstantTypes.end()) {
+                    analysis_->nativeObjectRefs.insert(e);
+                    return constant->second;
+                }
+            }
             auto [symbol, found] = lookupVar(node.name, line, diags);
             if (found && symbol.nativeObject && analysis_) analysis_->nativeObjectRefs.insert(e);
             if (found && symbol.deprecated) {

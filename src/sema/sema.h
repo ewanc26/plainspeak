@@ -68,6 +68,8 @@ struct AnalysisResult {
     std::vector<std::string> cLibraries;
     std::unordered_map<std::string, ProcedureSignature> cFunctionSignatures;
     std::unordered_map<std::string, Type> cObjectTypes;
+    std::unordered_map<std::string, Type> cConstantTypes;
+    std::unordered_map<std::string, std::string> cConstantNames;
 
     // Translation-time values of validated Switch When labels, keyed by the
     // label expression, so codegen can emit plain C case constants.

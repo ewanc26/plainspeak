@@ -77,6 +77,7 @@ private:
     Stmt *parseCImport();
     Stmt *parseCFunctionImport();
     Stmt *parseCObjectImport();
+    Stmt *parseCConstantImport();
     Stmt *parseTopLevelStmt();
     Stmt *parseProcedure();
     std::vector<Stmt *> parseBlockUntil(const std::string &w1, const std::string &w2);

@@ -146,7 +146,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `pp.translation-units` | planned |
 | `pp.header-interop` | foundation |
 | `pp.conditional-compilation` | planned |
-| `pp.macros` | planned |
+| `pp.macros` | foundation |
 | `pp.variadic-vaopt` | planned |
 | `pp.elifdef` | planned |
 | `pp.warning` | foundation |
@@ -154,7 +154,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `pp.predefined-environment` | planned |
 | `pp.pragma` | planned |
 
-`Import the C header`, `Import the C library`, and typed external C-function declarations provide a deterministic interop foundation: generated C includes validated headers, the native link command receives validated libraries, and imported calls retain native C signatures and symbol names. Full header parsing, macro imports, variadic promotions, and separate translation units remain pending.
+`Import the C header`, `Import the C library`, typed external C-function declarations, and typed C-constant imports provide a deterministic interop foundation: generated C includes validated headers, the native link command receives validated libraries, imported calls retain native C signatures and symbol names, and object-like macros retain their case-sensitive C spelling. Full header parsing, function-like/variadic macro expansion, and separate translation units remain pending.
 
 ## Concurrency and C memory model
 
@@ -187,7 +187,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.locale` | foundation | Typed C imports can bind `<locale.h>` functions such as `setlocale`, including native character-pointer and null-pointer arguments; locale categories, `localeconv`, locale object ownership and the remaining locale semantics remain pending. |
 | `lib.math` | foundation | `<math.h>`; current runtime exposes only a small subset. |
 | `lib.setjmp` | planned | `<setjmp.h>` |
-| `lib.signal` | planned | `<signal.h>` |
+| `lib.signal` | foundation | Typed C constant and function imports can bind standard `<signal.h>` names such as `SIGTERM`; signal-handler typing and complete signal delivery semantics remain pending. |
 | `lib.stdalign` | foundation | Native `_Alignas` declaration requests are tested; `<stdalign.h>` macro bindings and complete compatibility remain pending. |
 | `lib.stdarg` | foundation | Typed variadic Procedures use `<stdarg.h>` `va_list`, `va_start`, `va_arg`, `va_copy`, and `va_end` through deterministic PlainSpeak operations; default argument promotions, `va_end` control-flow obligations and the remaining header surface remain pending. |
 | `lib.stdatomic` | planned | `<stdatomic.h>` |

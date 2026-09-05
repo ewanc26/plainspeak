@@ -6,8 +6,9 @@ enum class TokKind { Ident, Number, Float, String, Comment, Dot, Colon, LParen, 
 
 struct Token {
     TokKind kind;
-    std::string text; // for Ident/String/Comment: the value. Idents are lowercased
+    std::string text; // for Ident/String/Comment: the value. Ident text is lowercased
                       // for keyword matching; comments preserve their source text.
+    std::string sourceText; // Original identifier spelling for case-sensitive C names.
     long num = 0;      // valid when kind == Number
     int line = 1;
     double fval = 0.0; // valid when kind == Float

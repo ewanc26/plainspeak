@@ -197,6 +197,7 @@ Stmt *Parser::parseCImport() {
     expectWord("c");
     if (checkWord("function")) return parseCFunctionImport();
     if (checkWord("object")) return parseCObjectImport();
+    if (checkWord("constant")) return parseCConstantImport();
     CImportKind kind;
     if (checkWord("header")) kind = CImportKind::Header;
     else if (checkWord("library")) kind = CImportKind::Library;
@@ -223,6 +224,26 @@ Stmt *Parser::parseCObjectImport() {
     std::string header = advance().text;
     expectDot();
     return arena_.makeStmt(CObjectImportStmt{std::move(name), std::move(type), std::move(header)}, line);
+}
+
+Stmt *Parser::parseCConstantImport() {
+    int line = peek().line;
+    advance(); // constant
+    if (peek().kind != TokKind::Ident) error("a C constant import needs an identifier name");
+    const Token &nameToken = peek();
+    std::string name = advance().text;
+    std::string cName = nameToken.sourceText.empty() ? name : nameToken.sourceText;
+    expectWord("as");
+    if (checkWord("a") || checkWord("an") || checkWord("the")) advance();
+    if (checkWord("type")) advance();
+    TypeSpec type = parseTypeSpec();
+    expectWord("from");
+    if (checkWord("the")) advance();
+    expectWord("header");
+    if (peek().kind != TokKind::String) error("a C constant import needs a quoted header name");
+    std::string header = advance().text;
+    expectDot();
+    return arena_.makeStmt(CConstantImportStmt{std::move(name), std::move(cName), std::move(type), std::move(header)}, line);
 }
 
 Stmt *Parser::parseCFunctionImport() {

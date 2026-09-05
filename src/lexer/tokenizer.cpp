@@ -177,6 +177,7 @@ std::vector<Token> Tokenizer::tokenize() {
             Token t;
             t.kind = TokKind::Ident;
             t.text = lowered;
+            t.sourceText = word;
             t.line = line;
             tokens.push_back(t);
             continue;
@@ -186,6 +187,6 @@ std::vector<Token> Tokenizer::tokenize() {
                                   "' on line " + std::to_string(line_));
     }
 
-    tokens.push_back({TokKind::Eof, "", 0, line_});
+    tokens.push_back({TokKind::Eof, "", "", 0, line_});
     return tokens;
 }

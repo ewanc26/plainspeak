@@ -215,6 +215,12 @@ struct CObjectImportStmt {
     TypeSpec type;
     std::string header;
 };
+struct CConstantImportStmt {
+    std::string name;
+    std::string cName;
+    TypeSpec type;
+    std::string header;
+};
 struct ProcedureStmt {
     std::string name;
     std::vector<ProcedureParam> params;
@@ -242,7 +248,7 @@ using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, U
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
                               DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, VaStartStmt, VaEndStmt, VaCopyStmt, VaCopyEndStmt, ProcedureStmt, ReturnStmt,
-                              CommentStmt, WarningStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt, AtomicStoreStmt, CImportStmt, CFunctionImportStmt, CObjectImportStmt>;
+                              CommentStmt, WarningStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt, AtomicStoreStmt, CImportStmt, CFunctionImportStmt, CObjectImportStmt, CConstantImportStmt>;
 struct Stmt { StmtNode node; int line; };
 
 // Owns every Expr/Stmt produced while parsing one source file. deque

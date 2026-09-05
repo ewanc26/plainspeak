@@ -1,0 +1,2 @@
+Import the C constant SIGTERM as an integer from the header "signal.h".
+Say SIGTERM is greater than 0.
