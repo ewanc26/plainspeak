@@ -429,7 +429,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             if (node.func == "conjugate") return "conj(" + emitRawExpr(node.arg, analysis) + ")";
             static const std::unordered_set<std::string> ctypeFns = {
                 "isalpha", "isalnum", "isblank", "iscntrl", "isdigit", "isgraph",
-                "islower", "isprint", "ispunct", "isspace", "isupper", "isxdigit"
+                "islower", "isprint", "ispunct", "isspace", "isupper", "isxdigit",
+                "tolower", "toupper"
             };
             if (ctypeFns.count(node.func)) {
                 return "ps_int((long)" + node.func + "((unsigned char)ps_as_int(" +

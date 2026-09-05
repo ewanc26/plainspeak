@@ -4,3 +4,5 @@ Say isalpha of 65.
 Say isalnum of 95.
 Say isspace of 32.
 Say isxdigit of 70.
+Say tolower of 65.
+Say toupper of 122.
