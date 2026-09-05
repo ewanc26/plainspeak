@@ -204,6 +204,8 @@ The C23 spellings `type of name` and `type of unqualified name` can name the nat
 
 `size type` spells the native unsigned size representation used by the current C backend. The broader `<stddef.h>` surface remains pending.
 
+`difference type` spells the native signed pointer-difference representation. The broader `<stddef.h>` surface remains pending.
+
 `Declare name as auto with value expression.` provides C23-style initializer-based inference for native scalar declarations. An initializer is required; complete C23 deduction rules remain pending.
 
 `Declare name as constexpr type with value expression.` requests a C23 constexpr native object. The current foundation requires an integer constant initializer and lowers it as a read-only C object.

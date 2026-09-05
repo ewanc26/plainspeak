@@ -182,7 +182,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.stdarg` | planned | `<stdarg.h>` |
 | `lib.stdatomic` | planned | `<stdatomic.h>` |
 | `lib.stdbool` | foundation | `<stdbool.h>` / C23 boolean spellings |
-| `lib.stddef` | foundation | Native `size type` declarations exist; remaining `<stddef.h>` types/macros and exact ABI bindings remain pending. |
+| `lib.stddef` | foundation | Native `size type` and `difference type` declarations exist; remaining `<stddef.h>` types/macros and exact ABI bindings remain pending. |
 | `lib.stdint` | planned | `<stdint.h>` |
 | `lib.stdio` | foundation | `<stdio.h>`; `Say`/`Read` are only a small high-level subset. |
 | `lib.stdlib` | planned | `<stdlib.h>` |

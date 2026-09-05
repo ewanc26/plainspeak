@@ -1000,6 +1000,7 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::Auto: result = Type::voidType(); break;
         case TypeSpecKind::BitInt: result = Type::bitInt(spec.bitWidth, spec.bitIntUnsigned); break;
         case TypeSpecKind::SizeType: result = Type::integer(IntegerRank::Long, true); break;
+        case TypeSpecKind::PtrdiffType: result = Type::integer(IntegerRank::Long, false); break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);

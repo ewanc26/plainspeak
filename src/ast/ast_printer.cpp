@@ -56,6 +56,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = std::string(type.bitIntUnsigned ? "unsigned " : "") + "bit integer with width " + std::to_string(type.bitWidth); break;
         case TypeSpecKind::SizeType:
             body = "size type"; break;
+        case TypeSpecKind::PtrdiffType:
+            body = "difference type"; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;
