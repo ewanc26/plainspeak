@@ -78,6 +78,8 @@ struct TypeSpec {
     bool bitIntUnsigned = false;
     TypeSpecQualifiers qualifiers{};
     std::shared_ptr<TypeSpec> returnType{};
+    std::vector<TypeSpec> parameterTypes{};
+    bool variadic = false;
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or };

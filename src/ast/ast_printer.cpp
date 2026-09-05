@@ -37,7 +37,15 @@ std::string printTypeSpec(const TypeSpec &type) {
                    " with length " + std::to_string(type.arrayBound);
             break;
         case TypeSpecKind::Function:
-            body = "function returning " + (type.returnType ? printTypeSpec(*type.returnType) : "void");
+            body = "function";
+            if (!type.parameterTypes.empty()) {
+                body += " taking ";
+                for (std::size_t i = 0; i < type.parameterTypes.size(); ++i) {
+                    if (i) body += " and ";
+                    body += printTypeSpec(type.parameterTypes[i]);
+                }
+            } else body += " taking no parameters";
+            body += " returning " + (type.returnType ? printTypeSpec(*type.returnType) : "void");
             break;
         case TypeSpecKind::Structure:
             body = "structure " + type.tag; break;

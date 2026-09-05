@@ -1080,7 +1080,12 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::PtrdiffType: result = Type::integer(IntegerRank::Long, false); break;
         case TypeSpecKind::Complex: result = Type::complex(); break;
         case TypeSpecKind::Function:
-            result = Type::function(spec.returnType ? resolveTypeSpec(*spec.returnType) : Type::voidType(), {});
+            {
+                std::vector<Type> parameters;
+                for (const auto &parameter : spec.parameterTypes) parameters.push_back(resolveTypeSpec(parameter));
+                result = Type::function(spec.returnType ? resolveTypeSpec(*spec.returnType) : Type::voidType(),
+                                        std::move(parameters), spec.variadic);
+            }
             break;
     }
 

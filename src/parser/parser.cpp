@@ -987,9 +987,24 @@ TypeSpec Parser::parseTypeSpec() {
         std::size_t bound = static_cast<std::size_t>(advance().num);
         return finish(TypeSpec{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element)), bound});
     }
-    if (checkWord("function") && checkWordAt(1, "returning")) {
-        advance(); advance();
+    if (checkWord("function") && (checkWordAt(1, "returning") || checkWordAt(1, "taking"))) {
+        advance();
         TypeSpec type{TypeSpecKind::Function};
+        if (checkWord("taking")) {
+            advance();
+            if (checkWord("no") && checkWordAt(1, "parameters")) {
+                advance(); advance();
+            } else {
+                for (;;) {
+                    type.parameterTypes.push_back(parseTypeSpec());
+                    if (checkWord("and")) { advance(); continue; }
+                    break;
+                }
+            }
+            expectWord("returning");
+        } else {
+            advance();
+        }
         type.returnType = std::make_shared<TypeSpec>(parseTypeSpec());
         return finish(std::move(type));
     }

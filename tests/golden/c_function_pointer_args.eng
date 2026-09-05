@@ -1,0 +1,5 @@
+Procedure addone takes value as integer returns integer:
+    Return value plus 1.
+End procedure.
+Declare callback as pointer to function taking integer returning integer with value Address of addone.
+Say Call through callback with 41 done.
