@@ -159,6 +159,10 @@ std::string emitCDeclaration(const Type &type, const std::string &name,
     return emitCDeclarator(type, name, analysis);
 }
 
+std::string variadicListName(const std::string &source) {
+    return source.empty() ? "ps__va_args" : "ps__va_copy_" + mangle(source);
+}
+
 std::string emitAggregateFieldDeclaration(const AggregateFieldInfo &field) {
     const std::string name = field.name.empty() ? std::string() : mangle(field.name);
     std::string declaration = emitCDeclaration(field.type, name);
@@ -415,7 +419,7 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, VaArgExpr>) {
             auto it = analysis.variadicArgumentTypes.find(e);
             Type type = it == analysis.variadicArgumentTypes.end() ? Type::number() : it->second;
-            return "va_arg(ps__va_args, " + emitCType(type, &analysis) + ")";
+            return "va_arg(" + variadicListName(node.source) + ", " + emitCType(type, &analysis) + ")";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
@@ -735,6 +739,26 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
     }
 }
 
+void collectVariadicCopies(const std::vector<Stmt *> &stmts, std::set<std::string> &out) {
+    for (Stmt *s : stmts) {
+        std::visit([&](auto &&node) {
+            using T = std::decay_t<decltype(node)>;
+            if constexpr (std::is_same_v<T, VaCopyStmt>) out.insert(node.destination);
+            else if constexpr (std::is_same_v<T, RepeatStmt>) collectVariadicCopies(node.body, out);
+            else if constexpr (std::is_same_v<T, IfStmt>) {
+                collectVariadicCopies(node.thenBody, out);
+                collectVariadicCopies(node.elseBody, out);
+            } else if constexpr (std::is_same_v<T, WhileStmt>) collectVariadicCopies(node.body, out);
+            else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVariadicCopies(node.body, out);
+            else if constexpr (std::is_same_v<T, ForEachStmt>) collectVariadicCopies(node.body, out);
+            else if constexpr (std::is_same_v<T, ForStmt>) collectVariadicCopies(node.body, out);
+            else if constexpr (std::is_same_v<T, SwitchStmt>) {
+                for (const auto &c : node.cases) collectVariadicCopies(c.body, out);
+            }
+        }, s->node);
+    }
+}
+
 void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
               int &loopCounter, const AnalysisResult &analysis,
               const std::unordered_map<int, std::string> *sourceLines,
@@ -771,6 +795,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "va_start(ps__va_args, " << mangle(node.lastParameter) << ");\n";
         } else if constexpr (std::is_same_v<T, VaEndStmt>) {
             out << indent << "va_end(ps__va_args);\n";
+        } else if constexpr (std::is_same_v<T, VaCopyStmt>) {
+            out << indent << "va_copy(" << variadicListName(node.destination) << ", ps__va_args);\n";
+        } else if constexpr (std::is_same_v<T, VaCopyEndStmt>) {
+            out << indent << "va_end(" << variadicListName(node.source) << ");\n";
         } else if constexpr (std::is_same_v<T, SetStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
                 out << indent << nativeName(node.name, analysis) << " = " << emitRawExpr(node.expr, analysis) << ";\n";
@@ -1017,6 +1045,10 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
     collectVars(proc.body, localVars, analysis);
     if (signature && signature->nativeTyped && signature->variadic) {
         out << "    va_list ps__va_args;\n";
+        std::set<std::string> variadicCopies;
+        collectVariadicCopies(proc.body, variadicCopies);
+        for (const auto &copy : variadicCopies)
+            out << "    va_list " << variadicListName(copy) << ";\n";
     }
     for (const auto &v : localVars) out << "    PsValue " << mangle(v) << ";\n";
     if (!localVars.empty() || (signature && signature->nativeTyped && signature->variadic)) out << "\n";

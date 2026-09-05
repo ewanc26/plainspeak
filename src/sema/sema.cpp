@@ -1481,6 +1481,14 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({36, line, "Next variadic argument can only be used inside a variadic typed Procedure."});
                 return Type::number();
             }
+            if (!variadicStarted_) {
+                diags.push_back({36, line, "Next variadic argument needs Start variadic arguments first."});
+                return Type::number();
+            }
+            if (!node.source.empty() && !activeVariadicCopies_.count(node.source)) {
+                diags.push_back({36, line, "The copied variadic argument cursor \"" + node.source + "\" is not active."});
+                return Type::number();
+            }
             if (!isCompleteObjectType(type) || type.isArray()) {
                 diags.push_back({36, line, "A variadic argument needs a complete non-array C object type."});
                 return Type::number();
@@ -3080,11 +3088,15 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             bool hadPrevious = currentProcedure_.has_value();
             int previousLoopDepth = loopDepth_;
             int previousBreakableDepth = breakableDepth_;
+            bool previousVariadicStarted = variadicStarted_;
+            auto previousVariadicCopies = std::move(activeVariadicCopies_);
             auto previousLabels = std::move(labels_);
             auto previousGotos = std::move(gotoTargets_);
             currentProcedure_ = signatureIt->second;
             loopDepth_ = 0;
             breakableDepth_ = 0;
+            variadicStarted_ = false;
+            activeVariadicCopies_.clear();
 
             enterScope();
             for (size_t i = 0; i < node.params.size(); ++i) {
@@ -3117,6 +3129,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             leaveScope();
             loopDepth_ = previousLoopDepth;
             breakableDepth_ = previousBreakableDepth;
+            variadicStarted_ = previousVariadicStarted;
+            activeVariadicCopies_ = std::move(previousVariadicCopies);
             labels_ = std::move(previousLabels);
             gotoTargets_ = std::move(previousGotos);
             if (hadPrevious) currentProcedure_ = previous;
@@ -3127,11 +3141,41 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({36, s->line, "Start variadic arguments can only be used inside a variadic typed Procedure."});
             } else if (currentProcedure_->variadicLastParameter != node.lastParameter) {
                 diags.push_back({36, s->line, "Start variadic arguments must name the last fixed parameter of this Procedure."});
+            } else if (variadicStarted_) {
+                diags.push_back({36, s->line, "Start variadic arguments was already used in this Procedure."});
+            } else {
+                variadicStarted_ = true;
             }
         }
         else if constexpr (std::is_same_v<T, VaEndStmt>) {
-            if (!currentProcedure_ || !currentProcedure_->variadic)
+            if (!currentProcedure_ || !currentProcedure_->variadic) {
                 diags.push_back({36, s->line, "Finish variadic arguments can only be used inside a variadic typed Procedure."});
+            } else if (!variadicStarted_) {
+                diags.push_back({36, s->line, "Finish variadic arguments needs Start variadic arguments first."});
+            } else {
+                variadicStarted_ = false;
+                activeVariadicCopies_.clear();
+            }
+        }
+        else if constexpr (std::is_same_v<T, VaCopyStmt>) {
+            if (!currentProcedure_ || !currentProcedure_->variadic) {
+                diags.push_back({36, s->line, "Copy variadic arguments can only be used inside a variadic typed Procedure."});
+            } else if (!variadicStarted_) {
+                diags.push_back({36, s->line, "Copy variadic arguments needs Start variadic arguments first."});
+            } else if (activeVariadicCopies_.count(node.destination)) {
+                diags.push_back({36, s->line, "The copied variadic argument cursor \"" + node.destination + "\" is already active."});
+            } else {
+                activeVariadicCopies_.insert(node.destination);
+            }
+        }
+        else if constexpr (std::is_same_v<T, VaCopyEndStmt>) {
+            if (!currentProcedure_ || !currentProcedure_->variadic) {
+                diags.push_back({36, s->line, "Finish variadic arguments copy can only be used inside a variadic typed Procedure."});
+            } else if (!activeVariadicCopies_.count(node.source)) {
+                diags.push_back({36, s->line, "The copied variadic argument cursor \"" + node.source + "\" is not active."});
+            } else {
+                activeVariadicCopies_.erase(node.source);
+            }
         }
         else if constexpr (std::is_same_v<T, IndirectCallStmt>) {
             Type callee = decayArray(inferExpr(node.callee, s->line, diags));

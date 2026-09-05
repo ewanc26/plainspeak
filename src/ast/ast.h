@@ -137,7 +137,7 @@ struct BinaryExpr      { BinOp op; Expr *lhs; Expr *rhs; };
 struct ListExpr        { std::vector<Expr *> items; };
 struct EmptyListExpr   { ListElementKind elementKind; };
 struct ItemExpr        { Expr *index; Expr *list; };
-struct VaArgExpr       { TypeSpec type; };
+struct VaArgExpr       { TypeSpec type; std::string source{}; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
@@ -201,6 +201,8 @@ struct IndirectCallStmt { Expr *callee; std::vector<Expr *> args; };
 struct ProcedureParam { std::string name; std::optional<TypeSpec> type; };
 struct VaStartStmt { std::string lastParameter; };
 struct VaEndStmt {};
+struct VaCopyStmt { std::string destination; };
+struct VaCopyEndStmt { std::string source; };
 struct CFunctionImportStmt {
     std::string name;
     std::vector<TypeSpec> parameterTypes;
@@ -239,7 +241,7 @@ using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, U
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
-                              DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, VaStartStmt, VaEndStmt, ProcedureStmt, ReturnStmt,
+                              DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, VaStartStmt, VaEndStmt, VaCopyStmt, VaCopyEndStmt, ProcedureStmt, ReturnStmt,
                               CommentStmt, WarningStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt, AtomicStoreStmt, CImportStmt, CFunctionImportStmt, CObjectImportStmt>;
 struct Stmt { StmtNode node; int line; };
 

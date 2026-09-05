@@ -103,6 +103,8 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
     if (t.text == "start" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaStart();
+    if (t.text == "copy" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaCopy();
+    if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments") && checkWordAt(3, "copy")) return parseVaCopyEnd();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaEnd();
     if (t.text == "import" && (checkWordAt(1, "c") || (checkWordAt(1, "the") && checkWordAt(2, "c")))) return parseCImport();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
@@ -169,6 +171,23 @@ Stmt *Parser::parseVaEnd() {
     advance(); advance(); advance();
     expectDot();
     return arena_.makeStmt(VaEndStmt{}, line);
+}
+
+Stmt *Parser::parseVaCopy() {
+    int line = peek().line;
+    advance(); advance(); advance();
+    expectWord("to");
+    std::string destination = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(VaCopyStmt{std::move(destination)}, line);
+}
+
+Stmt *Parser::parseVaCopyEnd() {
+    int line = peek().line;
+    advance(); advance(); advance(); advance();
+    std::string source = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(VaCopyEndStmt{std::move(source)}, line);
 }
 
 Stmt *Parser::parseCImport() {
@@ -286,6 +305,8 @@ Stmt *Parser::parseStmt() {
     if (isReturnKeyword(t.text)) return parseReturn();
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
     if (t.text == "start" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaStart();
+    if (t.text == "copy" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaCopy();
+    if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments") && checkWordAt(3, "copy")) return parseVaCopyEnd();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaEnd();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
@@ -1477,7 +1498,7 @@ Expr *Parser::parsePrimary() {
     const Token &t = peek();
     if (checkWord("compound") && checkWordAt(1, "value")) return parseCompoundLiteral();
     if (checkWord("select") && checkWordAt(1, "by") && checkWordAt(2, "type") && checkWordAt(3, "of")) return parseGenericSelection();
-    if (checkWord("next") && checkWordAt(1, "variadic") && checkWordAt(2, "argument") && checkWordAt(3, "as")) return parseVaArg();
+    if (checkWord("next") && checkWordAt(1, "variadic") && checkWordAt(2, "argument")) return parseVaArg();
     if (t.kind == TokKind::Number) { advance(); return arena_.makeExpr(IntLit{t.num}, t.line); }
     if (t.kind == TokKind::Float) { advance(); return arena_.makeExpr(FloatLit{t.fval}, t.line); }
     if (t.kind == TokKind::String) { advance(); return arena_.makeExpr(StringLit{t.text}, t.line); }
@@ -1739,6 +1760,12 @@ Expr *Parser::parsePrimary() {
 
 Expr *Parser::parseVaArg() {
     int line = peek().line;
-    advance(); advance(); advance(); advance();
-    return arena_.makeExpr(VaArgExpr{parseTypeSpec()}, line);
+    advance(); advance(); advance();
+    std::string source;
+    if (checkWord("from")) {
+        advance();
+        source = expectIdentName();
+    }
+    expectWord("as");
+    return arena_.makeExpr(VaArgExpr{parseTypeSpec(), std::move(source)}, line);
 }

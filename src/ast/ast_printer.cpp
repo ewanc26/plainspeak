@@ -153,7 +153,8 @@ std::string printExpr(const Expr *e) {
                    (prefix ? "before " : "after ") + printExpr(node.operand);
         }
         else if constexpr (std::is_same_v<T, CastExpr>) return "Convert " + printExpr(node.operand) + " to type " + printTypeSpec(node.target);
-        else if constexpr (std::is_same_v<T, VaArgExpr>) return "Next variadic argument as " + printTypeSpec(node.type);
+        else if constexpr (std::is_same_v<T, VaArgExpr>) return "Next variadic argument" +
+            (node.source.empty() ? "" : " from " + node.source) + " as " + printTypeSpec(node.type);
         else if constexpr (std::is_same_v<T, ElementExpr>) return "Element at " + printExpr(node.index) + " in " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, MemberExpr>) return "Member " + node.name + " of " + printExpr(node.base);
         else if constexpr (std::is_same_v<T, EnumeratorExpr>) return "Enumerator " + node.name + " of " + node.enumeration;
@@ -318,6 +319,8 @@ std::string printStmt(const Stmt *s) {
         else if constexpr (std::is_same_v<T, ContinueStmt>) return "Continue. ";
         else if constexpr (std::is_same_v<T, VaStartStmt>) return "Start variadic arguments after " + node.lastParameter + ". ";
         else if constexpr (std::is_same_v<T, VaEndStmt>) return "Finish variadic arguments. ";
+        else if constexpr (std::is_same_v<T, VaCopyStmt>) return "Copy variadic arguments to " + node.destination + ". ";
+        else if constexpr (std::is_same_v<T, VaCopyEndStmt>) return "Finish variadic arguments copy " + node.source + ". ";
         else if constexpr (std::is_same_v<T, GotoStmt>) return "Go to " + node.label + ". ";
         else if constexpr (std::is_same_v<T, LabelStmt>) return "Label " + node.name + ". ";
         else if constexpr (std::is_same_v<T, RepeatStmt>) {

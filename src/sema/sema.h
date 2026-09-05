@@ -109,6 +109,8 @@ private:
     int loopDepth_ = 0;
     int breakableDepth_ = 0;
     AnalysisResult *analysis_ = nullptr;
+    bool variadicStarted_ = false;
+    std::unordered_set<std::string> activeVariadicCopies_;
 
     // Function-scoped C label namespace: declaration name -> line, and every
     // Go to target -> its source line. Both are reset at each function boundary

@@ -1,0 +1,11 @@
+Procedure add_copied takes count as integer and variadic parameters returns integer:
+    Start variadic arguments after count.
+    Copy variadic arguments to saved.
+    Declare first as integer with value Next variadic argument as integer.
+    Declare second as integer with value Next variadic argument from saved as integer.
+    Finish variadic arguments copy saved.
+    Finish variadic arguments.
+    Return first plus second.
+End procedure.
+
+Say Call add_copied with 2, 7, 35 done.

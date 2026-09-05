@@ -130,6 +130,20 @@ TEST_CASE("parser represents variadic Procedures and stdarg operations", "[parse
     CHECK(std::holds_alternative<VaEndStmt>(procedure.body[2]->node));
 }
 
+TEST_CASE("parser represents va_copy operations", "[parser][c99]") {
+    Tokenizer t("Procedure copy takes count as integer and variadic parameters returns integer: Start variadic arguments after count. Copy variadic arguments to saved. Return Next variadic argument from saved as integer. Finish variadic arguments copy saved. Finish variadic arguments. End procedure.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &procedure = std::get<ProcedureStmt>(program[0]->node);
+    REQUIRE(procedure.body.size() == 5);
+    CHECK(std::get<VaCopyStmt>(procedure.body[1]->node).destination == "saved");
+    CHECK(std::get<VaArgExpr>(std::get<ReturnStmt>(procedure.body[2]->node).expr->node).source == "saved");
+    CHECK(std::get<VaCopyEndStmt>(procedure.body[3]->node).source == "saved");
+}
+
 TEST_CASE("parser represents a warning directive", "[parser][c23]") {
     Tokenizer t("Warn \"check this\".");
     auto tokens = t.tokenize();

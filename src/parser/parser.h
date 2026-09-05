@@ -72,6 +72,8 @@ private:
     Stmt *parseAtomicStore();
     Stmt *parseVaStart();
     Stmt *parseVaEnd();
+    Stmt *parseVaCopy();
+    Stmt *parseVaCopyEnd();
     Stmt *parseCImport();
     Stmt *parseCFunctionImport();
     Stmt *parseCObjectImport();
