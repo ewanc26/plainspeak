@@ -501,6 +501,8 @@ Say Size of type character. Say Size of type pointer to integer. Say Alignment o
 
 `Size of type` lowers to C `sizeof(type)`. `Alignment of type` lowers to C11 `_Alignof(type)`. `Minimum value of type` and `Maximum value of type` bind to the corresponding `<limits.h>` or `<float.h>` implementation limits; for floating types, minimum means the smallest positive normalized value. `Size of` an expression uses the semantic type of the operand and does not evaluate that operand, matching the unevaluated nature of ordinary non-VLA C `sizeof` for the currently supported native object types.
 
+`Offset of member name in type structure tag` lowers to `<stddef.h>` `offsetof` for a named non-bit-field member of a structure or union.
+
 Results are currently boxed back into PlainSpeak `number`, so native `size_t` is still pending. Exact scalar and pointer sizes/alignments remain target properties; PlainSpeak does not impose LP64 or another data model.
 
 ## Expressions

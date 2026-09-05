@@ -1610,6 +1610,18 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return Type::decimal();
         }
+        else if constexpr (std::is_same_v<T, OffsetOfExpr>) {
+            Type queried = resolveTypeSpec(node.type);
+            if (analysis_) analysis_->typeOperands[e] = queried;
+            if (queried.kind != TypeKind::Structure && queried.kind != TypeKind::Union) {
+                diags.push_back({2, line, "Offset of member needs a structure or union type, not a " + typeToString(queried) + "."});
+            } else if (const AggregateFieldInfo *field = findAggregateField(queried, node.member)) {
+                if (field->bitWidth) diags.push_back({23, line, "C does not permit offsetof for bit-field member \"" + node.member + "\"."});
+            } else {
+                diags.push_back({2, line, "I don't know member \"" + node.member + "\" in " + typeToString(queried) + "."});
+            }
+            return Type::number();
+        }
         else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
             if (node.func == "real" || node.func == "imaginary" || node.func == "magnitude" || node.func == "conjugate") {

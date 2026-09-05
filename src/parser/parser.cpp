@@ -1197,6 +1197,13 @@ Expr *Parser::parsePrimary() {
         advance(); advance(); advance(); advance();
         return arena_.makeExpr(LimitOfTypeExpr{parseTypeSpec(), maximum}, line);
     }
+    if (checkWord("offset") && checkWordAt(1, "of") && checkWordAt(2, "member")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        std::string member = expectIdentName();
+        expectWord("in"); expectWord("type");
+        return arena_.makeExpr(OffsetOfExpr{std::move(member), parseTypeSpec()}, line);
+    }
     if (checkWord("list") && checkWordAt(1, "with")) {
         int line = peek().line;
         advance(); advance();

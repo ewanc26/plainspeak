@@ -1,0 +1,3 @@
+Structure pair: Field first as character. Field second as integer. End structure.
+Say Offset of member first in type structure pair.
+Say Offset of member second in type structure pair.

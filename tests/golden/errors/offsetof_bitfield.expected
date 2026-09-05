@@ -1,0 +1,1 @@
+error[E0023]: C does not permit offsetof for bit-field member "value".
