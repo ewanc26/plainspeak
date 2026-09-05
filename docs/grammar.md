@@ -288,6 +288,8 @@ This is still a foundation for the full constant-expression model: the evaluator
 
 Native declarations may request C11 thread-local storage with `Declare name as thread local type.`. The spelling lowers to `_Thread_local`; full C constant-initializer and storage-duration constraints remain under conformance review.
 
+Native declarations may request C11 alignment with `Declare name with alignment N as type.`. The positive constant `N` lowers to `_Alignas(N)`; invalid zero/non-constant alignment requests are rejected by the parser.
+
 `Declare` creates an object with actual C storage and layout rather than a boxed `PsValue`:
 
 ```text

@@ -224,6 +224,13 @@ Stmt *Parser::parseDeclare() {
     int line = peek().line;
     advance();
     std::string name = expectIdentName();
+    std::optional<std::size_t> alignment;
+    if (checkWord("with") && checkWordAt(1, "alignment")) {
+        advance(); advance();
+        if (peek().kind != TokKind::Number || peek().num == 0)
+            error("alignment needs a positive whole-number constant");
+        alignment = static_cast<std::size_t>(advance().num);
+    }
     expectWord("as");
     bool threadLocal = false;
     if (checkWord("thread") && checkWordAt(1, "local")) {
@@ -296,7 +303,7 @@ Stmt *Parser::parseDeclare() {
         }
     }
     expectDot();
-    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal}, line);
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal, alignment}, line);
 }
 
 Stmt *Parser::parseStructure() {

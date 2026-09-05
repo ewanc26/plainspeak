@@ -117,6 +117,7 @@ struct NativeDeclStmt {
     Expr *initializer;
     std::optional<AggregateInitializer> aggregateInitializer;
     bool threadLocal = false;
+    std::optional<std::size_t> alignment;
 };
 struct StoreThroughStmt { Expr *pointer; Expr *expr; };
 struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };
