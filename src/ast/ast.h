@@ -174,6 +174,7 @@ struct SwitchStmt    { Expr *cond; std::vector<SwitchCase> cases; };
 struct GotoStmt      { std::string label; };
 struct LabelStmt     { std::string name; };
 struct CallStmt      { std::string name; std::vector<Expr *> args; };
+struct IndirectCallStmt { Expr *callee; std::vector<Expr *> args; };
 struct ProcedureParam { std::string name; std::optional<TypeSpec> type; };
 struct CFunctionImportStmt {
     std::string name;
@@ -206,7 +207,7 @@ using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, U
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
-                              DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, ProcedureStmt, ReturnStmt,
+                              DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, IndirectCallStmt, ProcedureStmt, ReturnStmt,
                               CommentStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt, AtomicStoreStmt, CImportStmt, CFunctionImportStmt, CObjectImportStmt>;
 struct Stmt { StmtNode node; int line; };
 

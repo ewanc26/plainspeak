@@ -870,6 +870,13 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                         : emitBoxedExpr(node.args[i], analysis));
             }
             out << ");\n";
+        } else if constexpr (std::is_same_v<T, IndirectCallStmt>) {
+            out << indent << "(void)((" << emitRawExpr(node.callee, analysis) << ")(";
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                if (i) out << ", ";
+                out << emitRawExpr(node.args[i], analysis);
+            }
+            out << "));\n";
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
             if (currentProcedure && currentProcedure->nativeTyped) {
                 if (currentProcedure->returnType.kind == TypeKind::Void) {

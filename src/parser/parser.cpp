@@ -837,6 +837,21 @@ Stmt *Parser::parseReturn() {
 Stmt *Parser::parseCall() {
     int line = peek().line;
     advance();
+    if (checkWord("through")) {
+        advance();
+        Expr *callee = parsePrimary();
+        std::vector<Expr *> args;
+        if (checkWord("with")) {
+            advance();
+            while (!checkWord("done")) {
+                if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"done\" to close this call");
+                args.push_back(parseExpr());
+            }
+        }
+        expectWord("done");
+        expectDot();
+        return arena_.makeStmt(IndirectCallStmt{callee, std::move(args)}, line);
+    }
     std::string name = expectIdentName();
     std::vector<Expr *> args;
     if (checkWord("with")) {

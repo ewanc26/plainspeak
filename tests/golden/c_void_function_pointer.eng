@@ -1,0 +1,6 @@
+Procedure announce returns void:
+    Return.
+End procedure.
+Declare callback as pointer to function returning void with value Address of announce.
+Call through callback done.
+Say 1.

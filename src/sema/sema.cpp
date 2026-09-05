@@ -2658,6 +2658,27 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             if (hadPrevious) currentProcedure_ = previous;
             else currentProcedure_.reset();
         }
+        else if constexpr (std::is_same_v<T, IndirectCallStmt>) {
+            Type callee = decayArray(inferExpr(node.callee, s->line, diags));
+            if (!callee.isPointer() || !callee.elementType || !callee.elementType->isFunction()) {
+                diags.push_back({18, s->line, "Call through needs a pointer to a function."});
+                for (Expr *arg : node.args) inferExpr(arg, s->line, diags);
+                return;
+            }
+            const Type &function = *callee.elementType;
+            if ((!function.variadic && node.args.size() != function.parameterTypes.size()) ||
+                (function.variadic && node.args.size() < function.parameterTypes.size())) {
+                diags.push_back({8, s->line, "The function pointer call has the wrong number of arguments."});
+            }
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                Type arg = inferExpr(node.args[i], s->line, diags);
+                if (i < function.parameterTypes.size() &&
+                    !(std::holds_alternative<StringLit>(node.args[i]->node) && acceptsCString(function.parameterTypes[i])) &&
+                    !assignableExprTo(function.parameterTypes[i], arg, node.args[i])) {
+                    diags.push_back({18, s->line, "An argument does not match the function pointer parameter type."});
+                }
+            }
+        }
         else if constexpr (std::is_same_v<T, CallStmt>) {
             auto found = procTable_.find(node.name);
             const ProcedureSignature *imported = nullptr;

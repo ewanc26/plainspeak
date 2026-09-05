@@ -454,6 +454,8 @@ Function types are written as `function taking type and type returning result`, 
 
 Variadic callback types keep a fixed prefix and say `and variadic parameters`, as in `function taking a pointer to character and variadic parameters returning integer`.
 
+Use `Call through callback done.` for a void-returning callback in statement position; the expression form can be placed after `Call through` when its return value is needed.
+
 The command `plainspeak file.eng --lint` runs the deterministic tokenizer, parser, and semantic checker without generating or compiling a native binary. A successful run prints `No lint issues found.`; invalid source receives the same stable diagnostics as compilation. `--show-generated-c` (also spelled `--emit-c`) prints the generated C instead of compiling it.
 
 Positional initialization uses declaration order:
