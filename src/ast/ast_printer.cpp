@@ -146,8 +146,14 @@ std::string printExpr(const Expr *e) {
 std::string printStmt(const Stmt *s) {
     return std::visit([&](auto &&node) -> std::string {
         using T = std::decay_t<decltype(node)>;
-        if constexpr (std::is_same_v<T, SayStmt>) return "Say " + printExpr(node.expr) + ". ";
-        else if constexpr (std::is_same_v<T, SetStmt>) return "Set " + node.name + " to " + printExpr(node.expr) + ". ";
+        if constexpr (std::is_same_v<T, SayStmt>) {
+            std::string out = "Say ";
+            for (size_t i = 0; i < node.args.size(); ++i) {
+                if (i > 0) out += " followed by ";
+                out += printExpr(node.args[i]);
+            }
+            return out + ". ";
+        } else if constexpr (std::is_same_v<T, SetStmt>) return "Set " + node.name + " to " + printExpr(node.expr) + ". ";
         else if constexpr (std::is_same_v<T, StructureStmt>) {
             std::string out = "Structure " + node.name + ": ";
             for (const auto &field : node.fields) {

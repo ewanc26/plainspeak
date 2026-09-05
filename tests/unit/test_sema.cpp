@@ -5,7 +5,7 @@
 TEST_CASE("sema reports undeclared variable", "[sema]") {
     std::vector<Stmt *> program;
     Arena arena;
-    auto *say = arena.makeStmt(SayStmt{arena.makeExpr(VarRef{"y"}, 1)}, 1);
+    auto *say = arena.makeStmt(SayStmt{{arena.makeExpr(VarRef{"y"}, 1)}}, 1);
     program.push_back(say);
 
     Sema sema;
@@ -18,7 +18,7 @@ TEST_CASE("sema accepts valid program", "[sema]") {
     std::vector<Stmt *> program;
     Arena arena;
     auto *set = arena.makeStmt(SetStmt{"x", arena.makeExpr(IntLit{5}, 1)}, 1);
-    auto *say = arena.makeStmt(SayStmt{arena.makeExpr(VarRef{"x"}, 1)}, 2);
+    auto *say = arena.makeStmt(SayStmt{{arena.makeExpr(VarRef{"x"}, 1)}}, 2);
     program.push_back(set);
     program.push_back(say);
 

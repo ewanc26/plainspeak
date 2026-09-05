@@ -98,7 +98,7 @@ using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, 
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 
-struct SayStmt       { Expr *expr; };
+struct SayStmt       { std::vector<Expr *> args; };
 struct SetStmt       { std::string name; Expr *expr; };
 enum class AggregateInitKind { Positional, Members, Elements };
 struct AggregateInitEntry {

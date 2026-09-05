@@ -14,10 +14,10 @@ TEST_CASE("parser distinguishes prefix and postfix increment decrement", "[parse
     auto program = parser.parseProgram();
 
     REQUIRE(program.size() == 5);
-    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[1]->node).expr->node).kind == IncDecKind::PrefixIncrement);
-    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[2]->node).expr->node).kind == IncDecKind::PostfixIncrement);
-    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[3]->node).expr->node).kind == IncDecKind::PrefixDecrement);
-    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[4]->node).expr->node).kind == IncDecKind::PostfixDecrement);
+    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[1]->node).args[0]->node).kind == IncDecKind::PrefixIncrement);
+    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[2]->node).args[0]->node).kind == IncDecKind::PostfixIncrement);
+    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[3]->node).args[0]->node).kind == IncDecKind::PrefixDecrement);
+    CHECK(std::get<IncDecExpr>(std::get<SayStmt>(program[4]->node).args[0]->node).kind == IncDecKind::PostfixDecrement);
 }
 
 TEST_CASE("increment result drops top level qualifiers", "[sema][c99][incdec][qualifiers]") {
@@ -30,7 +30,7 @@ TEST_CASE("increment result drops top level qualifiers", "[sema][c99][incdec][qu
 
     REQUIRE(analysis.diagnostics.empty());
     const auto &say = std::get<SayStmt>(program[1]->node);
-    CHECK(analysis.exprTypes.at(say.expr) == Type::integer(IntegerRank::Int));
+    CHECK(analysis.exprTypes.at(say.args[0]) == Type::integer(IntegerRank::Int));
 }
 
 TEST_CASE("increment accepts atomic real objects", "[sema][c11][incdec][atomic]") {

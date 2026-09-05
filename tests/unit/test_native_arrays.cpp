@@ -26,7 +26,7 @@ TEST_CASE("parser keeps native element syntax separate from list item syntax", "
     REQUIRE(program.size() == 3);
     CHECK(std::holds_alternative<StoreElementStmt>(program[1]->node));
     const auto &say = std::get<SayStmt>(program[2]->node);
-    CHECK(std::holds_alternative<ElementExpr>(say.expr->node));
+    CHECK(std::holds_alternative<ElementExpr>(say.args[0]->node));
 }
 
 #include "../../src/sema/sema.h"
@@ -62,9 +62,9 @@ TEST_CASE("sema resolves fixed arrays, decay and pointer arithmetic", "[sema][ar
     CHECK(analysis.exprTypes.at(qDecl.initializer).isPointer());
 
     const auto &sayElement = std::get<SayStmt>(program[3]->node);
-    CHECK(analysis.exprTypes.at(sayElement.expr) == Type::integer(IntegerRank::Int));
+    CHECK(analysis.exprTypes.at(sayElement.args[0]) == Type::integer(IntegerRank::Int));
     const auto &sayDifference = std::get<SayStmt>(program[4]->node);
-    CHECK(analysis.exprTypes.at(sayDifference.expr) == Type::number());
+    CHECK(analysis.exprTypes.at(sayDifference.args[0]) == Type::number());
 }
 
 

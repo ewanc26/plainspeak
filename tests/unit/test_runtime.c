@@ -1,4 +1,6 @@
 #include <assert.h>
+#include <stdio.h>
+#include <string.h>
 #include "../../runtime/plainspeak_runtime.h"
 
 int main(void) {
@@ -47,6 +49,20 @@ int main(void) {
 
     assert(ps_as_double(ps_int(7)) == 7.0);
     assert(ps_as_double(ps_double(2.5)) == 2.5);
+
+    FILE *old_stdout = stdout;
+    FILE *capture = tmpfile();
+    assert(capture);
+    stdout = capture;
+    ps_say_many(3, (PsValue[]){ps_int(7), ps_str("x"), ps_double(2.5)});
+    fflush(capture);
+    stdout = old_stdout;
+    rewind(capture);
+    char line[64];
+    size_t n = fread(line, 1, sizeof(line) - 1, capture);
+    line[n] = '\0';
+    assert(strcmp(line, "7 x 2.5\n") == 0);
+    fclose(capture);
 
     return 0;
 }

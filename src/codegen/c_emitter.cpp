@@ -535,7 +535,16 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
     std::visit([&](auto &&node) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, SayStmt>) {
-            out << indent << "ps_say(" << emitBoxedExpr(node.expr, analysis) << ");\n";
+            if (node.args.size() == 1) {
+                out << indent << "ps_say(" << emitBoxedExpr(node.args[0], analysis) << ");\n";
+            } else {
+                out << indent << "ps_say_many(" << node.args.size() << ", (PsValue[]){";
+                for (size_t i = 0; i < node.args.size(); ++i) {
+                    if (i > 0) out << ", ";
+                    out << emitBoxedExpr(node.args[i], analysis);
+                }
+                out << "});\n";
+            }
         } else if constexpr (std::is_same_v<T, SetStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
                 out << indent << mangle(node.name) << " = " << emitRawExpr(node.expr, analysis) << ";\n";

@@ -67,13 +67,13 @@ TEST_CASE("sema retains native declaration and pointer expression types", "[sema
 
     auto *sayValue = std::get_if<SayStmt>(&program[3]->node);
     REQUIRE(sayValue != nullptr);
-    REQUIRE(analysis.exprTypes.count(sayValue->expr) == 1);
-    CHECK(analysis.exprTypes.at(sayValue->expr) == Type::integer(IntegerRank::Int));
+    REQUIRE(analysis.exprTypes.count(sayValue->args[0]) == 1);
+    CHECK(analysis.exprTypes.at(sayValue->args[0]) == Type::integer(IntegerRank::Int));
 
     auto *saySize = std::get_if<SayStmt>(&program[4]->node);
     REQUIRE(saySize != nullptr);
-    REQUIRE(analysis.typeOperands.count(saySize->expr) == 1);
-    CHECK(analysis.typeOperands.at(saySize->expr) == Type::integer(IntegerRank::Int));
+    REQUIRE(analysis.typeOperands.count(saySize->args[0]) == 1);
+    CHECK(analysis.typeOperands.at(saySize->args[0]) == Type::integer(IntegerRank::Int));
 }
 
 TEST_CASE("sema rejects addresses of boxed values", "[sema][pointer][error]") {

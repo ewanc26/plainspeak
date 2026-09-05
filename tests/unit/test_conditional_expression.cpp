@@ -12,7 +12,7 @@ TEST_CASE("parser represents choose conditional expression", "[parser][c99][cond
 
     REQUIRE(program.size() == 1);
     const auto &say = std::get<SayStmt>(program[0]->node);
-    const auto *choose = std::get_if<ConditionalExpr>(&say.expr->node);
+    const auto *choose = std::get_if<ConditionalExpr>(&say.args[0]->node);
     REQUIRE(choose != nullptr);
     CHECK(std::holds_alternative<IntLit>(choose->whenTrue->node));
     CHECK(std::holds_alternative<IntLit>(choose->condition->node));
@@ -32,7 +32,7 @@ TEST_CASE("conditional arithmetic uses usual arithmetic conversions", "[sema][c9
 
     REQUIRE(analysis.diagnostics.empty());
     const auto &say = std::get<SayStmt>(program[2]->node);
-    CHECK(analysis.exprTypes.at(say.expr) == Type::integer(IntegerRank::Long));
+    CHECK(analysis.exprTypes.at(say.args[0]) == Type::integer(IntegerRank::Long));
 }
 
 TEST_CASE("conditional pointer result composes pointee qualifiers", "[sema][c99][conditional][pointer]") {

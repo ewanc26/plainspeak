@@ -1,0 +1,42 @@
+Phase 1: Primes at work
+====================
+There are 46 primes below 200.
+Their sum is 4227 and the largest is 199
+Phase 2: Sorting and searching
+==============================
+Sorted numbers:
+3
+7
+8
+13
+17
+29
+37
+42
+55
+90
+96
+101
+Search results follow.
+42: 1
+7: 1
+99: 0
+90: 1
+Phase 3: Eight queens
+======================
+The eight queens puzzle has 92 distinct solutions.
+Phase 4: Fibonacci through matrix powers
+=========================================
+Fibonacci(30) is 832040
+Phase 5: A modest big integer
+==============================
+25! has 26 decimal digits.
+The sum of its decimal digits is 72
+It ends in 6 zeroes.
+The low base-one-billion group is 984000000 and the next is 43330985
+Phase 6: Lists and grades
+==========================
+Squares one to five: 1 4 9 16 25
+After change, the list holds 5 values and the third value is 100
+fifty or bronze
+one hundred defaults

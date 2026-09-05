@@ -65,7 +65,7 @@ TEST_CASE("parser handles arithmetic precedence", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    auto &expr = std::get<BinaryExpr>(say.expr->node);
+    auto &expr = std::get<BinaryExpr>(say.args[0]->node);
     CHECK(expr.op == BinOp::Add);
     CHECK(std::holds_alternative<BinaryExpr>(expr.rhs->node));
     auto &mul = std::get<BinaryExpr>(expr.rhs->node);
@@ -80,7 +80,7 @@ TEST_CASE("parser handles logical operators", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    auto &orExpr = std::get<BinaryExpr>(say.expr->node);
+    auto &orExpr = std::get<BinaryExpr>(say.args[0]->node);
     CHECK(orExpr.op == BinOp::Or);
     CHECK(std::holds_alternative<BinaryExpr>(orExpr.lhs->node));
     auto &andExpr = std::get<BinaryExpr>(orExpr.lhs->node);
@@ -95,8 +95,8 @@ TEST_CASE("parser handles not operator", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(std::holds_alternative<UnaryExpr>(say.expr->node));
-    auto &notExpr = std::get<UnaryExpr>(say.expr->node);
+    CHECK(std::holds_alternative<UnaryExpr>(say.args[0]->node));
+    auto &notExpr = std::get<UnaryExpr>(say.args[0]->node);
     CHECK(notExpr.op == UnaryOp::Not);
 }
 
@@ -164,7 +164,7 @@ TEST_CASE("parser handles mod operator", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    auto &expr = std::get<BinaryExpr>(say.expr->node);
+    auto &expr = std::get<BinaryExpr>(say.args[0]->node);
     CHECK(expr.op == BinOp::Mod);
 }
 
@@ -176,7 +176,7 @@ TEST_CASE("parser handles Length of expression", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(std::holds_alternative<LengthExpr>(say.expr->node));
+    CHECK(std::holds_alternative<LengthExpr>(say.args[0]->node));
 }
 
 TEST_CASE("parser handles Call as expression", "[parser]") {
@@ -187,7 +187,7 @@ TEST_CASE("parser handles Call as expression", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 2);
     auto &say = std::get<SayStmt>(program[1]->node);
-    CHECK(std::holds_alternative<CallExpr>(say.expr->node));
+    CHECK(std::holds_alternative<CallExpr>(say.args[0]->node));
 }
 
 TEST_CASE("parser handles float literal", "[parser]") {
@@ -198,7 +198,7 @@ TEST_CASE("parser handles float literal", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(std::holds_alternative<FloatLit>(say.expr->node));
+    CHECK(std::holds_alternative<FloatLit>(say.args[0]->node));
 }
 
 TEST_CASE("parser handles unary minus", "[parser]") {
@@ -209,8 +209,8 @@ TEST_CASE("parser handles unary minus", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(std::holds_alternative<UnaryExpr>(say.expr->node));
-    auto &unary = std::get<UnaryExpr>(say.expr->node);
+    CHECK(std::holds_alternative<UnaryExpr>(say.args[0]->node));
+    auto &unary = std::get<UnaryExpr>(say.args[0]->node);
     CHECK(unary.op == UnaryOp::Neg);
 }
 
@@ -222,8 +222,8 @@ TEST_CASE("parser handles parenthesized expression", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(std::holds_alternative<BinaryExpr>(say.expr->node));
-    auto &mul = std::get<BinaryExpr>(say.expr->node);
+    CHECK(std::holds_alternative<BinaryExpr>(say.args[0]->node));
+    auto &mul = std::get<BinaryExpr>(say.args[0]->node);
     CHECK(mul.op == BinOp::Mul);
     CHECK(std::holds_alternative<BinaryExpr>(mul.lhs->node));
     auto &add = std::get<BinaryExpr>(mul.lhs->node);
@@ -238,7 +238,7 @@ TEST_CASE("parser handles power operator", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(std::holds_alternative<PowExpr>(say.expr->node));
+    CHECK(std::holds_alternative<PowExpr>(say.args[0]->node));
 }
 
 TEST_CASE("parser handles math function call", "[parser]") {
@@ -249,8 +249,8 @@ TEST_CASE("parser handles math function call", "[parser]") {
     auto program = p.parseProgram();
     REQUIRE(program.size() == 1);
     auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(std::holds_alternative<MathCallExpr>(say.expr->node));
-    auto &math = std::get<MathCallExpr>(say.expr->node);
+    CHECK(std::holds_alternative<MathCallExpr>(say.args[0]->node));
+    auto &math = std::get<MathCallExpr>(say.args[0]->node);
     CHECK(math.func == "sqrt");
 }
 

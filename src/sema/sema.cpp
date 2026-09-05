@@ -1600,9 +1600,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
     std::visit([&](auto &&node) {
         using T = std::decay_t<decltype(node)>;
         if constexpr (std::is_same_v<T, SayStmt>) {
-            Type type = inferExpr(node.expr, s->line, diags);
-            if (type.isPointer() || type.kind == TypeKind::Nullptr || type.isArray() || type.isAggregate()) {
-                diags.push_back({16, s->line, "Say does not format native pointers, null pointer values, whole arrays, or aggregates; say a scalar Member, Element, or Value instead."});
+            for (Expr *arg : node.args) {
+                Type type = inferExpr(arg, s->line, diags);
+                if (type.isPointer() || type.kind == TypeKind::Nullptr || type.isArray() || type.isAggregate()) {
+                    diags.push_back({16, s->line, "Say does not format native pointers, null pointer values, whole arrays, or aggregates; say a scalar Member, Element, or Value instead."});
+                }
             }
         }
         else if constexpr (std::is_same_v<T, SetStmt>) {

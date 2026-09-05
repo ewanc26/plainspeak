@@ -144,9 +144,14 @@ Stmt *Parser::parseStmt() {
 Stmt *Parser::parseSay() {
     int line = peek().line;
     advance();
-    Expr *expr = parseExpr();
+    std::vector<Expr *> args;
+    args.push_back(parseExpr());
+    while (checkWord("followed") && checkWordAt(1, "by")) {
+        advance(); advance();
+        args.push_back(parseExpr());
+    }
     expectDot();
-    return arena_.makeStmt(SayStmt{expr}, line);
+    return arena_.makeStmt(SayStmt{std::move(args)}, line);
 }
 
 Stmt *Parser::parseSet() {

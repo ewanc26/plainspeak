@@ -243,6 +243,13 @@ static void print_inline(PsValue v) {
     }
 }
 void ps_say(PsValue v) { print_inline(v); printf("\n"); }
+void ps_say_many(size_t count, const PsValue *items) {
+    for (size_t i = 0; i < count; ++i) {
+        if (i) printf(" ");
+        print_inline(items[i]);
+    }
+    printf("\n");
+}
 
 static PsValue unary_math(PsValue v, double (*fn)(double)) {
     if (v.type != PS_INT && v.type != PS_DOUBLE) die("expected a number for a math function");

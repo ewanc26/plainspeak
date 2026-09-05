@@ -19,7 +19,7 @@ TEST_CASE("parser represents native structure fields and member access", "[parse
     CHECK(structure.fields[0].type.kind == TypeSpecKind::Integer);
     CHECK(std::holds_alternative<StoreMemberStmt>(program[2]->node));
     const auto &say = std::get<SayStmt>(program[3]->node);
-    CHECK(std::holds_alternative<MemberExpr>(say.expr->node));
+    CHECK(std::holds_alternative<MemberExpr>(say.args[0]->node));
 }
 
 TEST_CASE("sema completes structures and types members", "[sema][structures][c99]") {
@@ -38,7 +38,7 @@ TEST_CASE("sema completes structures and types members", "[sema][structures][c99
     CHECK(info.fields[0].type == Type::integer(IntegerRank::Int));
     CHECK(info.fields[1].type.isPointer());
     const auto &say = std::get<SayStmt>(program[3]->node);
-    CHECK(analysis.exprTypes.at(say.expr) == Type::integer(IntegerRank::Int));
+    CHECK(analysis.exprTypes.at(say.args[0]) == Type::integer(IntegerRank::Int));
 }
 
 TEST_CASE("sema rejects recursive structure fields by value", "[sema][structures][diagnostics]") {

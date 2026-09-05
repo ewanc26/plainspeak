@@ -63,6 +63,7 @@ static inline double ps_as_double(PsValue v) {
 int ps_truthy(PsValue v);
 
 void ps_say(PsValue v);
+void ps_say_many(size_t count, const PsValue *items);
 
 PsValue ps_sin(PsValue v);
 PsValue ps_cos(PsValue v);

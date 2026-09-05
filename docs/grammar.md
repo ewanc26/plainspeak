@@ -42,7 +42,7 @@ Stmt ::= SayStmt | SetStmt | DeclareStmt | StoreThroughStmt | StoreElementStmt
         | RepeatStmt | IfStmt | WhileStmt | DoWhileStmt | ForEachStmt | ForStmt | SwitchStmt
        | CallStmt | ProcedureStmt | ReturnStmt | StructureStmt | UnionStmt | EnumerationStmt
 
-SayStmt ::= ("Say" | "Print") Expr "."
+SayStmt ::= ("Say" | "Print") Expr ("followed" "by" Expr)* "."
 SetStmt ::= ("Set" | "Let" | "Make") IDENT "to" Expr "."
 DeclareStmt ::= "Declare" IDENT "as" CType NativeInitializer? "."
 NativeInitializer ::= "with" "value" Expr
@@ -95,6 +95,12 @@ Examples are intentionally formatted as paragraphs:
 
 ```text
 Say "Hello, world!". Set total to 0. Add 1 to total. Set total to 9. Say total.
+```
+
+`Say` accepts several values joined by `followed by`; they print on one line, space separated:
+
+```text
+Say "sum of one through ten is" followed by 55.
 ```
 
 ```text

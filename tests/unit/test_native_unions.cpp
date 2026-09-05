@@ -35,7 +35,7 @@ TEST_CASE("sema completes unions and types members", "[sema][unions][c99]") {
     CHECK(info.fields[0].type == Type::integer(IntegerRank::Int));
     CHECK(info.fields[1].type.isPointer());
     const auto &say = std::get<SayStmt>(program[3]->node);
-    CHECK(analysis.exprTypes.at(say.expr) == Type::integer(IntegerRank::Int));
+    CHECK(analysis.exprTypes.at(say.args[0]) == Type::integer(IntegerRank::Int));
 }
 
 TEST_CASE("structure and union tags share the C tag namespace", "[sema][unions][diagnostics]") {

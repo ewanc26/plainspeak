@@ -1,0 +1,227 @@
+Structure matrix2: Field a as long integer. Field b as long integer. Field c as long integer. Field d as long integer. End structure.
+Structure bignum: Field digits as array of long integer with length 40. Field length as long integer. End structure.
+Enumeration grade: Enumerator platinum. Enumerator gold as 20. Enumerator silver. Enumerator bronze as 50. End enumeration.
+
+Procedure mmul takes left as structure matrix2 right as structure matrix2 returns structure matrix2:
+  Declare product as structure matrix2.
+  Set member a of product to Member a of left times Member a of right plus Member b of left times Member c of right.
+  Set member b of product to Member a of left times Member b of right plus Member b of left times Member d of right.
+  Set member c of product to Member c of left times Member a of right plus Member d of left times Member c of right.
+  Set member d of product to Member c of left times Member b of right plus Member d of left times Member d of right.
+  Return product.
+End procedure.
+Procedure mpow takes base as structure matrix2 power as integer returns structure matrix2:
+  If power is equal to 1 then: Return base. End if.
+  Declare half as structure matrix2 with value Call mpow with base (power divided by 2) done.
+  Declare squared as structure matrix2 with value Call mmul with half half done.
+  If power minus (power divided by 2 times 2) is not equal to 0 then: Return Call mmul with squared base done. End if.
+  Return squared.
+End procedure.
+
+Procedure compatible takes board as array of long integer with length 8 candidate as long integer check as long integer returns long integer:
+  Declare i as long integer with value 0.
+  While i is less than check:
+    If Element at i in board is equal to candidate then: Return 0. End if.
+    If check minus i is equal to absolute value of (candidate minus Element at i in board) then: Return 0. End if.
+    Add 1 to i.
+  End while.
+  Return 1.
+End procedure.
+Procedure queens takes n as long integer board as array of long integer with length 8 returns long integer:
+  If n is equal to 8 then: Return 1. End if.
+  Declare solutions as long integer with value 0.
+  Declare candidate as long integer with value 0.
+  While candidate is less than 8:
+    If Call compatible with board candidate n done is not equal to 0 then:
+      Set element at n in board to candidate.
+      Add Call queens with n plus 1 board done to solutions.
+    End if.
+    Add 1 to candidate.
+  End while.
+  Return solutions.
+End procedure.
+
+Procedure partition takes lo as integer hi as integer a as array of integer with length 12 returns integer:
+  Declare pivot as integer with value Element at hi in a.
+  Declare i as integer with value lo.
+  Declare j as integer with value lo.
+  Declare t as integer with value 0.
+  While j is less than hi:
+    If Element at j in a is less than pivot then:
+      Set t to Element at i in a.
+      Set element at i in a to Element at j in a.
+      Set element at j in a to t.
+      Add 1 to i.
+    End if.
+    Add 1 to j.
+  End while.
+  Set t to Element at i in a.
+  Set element at i in a to Element at hi in a.
+  Set element at hi in a to t.
+  Return i.
+End procedure.
+Procedure quicksort takes lo as integer hi as integer a as array of integer with length 12 returns void:
+  If lo is less than hi then:
+    Declare k as integer with value Call partition with lo hi a done.
+    Call quicksort with lo (k minus 1) a done.
+    Call quicksort with (k plus 1) hi a done.
+  End if.
+  Return.
+End procedure.
+Procedure search takes lo as integer hi as integer key as integer a as array of integer with length 12 returns integer:
+  If lo is greater than hi then: Return 0. End if.
+  Declare mid as integer with value lo plus (hi minus lo divided by 2).
+  If Element at mid in a is equal to key then: Return 1. End if.
+  If Element at mid in a is less than key then: Return Call search with mid plus 1 hi key a done. End if.
+  Return Call search with lo (mid minus 1) key a done.
+End procedure.
+
+Procedure bigfactorial returns structure bignum:
+  Declare result as structure bignum with members length as 1 done.
+  Set element at 0 in Member digits of result to 1.
+  Declare factor as long integer with value 2.
+  Declare carry as long integer with value 0.
+  Declare i as long integer with value 0.
+  Declare len as long integer with value 1.
+  Declare here as long integer with value 0.
+  Declare next as long integer with value 0.
+  While factor is less than or equal to 25:
+    Set carry to 0.
+    Set i to 0.
+    Set len to Member length of result.
+    While i is less than len:
+      Set here to Element at i in Member digits of result.
+      Set next to here times factor plus carry.
+      Set element at i in Member digits of result to next mod 1000000000.
+      Set carry to next divided by 1000000000.
+      Add 1 to i.
+    End while.
+    While carry is greater than 0:
+      Set len to Member length of result.
+      Set element at len in Member digits of result to carry mod 1000000000.
+      Set carry to carry divided by 1000000000.
+      Set member length of result to len plus 1.
+    End while.
+    Add 1 to factor.
+  End while.
+  Return result.
+End procedure.
+
+Say "Phase 1: Primes at work".
+Say "====================".
+Declare sieve as array of boolean with length 200.
+Set c to 0.
+While c is less than 200:
+  Set element at c in sieve to true.
+  Add 1 to c.
+End while.
+Set element at 0 in sieve to false.
+Set element at 1 in sieve to false.
+Set p to 2.
+While p times p is less than 200:
+  If Element at p in sieve then:
+    Set m to p times p.
+    While m is less than 200:
+      Set element at m in sieve to false.
+      Add p to m.
+    End while.
+  End if.
+  Add 1 to p.
+End while.
+Set count to 0.
+Set sum to 0.
+Set largest to 0.
+For n from 2 to 199:
+  If Element at n in sieve then:
+    Add 1 to count.
+    Add n to sum.
+    Set largest to n.
+  End if.
+End for.
+Say "There are" followed by count followed by "primes below 200.".
+Say "Their sum is" followed by sum followed by "and the largest is" followed by largest.
+
+Say "Phase 2: Sorting and searching".
+Say "==============================".
+Declare numbers as array of integer with length 12 with values 37 followed by 8 followed by 101 followed by 3 followed by 42 followed by 17 followed by 96 followed by 13 followed by 55 followed by 7 followed by 90 followed by 29 done.
+Call quicksort with 0 11 numbers done.
+Say "Sorted numbers:".
+For i from 0 to 11:
+  Say Element at i in numbers.
+End for.
+Say "Search results follow.".
+Say "42:" followed by Call search with 0 11 42 numbers done.
+Say "7:" followed by Call search with 0 11 7 numbers done.
+Say "99:" followed by Call search with 0 11 99 numbers done.
+Say "90:" followed by Call search with 0 11 90 numbers done.
+
+Say "Phase 3: Eight queens".
+Say "======================".
+Declare board as array of long integer with length 8.
+Say "The eight queens puzzle has" followed by Call queens with 0 board done followed by "distinct solutions.".
+
+Say "Phase 4: Fibonacci through matrix powers".
+Say "=========================================".
+Declare identity as structure matrix2 with members a as 1 followed by b as 1 followed by c as 1 followed by d as 0 done.
+Declare powered as structure matrix2 with value Call mpow with identity 30 done.
+Say "Fibonacci(30) is" followed by Member c of powered.
+
+Say "Phase 5: A modest big integer".
+Say "==============================".
+Declare fact as structure bignum with value Call bigfactorial done.
+Declare totaldigits as long integer with value 0.
+Declare top as long integer with value 0.
+Declare sumdigits as long integer with value 0.
+Declare w as long integer with value 0.
+Declare piece as long integer with value 0.
+Declare low as long integer with value 0.
+Declare tz as long integer with value 0.
+Set totaldigits to (Member length of fact minus 1) times 9.
+Set top to Element at (Member length of fact minus 1) in Member digits of fact.
+While top is greater than 0:
+  Add 1 to totaldigits.
+  Set top to top divided by 10.
+End while.
+Say "25! has" followed by totaldigits followed by "decimal digits.".
+While w is less than Member length of fact:
+  Set piece to Element at w in Member digits of fact.
+  While piece is greater than 0:
+    Add piece mod 10 to sumdigits.
+    Set piece to piece divided by 10.
+  End while.
+  Add 1 to w.
+End while.
+Say "The sum of its decimal digits is" followed by sumdigits.
+Set w to 0.
+Set low to Element at 0 in Member digits of fact.
+While low is equal to 0:
+  Add 9 to tz.
+  Add 1 to w.
+  Set low to Element at w in Member digits of fact.
+End while.
+While low mod 10 is equal to 0:
+  Add 1 to tz.
+  Set low to low divided by 10.
+End while.
+Say "It ends in" followed by tz followed by "zeroes.".
+Say "The low base-one-billion group is" followed by Element at 0 in Member digits of fact followed by "and the next is" followed by Element at 1 in Member digits of fact.
+
+Say "Phase 6: Lists and grades".
+Say "==========================".
+Set squares to Empty list of numbers.
+For n from 1 to 5:
+  Append n times n to squares.
+End for.
+Say "Squares one to five:" followed by Item at 1 in squares followed by Item at 2 in squares followed by Item at 3 in squares followed by Item at 4 in squares followed by Item at 5 in squares.
+Replace item at 3 in squares with 100.
+Say "After change, the list holds" followed by Length of squares followed by "values and the third value is" followed by Item at 3 in squares.
+Set rank to Enumerator bronze of grade.
+Switch rank:
+  When 20: Say "twenty or gold". Break.
+  When 50: Say "fifty or bronze". Break.
+  Otherwise: Say "some other rank". Break.
+End switch.
+Switch 100:
+  When 50: Say "fifty or bronze". Break.
+  Otherwise: Say "one hundred defaults". Break.
+End switch.

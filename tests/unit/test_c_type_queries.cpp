@@ -11,7 +11,7 @@ Expr *parseSayExpr(const std::string &source, Arena &arena) {
     Parser parser(tokenizer.tokenize(), arena);
     auto program = parser.parseProgram();
     REQUIRE(program.size() == 1);
-    return std::get<SayStmt>(program[0]->node).expr;
+    return std::get<SayStmt>(program[0]->node).args[0];
 }
 
 TypeSpecKind sizeKind(const std::string &typeText) {

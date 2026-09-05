@@ -12,7 +12,7 @@ TEST_CASE("parser represents explicit conversion target type", "[parser][c99][ca
 
     REQUIRE(program.size() == 1);
     const auto &say = std::get<SayStmt>(program[0]->node);
-    const auto *cast = std::get_if<CastExpr>(&say.expr->node);
+    const auto *cast = std::get_if<CastExpr>(&say.args[0]->node);
     REQUIRE(cast != nullptr);
     CHECK(cast->target.kind == TypeSpecKind::UnsignedInteger);
     CHECK(std::holds_alternative<FloatLit>(cast->operand->node));
@@ -28,7 +28,7 @@ TEST_CASE("sema retains explicit arithmetic cast result type", "[sema][c99][cast
 
     REQUIRE(analysis.diagnostics.empty());
     const auto &say = std::get<SayStmt>(program[0]->node);
-    CHECK(analysis.exprTypes.at(say.expr) == Type::integer(IntegerRank::Short, true));
+    CHECK(analysis.exprTypes.at(say.args[0]) == Type::integer(IntegerRank::Short, true));
 }
 
 TEST_CASE("sema accepts object pointer and void pointer casts", "[sema][c99][cast][pointer]") {

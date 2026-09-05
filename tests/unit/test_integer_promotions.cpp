@@ -19,9 +19,9 @@ TEST_CASE("integer promotions lift small native integers to int", "[sema][c99][p
     const auto &sum = std::get<SayStmt>(program[2]->node);
     const auto &complement = std::get<SayStmt>(program[3]->node);
     const auto &shift = std::get<SayStmt>(program[4]->node);
-    CHECK(analysis.exprTypes.at(sum.expr) == Type::integer(IntegerRank::Int));
-    CHECK(analysis.exprTypes.at(complement.expr) == Type::integer(IntegerRank::Int));
-    CHECK(analysis.exprTypes.at(shift.expr) == Type::integer(IntegerRank::Int));
+    CHECK(analysis.exprTypes.at(sum.args[0]) == Type::integer(IntegerRank::Int));
+    CHECK(analysis.exprTypes.at(complement.args[0]) == Type::integer(IntegerRank::Int));
+    CHECK(analysis.exprTypes.at(shift.args[0]) == Type::integer(IntegerRank::Int));
 }
 
 TEST_CASE("usual integer conversions preserve unsigned rank rules", "[sema][c99][conversions]") {
@@ -40,8 +40,8 @@ TEST_CASE("usual integer conversions preserve unsigned rank rules", "[sema][c99]
 
     const auto &intMixed = std::get<SayStmt>(program[4]->node);
     const auto &longMixed = std::get<SayStmt>(program[5]->node);
-    CHECK(analysis.exprTypes.at(intMixed.expr) == Type::integer(IntegerRank::Int, true));
-    CHECK(analysis.exprTypes.at(longMixed.expr) == Type::integer(IntegerRank::Long, true));
+    CHECK(analysis.exprTypes.at(intMixed.args[0]) == Type::integer(IntegerRank::Int, true));
+    CHECK(analysis.exprTypes.at(longMixed.args[0]) == Type::integer(IntegerRank::Long, true));
 }
 
 TEST_CASE("usual arithmetic conversions retain floating rank", "[sema][c99][conversions]") {
@@ -59,8 +59,8 @@ TEST_CASE("usual arithmetic conversions retain floating rank", "[sema][c99][conv
 
     const auto &doubleExpr = std::get<SayStmt>(program[3]->node);
     const auto &longDoubleExpr = std::get<SayStmt>(program[4]->node);
-    CHECK(analysis.exprTypes.at(doubleExpr.expr) == Type::floating(FloatingRank::Double));
-    CHECK(analysis.exprTypes.at(longDoubleExpr.expr) == Type::floating(FloatingRank::LongDouble));
+    CHECK(analysis.exprTypes.at(doubleExpr.args[0]) == Type::floating(FloatingRank::Double));
+    CHECK(analysis.exprTypes.at(longDoubleExpr.args[0]) == Type::floating(FloatingRank::LongDouble));
 }
 
 TEST_CASE("bitwise and modulo reject floating operands", "[sema][c99][bitwise]") {
