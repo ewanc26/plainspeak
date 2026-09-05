@@ -229,7 +229,10 @@ Stmt *Parser::parseDeclare() {
         advance(); advance();
         if (peek().kind != TokKind::Number || peek().num == 0)
             error("alignment needs a positive whole-number constant");
-        alignment = static_cast<std::size_t>(advance().num);
+        auto requested = static_cast<std::size_t>(advance().num);
+        if ((requested & (requested - 1)) != 0)
+            error("alignment needs a power-of-two whole-number constant");
+        alignment = requested;
     }
     expectWord("as");
     bool threadLocal = false;
