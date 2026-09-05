@@ -1,0 +1,3 @@
+Declare counter as thread local integer.
+Set counter to 4.
+Say counter.

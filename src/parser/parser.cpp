@@ -225,6 +225,11 @@ Stmt *Parser::parseDeclare() {
     advance();
     std::string name = expectIdentName();
     expectWord("as");
+    bool threadLocal = false;
+    if (checkWord("thread") && checkWordAt(1, "local")) {
+        advance(); advance();
+        threadLocal = true;
+    }
     TypeSpec type = parseTypeSpec();
     Expr *initializer = nullptr;
     std::optional<AggregateInitializer> aggregateInitializer;
@@ -291,7 +296,7 @@ Stmt *Parser::parseDeclare() {
         }
     }
     expectDot();
-    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer)}, line);
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal}, line);
 }
 
 Stmt *Parser::parseStructure() {

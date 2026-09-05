@@ -562,7 +562,8 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             // and procedure prototypes by emitProgram.
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
-            out << indent << emitCDeclaration(type, mangle(node.name));
+            out << indent << (node.threadLocal ? "_Thread_local " : "")
+                << emitCDeclaration(type, mangle(node.name));
             if (node.initializer) {
                 out << " = " << emitRawExpr(node.initializer, analysis);
             } else if (node.aggregateInitializer) {

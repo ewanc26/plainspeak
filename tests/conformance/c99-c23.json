@@ -85,7 +85,7 @@
     {"id":"concurrency.fences","revision":"C11","area":"concurrency","status":"planned","tests":[],"note":"Atomic fences pending."},
     {"id":"concurrency.lock-free","revision":"C11","area":"concurrency","status":"planned","tests":[],"note":"Lock-free queries pending."},
     {"id":"concurrency.threads","revision":"C11","area":"concurrency","status":"planned","tests":[],"note":"Standard C thread lifecycle API capability pending."},
-    {"id":"concurrency.thread-local","revision":"C11","area":"concurrency","status":"planned","tests":[],"note":"Thread-local object capability pending."},
+    {"id":"concurrency.thread-local","revision":"C11","area":"concurrency","status":"foundation","tests":["tests/golden/c_thread_local.eng"],"note":"Native declarations can request _Thread_local storage; constant initialization, block-scope rules and executable concurrency coverage remain pending."},
     {"id":"concurrency.sync","revision":"C11","area":"concurrency","status":"planned","tests":[],"note":"once, mutex and condition-variable capability pending."},
     {"id":"concurrency.memory-model","revision":"C11","area":"concurrency","status":"planned","tests":[],"note":"Happens-before/data-race semantics must be documented and tested."},
 
