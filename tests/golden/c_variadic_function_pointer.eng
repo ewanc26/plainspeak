@@ -1,3 +1,3 @@
 Import the C function printf taking a pointer to character and variadic parameters, returning an integer, from the header "stdio.h".
 Declare callback as pointer to function taking pointer to constant character and variadic parameters returning integer with value Address of printf.
-Say Call through callback with "callback works\\n" done.
+Say Call through callback with "callback works\n" done.
