@@ -103,6 +103,7 @@ struct MemberExpr      { std::string name; Expr *base; };
 struct EnumeratorExpr  { std::string name; std::string enumeration; };
 struct MathCallExpr    { std::string func; Expr *arg; };
 struct CallExpr        { std::string name; std::vector<Expr *> args; };
+struct IndirectCallExpr { Expr *callee; std::vector<Expr *> args; };
 struct PowExpr         { Expr *base; Expr *exp; };
 struct BinaryExpr      { BinOp op; Expr *lhs; Expr *rhs; };
 struct ListExpr        { std::vector<Expr *> items; };
@@ -112,7 +113,7 @@ struct ItemExpr        { Expr *index; Expr *list; };
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
                               AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
-                              ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
+                              ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
 

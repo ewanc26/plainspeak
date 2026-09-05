@@ -1621,6 +1621,29 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return Type::integer(IntegerRank::Int);
         }
+        else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            Type callee = decayArray(inferExpr(node.callee, line, diags));
+            if (!callee.isPointer() || !callee.elementType || !callee.elementType->isFunction()) {
+                diags.push_back({18, line, "Call through needs a pointer to a function."});
+                for (Expr *arg : node.args) inferExpr(arg, line, diags);
+                return Type::number();
+            }
+            const Type &function = *callee.elementType;
+            if ((!function.variadic && node.args.size() != function.parameterTypes.size()) ||
+                (function.variadic && node.args.size() < function.parameterTypes.size())) {
+                diags.push_back({8, line, "The function pointer call has the wrong number of arguments."});
+            }
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                Type arg = inferExpr(node.args[i], line, diags);
+                if (i < function.parameterTypes.size() && !assignableExprTo(function.parameterTypes[i], arg, node.args[i]))
+                    diags.push_back({18, line, "An argument does not match the function pointer parameter type."});
+            }
+            if (!function.returnType || function.returnType->kind == TypeKind::Void) {
+                diags.push_back({18, line, "A void function pointer cannot be used as an expression."});
+                return Type::number();
+            }
+            return *function.returnType;
+        }
         else if constexpr (std::is_same_v<T, CallExpr>) {
             auto found = procTable_.find(node.name);
             const ProcedureSignature *imported = nullptr;

@@ -3,3 +3,4 @@ Procedure answer returns integer:
 End procedure.
 Declare callback as pointer to function returning integer with value Address of answer.
 Say 1.
+Say Call through callback done.

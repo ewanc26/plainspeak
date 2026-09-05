@@ -1437,6 +1437,17 @@ Expr *Parser::parsePrimary() {
     if (checkWord("call")) {
         int line = peek().line;
         advance();
+        if (checkWord("through")) {
+            advance();
+            Expr *callee = parsePrimary();
+            std::vector<Expr *> args;
+            if (checkWord("with")) {
+                advance();
+                while (!checkWord("done")) args.push_back(parseExpr());
+            }
+            expectWord("done");
+            return arena_.makeExpr(IndirectCallExpr{callee, std::move(args)}, line);
+        }
         std::string name = expectIdentName();
         std::vector<Expr *> args;
         if (checkWord("with")) {

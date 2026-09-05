@@ -303,7 +303,7 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             // in pointer conversions and conditional expressions.
             return "0";
         } else if constexpr (std::is_same_v<T, AddressOfExpr>) {
-            return "(&" + mangle(node.name) + ")";
+            return "(&" + (cFunctionSignature(node.name, analysis) ? node.name : mangle(node.name)) + ")";
         } else if constexpr (std::is_same_v<T, DerefExpr>) {
             return "(*(" + emitRawExpr(node.pointer, analysis) + "))";
         } else if constexpr (std::is_same_v<T, CastExpr>) {
@@ -350,6 +350,13 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             std::string fn = "atomic_fetch_" + node.operation;
             if (node.operation == "subtract") fn = "atomic_fetch_sub";
             return fn + "(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
+        } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
+            std::string call = "(" + emitRawExpr(node.callee, analysis) + ")(";
+            for (std::size_t i = 0; i < node.args.size(); ++i) {
+                if (i) call += ", ";
+                call += emitRawExpr(node.args[i], analysis);
+            }
+            return call + ")";
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             bool imported = false;

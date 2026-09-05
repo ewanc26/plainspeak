@@ -450,7 +450,7 @@ Explicit native declarations support positional and designated aggregate initial
 
 `Declare name as type with empty braces.` requests C23 empty-brace initialization. It is written as prose so punctuation and grammar remain part of PlainSpeak source; the lowered native object is zero-initialized, including every scalar, array element, and aggregate member.
 
-Function types with no parameters are written as `function returning type`; for example, `pointer to function returning integer` declares a native pointer with a zero-parameter C function signature. `Address of` a typed Procedure or imported C function produces a pointer to that function. Parameterized function types and indirect calls remain under development.
+Function types with no parameters are written as `function returning type`; for example, `pointer to function returning integer` declares a native pointer with a zero-parameter C function signature. `Address of` a typed Procedure or imported C function produces a pointer to that function. `Call through callback done.` invokes a zero-parameter function pointer; parameterized function types and calls remain under development.
 
 Positional initialization uses declaration order:
 
