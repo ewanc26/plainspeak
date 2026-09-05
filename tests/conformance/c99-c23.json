@@ -113,7 +113,7 @@
     {"id":"lib.string","revision":"C99","area":"library","status":"foundation","tests":["tests/golden/c_string_library.eng"],"note":"Typed C imports can bind string.h strlen and strcmp with PlainSpeak string-literal decay to character pointers; byte-memory APIs, mutation, bounds and the remaining string surface remain pending."},
     {"id":"lib.tgmath","revision":"C99","area":"library","status":"planned","tests":[],"note":"<tgmath.h> type-generic math parity pending."},
     {"id":"lib.threads","revision":"C11","area":"library","status":"planned","tests":[],"note":"<threads.h> parity pending."},
-    {"id":"lib.time","revision":"C99","area":"library","status":"planned","tests":[],"note":"<time.h> parity pending."},
+    {"id":"lib.time","revision":"C99","area":"library","status":"foundation","tests":["tests/golden/c_time.eng"],"note":"Typed C imports can bind time.h time with a null output pointer and clock with no arguments; calendar conversion, formatting, clock-type aliases and the remaining time facilities remain pending."},
     {"id":"lib.uchar","revision":"C11","area":"library","status":"planned","tests":[],"note":"<uchar.h> UTF character conversion parity pending."},
     {"id":"lib.wchar","revision":"C99","area":"library","status":"planned","tests":[],"note":"<wchar.h> parity pending."},
     {"id":"lib.wctype","revision":"C99","area":"library","status":"planned","tests":[],"note":"<wctype.h> parity pending."},

@@ -200,7 +200,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.string` | foundation | Typed imports cover `strlen` and `strcmp` with string-literal decay; byte-memory mutation and the remaining `<string.h>` surface remain pending. |
 | `lib.tgmath` | planned | `<tgmath.h>` |
 | `lib.threads` | planned | `<threads.h>` |
-| `lib.time` | planned | `<time.h>` |
+| `lib.time` | foundation | Typed C imports can bind `<time.h>` functions such as `time` and `clock`; calendar conversion, formatting, clock-type aliases and the remaining time facilities remain pending. |
 | `lib.uchar` | planned | `<uchar.h>` |
 | `lib.wchar` | planned | `<wchar.h>` |
 | `lib.wctype` | planned | `<wctype.h>` |

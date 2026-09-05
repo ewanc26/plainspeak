@@ -1,0 +1,5 @@
+Import the C function time taking a pointer to long integer, returning a long integer, from the header "time.h".
+Import the C function clock taking no parameters, returning a long integer, from the header "time.h".
+Call time with null pointer done.
+Call clock done.
+Say 1.
