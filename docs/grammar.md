@@ -509,7 +509,7 @@ Say Size of type character. Say Size of type pointer to integer. Say Alignment o
 
 `Offset of member name in type structure tag` lowers to `<stddef.h>` `offsetof` for a named non-bit-field member of a structure or union.
 
-The math forms `isfinite of`, `isnan of`, `isinf of`, `isnormal of`, and `signbit of` bind to the corresponding `<math.h>` classification macros. `round of` and `trunc of` bind to the corresponding rounding functions. Their operands are numeric and classification results are whole numbers.
+The math forms `isfinite of`, `isnan of`, `isinf of`, `isnormal of`, and `signbit of` bind to the corresponding `<math.h>` classification macros. `round of`, `trunc of`, `exp of`, `log10 of`, `log2 of`, `cbrt of`, `expm1 of`, and `log1p of` bind to the corresponding functions. Their operands are numeric and classification results are whole numbers.
 
 Results are currently boxed back into PlainSpeak `number`, so native `size_t` is still pending. Exact scalar and pointer sizes/alignments remain target properties; PlainSpeak does not impose LP64 or another data model.
 

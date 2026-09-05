@@ -1316,7 +1316,8 @@ Expr *Parser::parsePrimary() {
                                         "isalpha", "isalnum", "isblank", "iscntrl", "isdigit", "isgraph",
                                         "islower", "isprint", "ispunct", "isspace", "isupper", "isxdigit",
                                         "tolower", "toupper", "isfinite", "isnan", "isinf", "isnormal",
-                                        "signbit", "round", "trunc"};
+                                        "signbit", "round", "trunc", "exp", "log10", "log2", "cbrt",
+                                        "expm1", "log1p"};
         for (const char *fn : mathFns) {
             if (checkWord(fn) && checkWordAt(1, "of")) {
                 int line = peek().line;

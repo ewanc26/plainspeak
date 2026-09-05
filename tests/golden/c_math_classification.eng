@@ -5,3 +5,9 @@ Say isnormal of 1.5.
 Say signbit of minus 1.5.
 Say round of 1.6.
 Say trunc of minus 1.6.
+Say exp of 0.
+Say log10 of 100.
+Say log2 of 8.
+Say cbrt of 8.
+Say expm1 of 0.
+Say log1p of 0.

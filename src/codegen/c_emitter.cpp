@@ -461,6 +461,10 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             if (node.func == "round" || node.func == "trunc") {
                 return "ps_double(" + node.func + "(ps_as_double(" + emitBoxedExpr(node.arg, analysis) + ")))";
             }
+            if (node.func == "exp" || node.func == "log10" || node.func == "log2" ||
+                node.func == "cbrt" || node.func == "expm1" || node.func == "log1p") {
+                return "ps_double(" + node.func + "(ps_as_double(" + emitBoxedExpr(node.arg, analysis) + ")))";
+            }
             static const std::unordered_set<std::string> ctypeFns = {
                 "isalpha", "isalnum", "isblank", "iscntrl", "isdigit", "isgraph",
                 "islower", "isprint", "ispunct", "isspace", "isupper", "isxdigit",
