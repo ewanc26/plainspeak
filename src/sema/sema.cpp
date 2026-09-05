@@ -1614,7 +1614,8 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                         !(imported && std::holds_alternative<StringLit>(node.args[i]->node) &&
                           acceptsCString(signature.parameterTypes[i])) &&
                         !assignableExprTo(signature.parameterTypes[i], argType, node.args[i])) {
-                        diags.push_back({18, line, "Argument " + std::to_string(i + 1) + " to typed C function \"" +
+                        diags.push_back({18, line, "Argument " + std::to_string(i + 1) + " to typed " +
+                                                 std::string(imported ? "C function \"" : "Procedure \"") +
                                                  node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
                                                  " but got " + typeToString(argType) + "."});
                     }
@@ -2555,15 +2556,21 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, CallStmt>) {
             auto found = procTable_.find(node.name);
-            if (found == procTable_.end()) {
+            const ProcedureSignature *imported = nullptr;
+            if (analysis_) {
+                auto importedIt = analysis_->cFunctionSignatures.find(node.name);
+                if (importedIt != analysis_->cFunctionSignatures.end()) imported = &importedIt->second;
+            }
+            if (found == procTable_.end() && !imported) {
                 diags.push_back({7, s->line, "I don't know what to do with \"" + node.name +
                                            "\" — it is used here but never defined. Use Procedure to create it first."});
                 for (Expr *arg : node.args) inferExpr(arg, s->line, diags);
             } else {
-                const ProcedureSignature &signature = found->second;
-                if (node.args.size() != signature.parameterTypes.size()) {
+                const ProcedureSignature &signature = found != procTable_.end() ? found->second : *imported;
+                if ((!signature.variadic && node.args.size() != signature.parameterTypes.size()) ||
+                    (signature.variadic && node.args.size() < signature.parameterTypes.size())) {
                     diags.push_back({8, s->line, "Call to \"" + node.name + "\" expects " +
-                                             std::to_string(signature.parameterTypes.size()) + " arguments but got " +
+                                             (signature.variadic ? "at least " : "") + std::to_string(signature.parameterTypes.size()) + " arguments but got " +
                                              std::to_string(node.args.size()) + "."});
                 }
                 for (size_t i = 0; i < node.args.size(); ++i) {
@@ -2571,8 +2578,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     Type argType = inferExpr(node.args[i], s->line, diags);
                     if (signature.nativeTyped) {
                         if (i < signature.parameterTypes.size() && diags.size() == before &&
+                            !(imported && std::holds_alternative<StringLit>(node.args[i]->node) &&
+                              acceptsCString(signature.parameterTypes[i])) &&
                             !assignableExprTo(signature.parameterTypes[i], argType, node.args[i])) {
-                            diags.push_back({18, s->line, "Argument " + std::to_string(i + 1) + " to typed Procedure \"" +
+                            diags.push_back({18, s->line, "Argument " + std::to_string(i + 1) + " to typed " +
+                                                     std::string(imported ? "C function \"" : "Procedure \"") +
                                                      node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
                                                      " but got " + typeToString(argType) + "."});
                         }

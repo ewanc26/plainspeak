@@ -793,7 +793,9 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << mangle(node.name) << ": ;\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
-            out << indent << "(void)" << mangle(node.name) << "(";
+            bool imported = false;
+            if (!signature) { signature = cFunctionSignature(node.name, analysis); imported = signature != nullptr; }
+            out << indent << "(void)" << (imported ? node.name : mangle(node.name)) << "(";
             for (size_t i = 0; i < node.args.size(); ++i) {
                 if (i > 0) out << ", ";
                 out << (signature && signature->nativeTyped

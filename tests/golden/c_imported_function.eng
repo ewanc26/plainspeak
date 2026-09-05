@@ -2,3 +2,5 @@ Import the C function abs taking an integer, returning an integer, from the head
 Say Call abs with minus 7 done.
 Import C function strlen taking a pointer to character, returning a size type, from the header "string.h".
 Say Call strlen with "hello" done.
+Import the C function puts taking a pointer to character, returning an integer, from the header "stdio.h".
+Call puts with "from C" done.
