@@ -198,7 +198,7 @@ Label finish.
 
 ## C type spellings
 
-The C23 spelling `type of name` can name the native type of an earlier object declaration. This foundation form is unevaluated and name-based; expression operands and `type of unqualified` remain pending.
+The C23 spellings `type of name` and `type of unqualified name` can name the native type of an earlier object declaration. These foundation forms are unevaluated and name-based; expression operands and complete qualifier rules remain pending.
 
 `Define name as type.` creates a deterministic named type alias. Aliases can be used anywhere a native type can be written, including recursively composed pointer and array types; qualifiers written at the use site are added to the aliased type.
 

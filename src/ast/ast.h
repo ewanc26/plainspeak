@@ -51,7 +51,8 @@ enum class TypeSpecKind {
     Enumeration,
     Nullptr,
     Alias,
-    TypeOf
+    TypeOf,
+    TypeOfUnqual
 };
 
 struct TypeSpecQualifiers {

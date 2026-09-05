@@ -1,0 +1,4 @@
+Declare source as constant integer.
+Declare copy as type of unqualified source with value 4.
+Set copy to 5.
+Say copy.

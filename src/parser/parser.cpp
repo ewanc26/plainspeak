@@ -870,7 +870,9 @@ TypeSpec Parser::parseTypeSpec() {
     }
     if (checkWord("type") && checkWordAt(1, "of")) {
         advance(); advance();
-        TypeSpec type{TypeSpecKind::TypeOf};
+        bool unqual = false;
+        if (checkWord("unqualified")) { advance(); unqual = true; }
+        TypeSpec type{unqual ? TypeSpecKind::TypeOfUnqual : TypeSpecKind::TypeOf};
         type.typeOfName = expectIdentName();
         return finish(std::move(type));
     }
