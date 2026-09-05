@@ -34,6 +34,7 @@ std::string emitQualifierWords(const TypeQualifiers &q) {
 }
 
 std::string emitCBaseType(const Type &type);
+std::string emitCDeclarator(const Type &type, const std::string &name);
 
 std::string emitCUnqualifiedBaseType(const Type &type) {
     if (type.kind == TypeKind::Boolean) return "_Bool";
@@ -66,7 +67,11 @@ std::string emitCUnqualifiedBaseType(const Type &type) {
         result += " (";
         for (std::size_t i = 0; i < type.parameterTypes.size(); ++i) {
             if (i) result += ", ";
-            result += emitCBaseType(type.parameterTypes[i]);
+            result += emitCDeclarator(type.parameterTypes[i], "");
+        }
+        if (type.variadic) {
+            if (!type.parameterTypes.empty()) result += ", ";
+            result += "...";
         }
         result += ")";
         return result;
@@ -94,7 +99,11 @@ std::string emitCDeclarator(const Type &type, const std::string &name) {
         if (type.parameterTypes.empty()) result += "void";
         for (std::size_t i = 0; i < type.parameterTypes.size(); ++i) {
             if (i) result += ", ";
-            result += emitCBaseType(type.parameterTypes[i]);
+            result += emitCDeclarator(type.parameterTypes[i], "");
+        }
+        if (type.variadic) {
+            if (!type.parameterTypes.empty()) result += ", ";
+            result += "...";
         }
         result += ")";
         return result;

@@ -997,6 +997,11 @@ TypeSpec Parser::parseTypeSpec() {
             } else {
                 for (;;) {
                     type.parameterTypes.push_back(parseTypeSpec());
+                    if (checkWord("and") && checkWordAt(1, "variadic") && checkWordAt(2, "parameters")) {
+                        advance(); advance(); advance();
+                        type.variadic = true;
+                        break;
+                    }
                     if (checkWord("and")) { advance(); continue; }
                     break;
                 }

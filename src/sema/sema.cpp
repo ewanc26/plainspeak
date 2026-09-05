@@ -133,6 +133,14 @@ bool pointerBasesCompatible(const Type &a, const Type &b) {
     Type bPointee = *b.elementType;
     Type aBase = stripTopQualifiers(aPointee);
     Type bBase = stripTopQualifiers(bPointee);
+    if (aBase.kind == TypeKind::Function && bBase.kind == TypeKind::Function) {
+        if (aBase.variadic != bBase.variadic || aBase.parameterTypes.size() != bBase.parameterTypes.size() ||
+            !aBase.returnType || !bBase.returnType || aBase.returnType->kind != bBase.returnType->kind) return false;
+        for (std::size_t i = 0; i < aBase.parameterTypes.size(); ++i) {
+            if (aBase.parameterTypes[i].kind != bBase.parameterTypes[i].kind) return false;
+        }
+        return true;
+    }
     if (aBase == bBase) return true;
     if (aBase.kind == TypeKind::Void && isObjectPointee(bBase)) return true;
     if (bBase.kind == TypeKind::Void && isObjectPointee(aBase)) return true;
@@ -1640,7 +1648,10 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             for (std::size_t i = 0; i < node.args.size(); ++i) {
                 Type arg = inferExpr(node.args[i], line, diags);
-                if (i < function.parameterTypes.size() && !assignableExprTo(function.parameterTypes[i], arg, node.args[i]))
+                if (i < function.parameterTypes.size() &&
+                    !(std::holds_alternative<StringLit>(node.args[i]->node) &&
+                      acceptsCString(function.parameterTypes[i])) &&
+                    !assignableExprTo(function.parameterTypes[i], arg, node.args[i]))
                     diags.push_back({18, line, "An argument does not match the function pointer parameter type."});
             }
             if (!function.returnType || function.returnType->kind == TypeKind::Void) {
