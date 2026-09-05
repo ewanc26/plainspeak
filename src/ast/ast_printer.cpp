@@ -4,6 +4,8 @@
 
 namespace {
 
+std::string printExpr(const Expr *e);
+
 std::string printTypeSpec(const TypeSpec &type) {
     std::string prefix;
     if (type.qualifiers.isConst) prefix += "constant ";
@@ -34,7 +36,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             break;
         case TypeSpecKind::Array:
             body = std::string("array of ") + (type.pointee ? printTypeSpec(*type.pointee) : "void") +
-                   " with length " + std::to_string(type.arrayBound);
+                   " with length " + (type.arrayLengthExpr ? printExpr(type.arrayLengthExpr) :
+                                         std::to_string(type.arrayBound));
             break;
         case TypeSpecKind::Function:
             body = "function";
