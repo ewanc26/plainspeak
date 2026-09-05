@@ -1,3 +1,7 @@
 Define Count as unsigned integer.
 Declare total as Count with value 7.
 Say total.
+Define IntPtr as pointer to unsigned integer.
+Define ConstIntPtr as pointer to constant unsigned integer.
+Declare p as ConstIntPtr with value Address of total.
+Say Value at p.
