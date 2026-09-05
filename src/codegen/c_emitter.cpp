@@ -184,6 +184,10 @@ bool isImportedObject(const std::string &name, const AnalysisResult &analysis) {
     return analysis.cObjectTypes.count(name) != 0;
 }
 
+std::string nativeName(const std::string &name, const AnalysisResult &analysis) {
+    return isImportedObject(name, analysis) ? name : mangle(name);
+}
+
 const ProcedureSignature *procedureSignature(const std::string &name,
                                              const AnalysisResult &analysis) {
     auto it = analysis.procedureSignatures.find(name);
@@ -633,7 +637,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << emitRawExpr(node.expr, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, SetStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
-                out << indent << mangle(node.name) << " = " << emitRawExpr(node.expr, analysis) << ";\n";
+                out << indent << nativeName(node.name, analysis) << " = " << emitRawExpr(node.expr, analysis) << ";\n";
             } else {
                 out << indent << mangle(node.name) << " = " << emitBoxedExpr(node.expr, analysis) << ";\n";
             }
@@ -678,14 +682,14 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << " = " << emitRawExpr(node.expr, analysis) << ";\n";
         } else if constexpr (std::is_same_v<T, AddStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
-                out << indent << mangle(node.varName) << " += " << emitRawExpr(node.expr, analysis) << ";\n";
+                out << indent << nativeName(node.varName, analysis) << " += " << emitRawExpr(node.expr, analysis) << ";\n";
             } else {
                 out << indent << mangle(node.varName) << " = ps_add(" << mangle(node.varName)
                     << ", " << emitBoxedExpr(node.expr, analysis) << ");\n";
             }
         } else if constexpr (std::is_same_v<T, SubStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
-                out << indent << mangle(node.varName) << " -= " << emitRawExpr(node.expr, analysis) << ";\n";
+                out << indent << nativeName(node.varName, analysis) << " -= " << emitRawExpr(node.expr, analysis) << ";\n";
             } else {
                 out << indent << mangle(node.varName) << " = ps_sub(" << mangle(node.varName)
                     << ", " << emitBoxedExpr(node.expr, analysis) << ");\n";
