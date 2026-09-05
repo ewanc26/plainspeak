@@ -178,7 +178,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.math` | foundation | `<math.h>`; current runtime exposes only a small subset. |
 | `lib.setjmp` | planned | `<setjmp.h>` |
 | `lib.signal` | planned | `<signal.h>` |
-| `lib.stdalign` | planned | `<stdalign.h>` / alignment spellings |
+| `lib.stdalign` | foundation | Native `_Alignas` declaration requests are tested; `<stdalign.h>` macro bindings and complete compatibility remain pending. |
 | `lib.stdarg` | planned | `<stdarg.h>` |
 | `lib.stdatomic` | planned | `<stdatomic.h>` |
 | `lib.stdbool` | foundation | `<stdbool.h>` / C23 boolean spellings |

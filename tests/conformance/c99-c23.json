@@ -101,7 +101,7 @@
     {"id":"lib.math","revision":"C99","area":"library","status":"foundation","tests":["tests/unit/test_runtime.c","tests/golden/float_arith.eng"],"note":"A small math subset exists; full <math.h> classification, rounding, error and type-generic surface pending."},
     {"id":"lib.setjmp","revision":"C99","area":"library","status":"planned","tests":[],"note":"<setjmp.h> parity pending."},
     {"id":"lib.signal","revision":"C99","area":"library","status":"planned","tests":[],"note":"<signal.h> parity pending."},
-    {"id":"lib.stdalign","revision":"C11","area":"library","status":"planned","tests":[],"note":"Alignment macro/keyword compatibility pending."},
+    {"id":"lib.stdalign","revision":"C11","area":"library","status":"foundation","tests":["tests/golden/c_alignment.eng"],"note":"Native alignment requests lower to C11 _Alignas; <stdalign.h> macro bindings and complete alignas/alignof compatibility remain pending."},
     {"id":"lib.stdarg","revision":"C99","area":"library","status":"planned","tests":[],"note":"<stdarg.h> parity pending."},
     {"id":"lib.stdatomic","revision":"C11","area":"library","status":"planned","tests":[],"note":"<stdatomic.h> parity pending."},
     {"id":"lib.stdbool","revision":"C99","area":"library","status":"foundation","tests":["tests/golden/bool_lit.eng","tests/unit/test_types.cpp","tests/golden/native_pointers.eng"],"note":"Boolean literals and native _Bool objects exist; complete C boolean API/spelling/conversion parity remains pending."},
