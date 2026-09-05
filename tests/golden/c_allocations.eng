@@ -1,0 +1,5 @@
+Import the C function malloc taking a size type, returning a pointer to void, from the header "stdlib.h".
+Import the C function free taking a pointer to void, returning void, from the header "stdlib.h".
+Declare storage as pointer to void with value Call malloc with 16 done.
+Call free with storage done.
+Say 1.
