@@ -452,6 +452,8 @@ Explicit native declarations support positional and designated aggregate initial
 
 Function types are written as `function taking type and type returning result`, or `function taking no parameters returning result`; for example, `pointer to function taking integer returning integer` declares a native callback type. `Address of` a typed Procedure or imported C function produces a pointer to that function. `Call through callback with 41 done.` invokes a function pointer with an argument.
 
+Variadic callback types keep a fixed prefix and say `and variadic parameters`, as in `function taking a pointer to character and variadic parameters returning integer`.
+
 The command `plainspeak file.eng --lint` runs the deterministic tokenizer, parser, and semantic checker without generating or compiling a native binary. A successful run prints `No lint issues found.`; invalid source receives the same stable diagnostics as compilation. `--show-generated-c` (also spelled `--emit-c`) prints the generated C instead of compiling it.
 
 Positional initialization uses declaration order:
