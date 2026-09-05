@@ -320,6 +320,8 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
             if (isNativeRef(e, analysis)) return isImportedObject(node.name, analysis) ? node.name : mangle(node.name);
+        } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
+            return "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
             bool imported = false;
@@ -467,6 +469,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return "ps_int((long)offsetof(" + aggregate + mangle(type.tag) + ", " + mangle(node.member) + "))";
         } else if constexpr (std::is_same_v<T, LockFreeExpr>) {
             return "ps_int((long)atomic_is_lock_free(&" + mangle(node.name) + "))";
+        } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
+            return boxRaw("atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")", exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             static const std::unordered_map<std::string, std::string> mathFn = {
                 {"sine", "ps_sin"}, {"cosine", "ps_cos"}, {"tangent", "ps_tan"},

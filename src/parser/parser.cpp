@@ -1298,6 +1298,13 @@ Expr *Parser::parsePrimary() {
         advance(); advance(); advance();
         return arena_.makeExpr(MathCallExpr{"atomic_load", parsePrimary()}, line);
     }
+    if (checkWord("atomic") && checkWordAt(1, "exchange")) {
+        int line = peek().line;
+        advance(); advance();
+        Expr *value = parseExpr();
+        expectWord("with");
+        return arena_.makeExpr(AtomicExchangeExpr{expectIdentName(), value}, line);
+    }
     if (checkWord("list") && checkWordAt(1, "with")) {
         int line = peek().line;
         advance(); advance();
