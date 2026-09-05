@@ -184,7 +184,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.float` | planned | `<float.h>` |
 | `lib.inttypes` | foundation | Typed C imports can bind `<inttypes.h>` conversion functions such as `strtoimax`; format macros, exact `intmax_t`/`uintmax_t` type aliases and the remaining header surface remain pending. |
 | `lib.limits` | planned | `<limits.h>` |
-| `lib.locale` | planned | `<locale.h>` |
+| `lib.locale` | foundation | Typed C imports can bind `<locale.h>` functions such as `setlocale`, including native character-pointer and null-pointer arguments; locale categories, `localeconv`, locale object ownership and the remaining locale semantics remain pending. |
 | `lib.math` | foundation | `<math.h>`; current runtime exposes only a small subset. |
 | `lib.setjmp` | planned | `<setjmp.h>` |
 | `lib.signal` | planned | `<signal.h>` |

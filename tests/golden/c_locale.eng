@@ -1,0 +1,3 @@
+Import the C function setlocale taking an integer and a pointer to character, returning a pointer to character, from the header "locale.h".
+Call setlocale with 0, null pointer done.
+Say 1.
