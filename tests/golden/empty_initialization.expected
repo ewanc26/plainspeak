@@ -1,0 +1,12 @@
+scalar i =
+0
+pointer p null?
+yes
+array slot 2 =
+0
+struct s.x =
+0
+decimal f =
+0
+boolean b =
+0

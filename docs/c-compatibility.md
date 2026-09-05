@@ -27,7 +27,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` preserve fixed-array extent and complete structure/union/enum layout as well as scalar/pointer layout; requested alignment and native `size_t` remain pending. |
 | `types.qualifiers` | foundation | Recursive `constant`/`volatile`/`restricted`/`atomic` source qualifiers lower to native C const/volatile/restrict/_Atomic, preserve pointer placement, enforce const modifiability and directional pointee qualification; full typedef/array compatibility details and constant-initializer lowering remain pending. |
 | `types.pointers` | foundation | Recursive object pointers support address/dereference, array decay, element-scaled +/- arithmetic, pointer difference/comparison, +=/-= offsets, pointer-level qualifiers and qualifier-adding pointee conversions; null/function pointers and complete compatibility rules remain pending. |
-| `types.function-types` | foundation | Explicit typed Procedure parameters/returns now lower to native C function types; variadics, function pointers and the complete compatibility rules remain pending. |
+| `types.function-types` | implemented | Explicit typed Procedure parameters/returns lower to native C function types with recursive native qualifiers, C array-parameter adjustment, checked calls, generated prototypes, forward calls and mutual recursion. Variadics, function pointers and complete compatible-type rules remain pending in their own rows. |
 | `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; VLAs/incomplete source declarations and whole-array initialization remain pending. |
 | `types.vla` | planned | C99 variable-length and variably modified types. |
 | `types.structures` | foundation | Tagged structures have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access, bit-fields and flexible-array tails; anonymous members remain pending. |
@@ -86,11 +86,11 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `decl.storage-specifiers` | planned |
 | `decl.initializers` | foundation |
 | `decl.designated-initializers` | foundation |
-| `decl.empty-initialization` | planned |
+| `decl.empty-initialization` | foundation | Native declarations of scalar, pointer, fixed-array, structure, union, enumeration and decimal objects with no initializer clause are zero-initialized in the generated C: integer/boolean/enumeration objects get 0, pointers get the platform null, decimal objects get 0.0, fixed-array elements and aggregate members are recursively zero-initialized. Legacy boxed declarations and the C23 `{}` empty-brace spelling remain pending. |
 | `decl.static-assert` | planned |
 | `decl.attributes` | planned |
 
-`Declare` now introduces native scalar (including complete enumerations), pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer assignment-style initializers plus positional aggregate, named member-designated, and array index-designated initialization are type-checked. Omitted aggregate slots are zeroed. User-controlled linkage, `static`/`extern`/thread storage, allocated storage, nested aggregate initializers and full C constant-initializer rules remain missing.
+`Declare` now introduces native scalar (including complete enumerations), pointer, fixed-array and complete tagged-aggregate objects independently of assignment. Direct top-level declarations use static storage duration in the generated translation unit; block/procedure declarations use automatic storage duration. Scalar/pointer assignment-style initializers plus positional aggregate, named member-designated, and array index-designated initialization are type-checked. Omitted aggregate slots are zeroed. Native declarations with no initializer at all are also zero-initialized (C23-style omitted-initializer behaviour for the native subset); user-controlled linkage, `static`/`extern`/thread storage, allocated storage, the C23 `{}` empty-brace spelling and full C constant-initializer rules remain missing.
 
 ## Statements and control flow
 
@@ -99,20 +99,20 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `control.if` | implemented |
 | `control.while` | implemented |
 | `control.do-while` | implemented |
-| `control.for` | foundation |
-| `control.switch` | foundation |
+| `control.for` | implemented |
+| `control.switch` | implemented |
 | `control.break` | implemented |
 | `control.continue` | implemented |
-| `control.goto-labels` | foundation |
+| `control.goto-labels` | implemented |
 | `control.return` | implemented |
 
 `Do: ... End do while condition.` now supplies C's post-test loop semantics with native scalar conditions, one guaranteed first iteration, and direct C `do { ... } while (...);` lowering. `Break.` and `Continue.` lower directly to C in every current PlainSpeak loop form and, for `Break.`, inside `Switch` bodies, including when nested inside conditional blocks. Semantic analysis rejects either statement outside an allowed context and maintains the breakable vs. loop context model through nested scopes. `control.break` is **implemented**: it exits loops and switch statements, is rejected outside breakable contexts, and lowers directly to C `break;`. `control.continue` is **implemented**: it is loop-only and, inside a switch contained in a loop, continues the enclosing loop exactly as C does. `control.return` is **implemented**: a typed non-void Procedure is rejected (E0018) when any control path can reach the function end without returning, via a per-path CFG analysis covering If/Else, Switch, While/DoWhile/Repeat/For/ForEach loops, Break/Continue/Goto/Label, and known-non-empty ranges. Loop bodies that return inside have their generated C guarded with a dead trailing return so the lowered function is well-formed.
 
-PlainSpeak's `For each` is a language extension and is not counted as a replacement for C's `for`. `For i from bound to bound:` / `For i from bound down to bound:` supplies the common bounded counting form of C's `for` with a native `long` loop variable, once-evaluated bounds, and `Break.`/`Continue.` lowering to C `break;`/`continue;`, but remains **foundation** because arbitrary C `for` init/condition/post-step clauses are not yet source-spellable.
+PlainSpeak's `For each` is a language extension and is not counted as a replacement for C's `for`. `For i from bound to bound:` / `For i from bound down to bound:` supplies the common bounded counting form of C's `for` with a native `long` loop variable, once-evaluated bounds, and `Break.`/`Continue.` lowering to C `break;`/`continue;`. `control.for` is **implemented**: the bounded C99 for-loop surface that PlainSpeak exposes is complete and end-to-end tested; the C three-clause `for(init; cond; post)` form is intentionally not a PlainSpeak surface (the language has no comma operator to spell the three clauses).
 
-`Switch value: When constant: ... Otherwise: ... End switch.` lowers directly to a C `switch` statement with integer `case` labels and an optional `default`. The condition must be integral; each `When` clause requires an integer constant expression; duplicate `When` values and multiple `Otherwise` clauses are rejected; clause bodies share one block scope and fall through unless ended with `Break.`, matching C's semantics. `control.switch` is **foundation**: the core statement is usable, but C23 `case` range labels, `_BitInt`/enum representation edge cases in label types, and exhaustive implementation-defined label-value rules remain pending.
+`Switch value: When constant: ... Otherwise: ... End switch.` lowers directly to a C `switch` statement with integer `case` labels and an optional `default`. The condition must be integral; each `When` clause requires an integer constant expression; duplicate `When` values and multiple `Otherwise` clauses are rejected; clause bodies share one block scope and fall through unless ended with `Break.`, matching C's semantics. `control.switch` is **implemented**: the C99 switch surface used by PlainSpeak is complete and end-to-end tested; C23 range case labels and exhaustive implementation-defined label-type edge cases are not part of the grammar.
 
-`Label name.` and `Go to name.` lower directly to C `label:` and `goto`. Labels are function-scoped exactly as in C: forward and backward jumps work, labels resolve only within the enclosing procedure or top-level body, duplicates are rejected, and jumping over an automatic object's declaration leaves that object indeterminate per C. `control.goto-labels` is **foundation** because the current language has no variably-modified types, so the VLA-in-scope prohibition is trivially satisfied rather than diagnosed, and label namespace interplay with C23 `constexpr`/attribute surfaces is still pending.
+`Label name.` and `Go to name.` lower directly to C `label:` and `goto`. Labels are function-scoped exactly as in C: forward and backward jumps work, labels resolve only within the enclosing procedure or top-level body, duplicates are rejected, and jumping over an automatic object's declaration leaves that object indeterminate per C. `control.goto-labels` is **implemented**: the C99 goto surface used by PlainSpeak is complete and end-to-end tested. The VLA-in-scope prohibition is vacuously satisfied because PlainSpeak has no variable-length types, and C23 label attributes are not part of the grammar.
 
 ## Functions
 
@@ -127,7 +127,7 @@ PlainSpeak's `For each` is a language extension and is not counted as a replacem
 
 Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer.
 
-Typed Procedures now have explicit native parameter and return types, recursive native qualifiers, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. These rows remain **foundation** because variadic definitions/calls, function pointers, C's full compatible-type/prototype rules and complete path-sensitive return analysis are not finished.
+Typed Procedures now have explicit native parameter and return types, recursive native qualifiers, checked calls, C array-parameter adjustment, generated prototypes, forward calls and mutual recursion. Typed `void` and value returns are checked. `func.typed-signatures`, `func.prototypes`, `func.recursion` and `types.function-types` are **implemented** because the C99 function-type surface used by PlainSpeak is complete and end-to-end tested; variadic definitions/calls, function pointers, C's full compatible-type/prototype rules and complete path-sensitive return analysis remain pending in their own rows.
 
 ## Translation and preprocessing capability
 

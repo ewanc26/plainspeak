@@ -1,0 +1,21 @@
+Structure point: Field x as integer. Field y as integer. End structure.
+
+Declare i as integer.
+Declare p as pointer to integer.
+Declare arr as array of integer with length 3.
+Declare s as structure point.
+Declare f as decimal.
+Declare b as boolean.
+
+Say "scalar i =".
+Say i.
+Say "pointer p null?".
+If p is equal to null pointer then: Say "yes". End if.
+Say "array slot 2 =".
+Say Element at 2 in arr.
+Say "struct s.x =".
+Say Member x of s.
+Say "decimal f =".
+Say f.
+Say "boolean b =".
+Say b.
