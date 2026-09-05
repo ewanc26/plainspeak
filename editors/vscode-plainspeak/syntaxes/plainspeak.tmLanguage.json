@@ -1,0 +1,86 @@
+{
+  "name": "PlainSpeak",
+  "scopeName": "source.plainspeak",
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#punctuation" },
+    { "include": "#declarations" },
+    { "include": "#types" },
+    { "include": "#control" },
+    { "include": "#builtins" },
+    { "include": "#imports" },
+    { "include": "#booleans" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.parenthetical.plainspeak",
+          "begin": "\\(",
+          "end": "\\)",
+          "patterns": [{ "include": "#comments" }]
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.plainspeak",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [{ "name": "constant.character.escape.plainspeak", "match": "\\\\." }]
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        { "name": "constant.numeric.integer.plainspeak", "match": "\\b\\d+\\b" },
+        { "name": "constant.numeric.float.plainspeak", "match": "\\b\\d+\\.\\d+(?:[eE][+-]?\\d+)?\\b" }
+      ]
+    },
+    "punctuation": {
+      "patterns": [
+        { "name": "punctuation.terminator.sentence.plainspeak", "match": "\\." },
+        { "name": "punctuation.definition.block.plainspeak", "match": ":" },
+        { "name": "punctuation.separator.plainspeak", "match": "," },
+        { "name": "keyword.operator.plainspeak", "match": "\\b(?:plus|minus|times|divided|modulo|and|or|not|equal|greater|less|followed|by)\\b" }
+      ]
+    },
+    "declarations": {
+      "patterns": [
+        { "name": "storage.type.procedure.plainspeak", "match": "\\b(?:Procedure|End\\s+procedure)\\b" },
+        { "name": "storage.type.declaration.plainspeak", "match": "\\b(?:Declare|Define|Structure|Union|Enumeration|Label)\\b" },
+        { "name": "keyword.control.return.plainspeak", "match": "\\b(?:Return|Set|Add|Subtract|Increase|Decrease)\\b" }
+      ]
+    },
+    "types": {
+      "patterns": [
+        { "name": "storage.type.plainspeak", "match": "\\b(?:integer|unsigned|short|long|character|boolean|float|decimal|void|pointer|array|structure|union|enumeration|atomic|complex|auto|constexpr|size\\s+type|difference\\s+type|bit\\s+integer)\\b" }
+      ]
+    },
+    "control": {
+      "patterns": [
+        { "name": "keyword.control.plainspeak", "match": "\\b(?:If|Else|End\\s+if|While|Do|End\\s+while|For|Each|Repeat|Until|Switch|Case|Default|End\\s+switch|Break|Continue|Go\\s+to|End\\s+procedure)\\b" }
+      ]
+    },
+    "builtins": {
+      "patterns": [
+        { "name": "support.function.builtin.plainspeak", "match": "\\b(?:Say|Read|Call|Address\\s+of|Value\\s+at|Element\\s+at|Member|Length\\s+of|Size\\s+of|Alignment\\s+of|Convert|Choose|List|Empty\\s+list|Assert|Atomic|Math|Import)\\b" }
+      ]
+    },
+    "imports": {
+      "patterns": [
+        { "name": "keyword.control.import.plainspeak", "match": "\\bImport\\s+(?:the\\s+)?C\\b" },
+        { "name": "entity.name.function.imported.plainspeak", "match": "(?<=function\\s)\\w+" },
+        { "name": "entity.name.type.header.plainspeak", "match": "(?<=header\\s)\"[^\"]+\"" }
+      ]
+    },
+    "booleans": {
+      "patterns": [
+        { "name": "constant.language.plainspeak", "match": "\\b(?:true|false|null\\s+pointer)\\b" }
+      ]
+    }
+  }
+}

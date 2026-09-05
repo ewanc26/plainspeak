@@ -1,0 +1,29 @@
+{
+  "name": "plainspeak-language",
+  "displayName": "PlainSpeak Language",
+  "description": "Syntax highlighting for PlainSpeak prose-syntax programs.",
+  "version": "0.1.0",
+  "publisher": "plainspeak",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": ["Programming Languages"],
+  "contributes": {
+    "languages": [
+      {
+        "id": "plainspeak",
+        "aliases": ["PlainSpeak", "plainspeak"],
+        "extensions": [".eng"],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "plainspeak",
+        "scopeName": "source.plainspeak",
+        "path": "./syntaxes/plainspeak.tmLanguage.json"
+      }
+    ]
+  }
+}
