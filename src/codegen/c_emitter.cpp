@@ -710,8 +710,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             // and procedure prototypes by emitProgram.
         } else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type type = analysis.declarationTypes.at(s);
-            if (node.alignment) out << indent << "_Alignas(" << *node.alignment << ") ";
-            else out << indent;
+            out << indent;
+            if (node.internalLinkage || node.staticStorage) out << "static ";
+            else if (node.externalLinkage && !node.initializer && !node.aggregateInitializer) out << "extern ";
+            if (node.alignment) out << "_Alignas(" << *node.alignment << ") ";
             out << (node.threadLocal ? "_Thread_local " : "")
                 << (node.constexprObject ? "const " : "")
                 << emitCDeclaration(type, mangle(node.name));
@@ -1027,6 +1029,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
     // PlainSpeak initializers are executed in main below.
     for (Stmt *s : program) {
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
+            if (decl->internalLinkage || decl->staticStorage) out << "static ";
+            else if (decl->externalLinkage && !decl->initializer && !decl->aggregateInitializer) out << "extern ";
             if (decl->alignment) out << "_Alignas(" << *decl->alignment << ") ";
             if (decl->threadLocal) out << "_Thread_local ";
             if (decl->constexprObject) out << "const ";

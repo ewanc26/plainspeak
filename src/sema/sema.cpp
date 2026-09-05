@@ -2159,6 +2159,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, NativeDeclStmt>) {
             Type declared = resolveTypeSpec(node.type);
+            if (node.internalLinkage && node.externalLinkage) {
+                diags.push_back({24, s->line, "A native declaration cannot request both internal and external linkage."});
+            }
             if (node.type.kind == TypeSpecKind::Auto) {
                 if (!node.initializer) {
                     diags.push_back({13, s->line, "A native auto declaration needs an initializer to infer its type."});

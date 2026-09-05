@@ -330,6 +330,8 @@ Native declarations may request C11 thread-local storage with `Declare name as t
 
 Exact-width integers use prose such as `unsigned integer with exactly 8 bits` or `integer with exactly 16 bits`. They lower through `<stdint.h>` and preserve the requested signedness and width in the semantic type.
 
+Native declarations may say `with internal linkage`, `with external linkage`, or `with static storage` before `as`. Internal linkage and static storage lower to `static`; an uninitialized external declaration lowers to `extern`.
+
 Native declarations may request C11 alignment with `Declare name with alignment N as type.`. The positive constant `N` lowers to `_Alignas(N)`; target-invalid alignment requests remain subject to the selected C implementation.
 
 `Declare` creates an object with actual C storage and layout rather than a boxed `PsValue`:

@@ -317,11 +317,25 @@ Stmt *Parser::parseDeclare() {
     advance();
     std::string name = expectIdentName();
     std::optional<std::size_t> alignment;
-    if (checkWord("with") && checkWordAt(1, "alignment")) {
-        advance(); advance();
-        if (peek().kind != TokKind::Number || peek().num == 0)
-            error("alignment needs a positive whole-number constant");
-        alignment = static_cast<std::size_t>(advance().num);
+    bool internalLinkage = false;
+    bool externalLinkage = false;
+    bool staticStorage = false;
+    while (checkWord("with")) {
+        if (checkWordAt(1, "alignment")) {
+            advance(); advance();
+            if (peek().kind != TokKind::Number || peek().num == 0)
+                error("alignment needs a positive whole-number constant");
+            alignment = static_cast<std::size_t>(advance().num);
+        } else if (checkWordAt(1, "internal") && checkWordAt(2, "linkage")) {
+            advance(); advance(); advance();
+            internalLinkage = true;
+        } else if (checkWordAt(1, "external") && checkWordAt(2, "linkage")) {
+            advance(); advance(); advance();
+            externalLinkage = true;
+        } else if (checkWordAt(1, "static") && checkWordAt(2, "storage")) {
+            advance(); advance(); advance();
+            staticStorage = true;
+        } else break;
     }
     expectWord("as");
     bool threadLocal = false;
@@ -403,7 +417,7 @@ Stmt *Parser::parseDeclare() {
         }
     }
     expectDot();
-    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal, alignment, constexprObject}, line);
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), initializer, std::move(aggregateInitializer), threadLocal, alignment, constexprObject, internalLinkage, externalLinkage, staticStorage}, line);
 }
 
 Stmt *Parser::parseStructure() {

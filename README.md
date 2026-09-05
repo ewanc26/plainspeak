@@ -45,3 +45,13 @@ g++ -std=c++20 -Wall -Wextra \
 ```sh
 ./plainspeak examples/hello.eng -o hello && ./hello
 ```
+
+Inspect or lint a program without building a binary:
+
+```sh
+./plainspeak examples/hello.eng --lint
+./plainspeak examples/hello.eng --show-generated-c
+```
+
+PlainSpeak source highlighting for VS Code is provided in
+`editors/vscode-plainspeak`.

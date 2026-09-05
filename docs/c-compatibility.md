@@ -82,8 +82,8 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 |---|---|
 | `decl.explicit-declarations` | foundation |
 | `decl.storage-duration` | foundation |
-| `decl.linkage` | planned |
-| `decl.storage-specifiers` | planned |
+| `decl.linkage` | foundation | Native declarations can request internal or external linkage in generated C; cross-translation-unit and redeclaration compatibility remain pending. |
+| `decl.storage-specifiers` | foundation | Plain-English `static storage`, `internal linkage`, and `external linkage` clauses lower to C specifiers alongside thread-local storage; inline and full interaction rules remain pending. |
 | `decl.initializers` | foundation |
 | `decl.designated-initializers` | foundation |
 | `decl.empty-initialization` | foundation | Native declarations of scalar, pointer, fixed-array, structure, union, enumeration and decimal objects with no initializer clause, or with the plain-English `with empty braces` clause, are zero-initialized in the generated C: integer/boolean/enumeration objects get 0, pointers get the platform null, decimal objects get 0.0, fixed-array elements and aggregate members are recursively zero-initialized. Legacy boxed declarations and the remaining C23 initializer-context rules remain pending. |

@@ -142,6 +142,9 @@ struct NativeDeclStmt {
     bool threadLocal = false;
     std::optional<std::size_t> alignment;
     bool constexprObject = false;
+    bool internalLinkage = false;
+    bool externalLinkage = false;
+    bool staticStorage = false;
 };
 struct StoreThroughStmt { Expr *pointer; Expr *expr; };
 struct StoreElementStmt { Expr *index; Expr *base; Expr *expr; };

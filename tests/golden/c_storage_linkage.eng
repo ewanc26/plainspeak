@@ -1,0 +1,5 @@
+Declare hidden with internal linkage as integer with value 7.
+Declare shared with external linkage as integer.
+Declare retained with static storage as integer with value 9.
+Say hidden.
+Say retained.
