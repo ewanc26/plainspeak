@@ -1,0 +1,9 @@
+Import the C function fopen taking a pointer to character and a pointer to character, returning a pointer to void, from the header "stdio.h".
+Import the C function fputc taking an integer and a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function fflush taking a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function fclose taking a pointer to void, returning an integer, from the header "stdio.h".
+Declare stream as pointer to void with value Call fopen with "/dev/null", "w" done.
+Call fputc with 65, stream done.
+Call fflush with stream done.
+Call fclose with stream done.
+Say 1.
