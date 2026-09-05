@@ -116,7 +116,7 @@ struct Expr { ExprNode node; int line; };
 
 struct SayStmt       { std::vector<Expr *> args; };
 struct SetStmt       { std::string name; Expr *expr; };
-enum class AggregateInitKind { Positional, Members, Elements };
+enum class AggregateInitKind { Empty, Positional, Members, Elements };
 struct AggregateInitEntry {
     std::string memberName{};
     std::size_t elementIndex = 0;

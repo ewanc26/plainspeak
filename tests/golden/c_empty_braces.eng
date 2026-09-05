@@ -1,0 +1,5 @@
+Declare count as integer with empty braces.
+Declare values as array of integer with length 2 with empty braces.
+Say count.
+Say Element at 0 in values.
+Say Element at 1 in values.

@@ -86,7 +86,7 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `decl.storage-specifiers` | planned |
 | `decl.initializers` | foundation |
 | `decl.designated-initializers` | foundation |
-| `decl.empty-initialization` | foundation | Native declarations of scalar, pointer, fixed-array, structure, union, enumeration and decimal objects with no initializer clause are zero-initialized in the generated C: integer/boolean/enumeration objects get 0, pointers get the platform null, decimal objects get 0.0, fixed-array elements and aggregate members are recursively zero-initialized. Legacy boxed declarations and the C23 `{}` empty-brace spelling remain pending. |
+| `decl.empty-initialization` | foundation | Native declarations of scalar, pointer, fixed-array, structure, union, enumeration and decimal objects with no initializer clause, or with the plain-English `with empty braces` clause, are zero-initialized in the generated C: integer/boolean/enumeration objects get 0, pointers get the platform null, decimal objects get 0.0, fixed-array elements and aggregate members are recursively zero-initialized. Legacy boxed declarations and the remaining C23 initializer-context rules remain pending. |
 | `decl.static-assert` | implemented | `Assert that` lowers to C11 `_Static_assert` after integer-constant-expression validation. |
 | `decl.attributes` | planned |
 

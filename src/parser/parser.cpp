@@ -339,6 +339,12 @@ Stmt *Parser::parseDeclare() {
         if (checkWord("value")) {
             advance();
             initializer = parseExpr();
+        } else if (checkWord("empty") && checkWordAt(1, "braces")) {
+            advance();
+            advance();
+            AggregateInitializer aggregate;
+            aggregate.kind = AggregateInitKind::Empty;
+            aggregateInitializer = std::move(aggregate);
         } else if (checkWord("values")) {
             advance();
             AggregateInitializer aggregate;

@@ -2171,7 +2171,10 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     }
                 };
 
-                if (aggregate.kind == AggregateInitKind::Positional) {
+                if (aggregate.kind == AggregateInitKind::Empty) {
+                    // C23 empty-brace initialization recursively produces
+                    // the zero value for every supported native object type.
+                } else if (aggregate.kind == AggregateInitKind::Positional) {
                     if (declared.isArray() && declared.elementType && declared.arrayBound) {
                         if (aggregate.entries.size() > *declared.arrayBound) {
                             diags.push_back({21, s->line, "Array \"" + node.name + "\" has length " +

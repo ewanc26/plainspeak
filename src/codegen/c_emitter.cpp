@@ -131,6 +131,7 @@ void emitAggregateStores(const std::string &name, const Type &declared,
                          const AggregateInitializer &aggregate,
                          std::ostream &out, const std::string &indent,
                          const AnalysisResult &analysis) {
+    if (aggregate.kind == AggregateInitKind::Empty) return;
     auto emitStore = [&](const std::string &target, Expr *expr) {
         out << indent << target << " = " << emitRawExpr(expr, analysis) << ";\n";
     };

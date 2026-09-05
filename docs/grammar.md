@@ -448,6 +448,8 @@ This tranche intentionally limits explicit enumerator values to signed whole-num
 
 Explicit native declarations support positional and designated aggregate initialization without exposing C brace syntax.
 
+`Declare name as type with empty braces.` requests C23 empty-brace initialization. It is written as prose so punctuation and grammar remain part of PlainSpeak source; the lowered native object is zero-initialized, including every scalar, array element, and aggregate member.
+
 Positional initialization uses declaration order:
 
 ```text
