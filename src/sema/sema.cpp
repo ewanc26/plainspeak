@@ -1601,6 +1601,15 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return Type::number();
         }
+        else if constexpr (std::is_same_v<T, LimitOfTypeExpr>) {
+            Type queried = resolveTypeSpec(node.type);
+            validateTypeQualifiers(queried, line, diags);
+            if (analysis_) analysis_->typeOperands[e] = queried;
+            if (!isIntegralType(queried) && queried.kind != TypeKind::Floating) {
+                diags.push_back({2, line, "A minimum or maximum value query needs an integer or floating type, not a " + typeToString(queried) + "."});
+            }
+            return Type::decimal();
+        }
         else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
             if (node.func == "real" || node.func == "imaginary" || node.func == "magnitude" || node.func == "conjugate") {

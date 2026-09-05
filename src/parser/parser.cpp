@@ -1190,6 +1190,13 @@ Expr *Parser::parsePrimary() {
         advance(); advance(); advance();
         return arena_.makeExpr(AlignOfTypeExpr{parseTypeSpec()}, line);
     }
+    if ((checkWord("maximum") || checkWord("minimum")) && checkWordAt(1, "value") &&
+        checkWordAt(2, "of") && checkWordAt(3, "type")) {
+        int line = peek().line;
+        bool maximum = checkWord("maximum");
+        advance(); advance(); advance(); advance();
+        return arena_.makeExpr(LimitOfTypeExpr{parseTypeSpec(), maximum}, line);
+    }
     if (checkWord("list") && checkWordAt(1, "with")) {
         int line = peek().line;
         advance(); advance();

@@ -490,6 +490,7 @@ Legacy procedures continue using the boxed `PsValue` calling convention and reta
 SizeOfTypeExpr ::= "Size" "of" "type" CType
 SizeOfExpr ::= "Size" "of" Primary
 AlignOfTypeExpr ::= "Alignment" "of" "type" CType
+LimitOfTypeExpr ::= ("Minimum" | "Maximum") "value" "of" "type" CType
 ```
 
 Examples:
@@ -498,7 +499,7 @@ Examples:
 Say Size of type character. Say Size of type pointer to integer. Say Alignment of type long decimal. Declare x as integer with value 1. Say Size of x.
 ```
 
-`Size of type` lowers to C `sizeof(type)`. `Alignment of type` lowers to C11 `_Alignof(type)`. `Size of` an expression uses the semantic type of the operand and does not evaluate that operand, matching the unevaluated nature of ordinary non-VLA C `sizeof` for the currently supported native object types.
+`Size of type` lowers to C `sizeof(type)`. `Alignment of type` lowers to C11 `_Alignof(type)`. `Minimum value of type` and `Maximum value of type` bind to the corresponding `<limits.h>` or `<float.h>` implementation limits; for floating types, minimum means the smallest positive normalized value. `Size of` an expression uses the semantic type of the operand and does not evaluate that operand, matching the unevaluated nature of ordinary non-VLA C `sizeof` for the currently supported native object types.
 
 Results are currently boxed back into PlainSpeak `number`, so native `size_t` is still pending. Exact scalar and pointer sizes/alignments remain target properties; PlainSpeak does not impose LP64 or another data model.
 

@@ -1,0 +1,1 @@
+error[E0002]: A minimum or maximum value query needs an integer or floating type, not a pointer to integer.

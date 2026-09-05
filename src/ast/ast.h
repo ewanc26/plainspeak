@@ -85,6 +85,7 @@ struct LengthExpr      { Expr *operand; };
 struct SizeOfTypeExpr  { TypeSpec type; };
 struct SizeOfExpr      { Expr *operand; };
 struct AlignOfTypeExpr { TypeSpec type; };
+struct LimitOfTypeExpr { TypeSpec type; bool maximum; };
 struct AddressOfExpr   { std::string name; };
 struct DerefExpr       { Expr *pointer; };
 struct CastExpr        { Expr *operand; TypeSpec target; };
@@ -104,7 +105,7 @@ struct ItemExpr        { Expr *index; Expr *list; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
-                              AlignOfTypeExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
+                              AlignOfTypeExpr, LimitOfTypeExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
                               ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr>;
 struct Expr { ExprNode node; int line; };
