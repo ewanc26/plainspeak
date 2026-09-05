@@ -1606,8 +1606,13 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             if (node.func == "real" || node.func == "imaginary" || node.func == "magnitude" || node.func == "conjugate") {
                 if (arg.kind != TypeKind::Complex)
                     diags.push_back({2, line, node.func + " part needs a complex decimal, not a " + typeToString(arg) + "."});
+            } else if (node.func.rfind("is", 0) == 0) {
+                if (!isIntegralType(arg))
+                    diags.push_back({2, line, node.func + " needs an integer character code, not a " + typeToString(arg) + "."});
             } else if (!isNumeric(arg)) diags.push_back({2, line, "I can't apply " + node.func + " to a " + typeToString(arg) + "."});
-            return node.func == "conjugate" ? Type::complex() : Type::decimal();
+            if (node.func == "conjugate") return Type::complex();
+            if (node.func.rfind("is", 0) == 0) return Type::number();
+            return Type::decimal();
         }
         else if constexpr (std::is_same_v<T, PowExpr>) {
             Type base = inferExpr(node.base, line, diags);

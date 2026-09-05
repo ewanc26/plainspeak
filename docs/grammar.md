@@ -276,6 +276,8 @@ The words map directly to C `const`, `volatile`, `restrict`, and `_Atomic`. Qual
 
 `Atomic fence.` emits a C11 sequentially consistent atomic fence. Memory-order-specific fences remain pending.
 
+The classification forms `isalpha of`, `isalnum of`, `isblank of`, `iscntrl of`, `isdigit of`, `isgraph of`, `islower of`, `isprint of`, `ispunct of`, `isspace of`, `isupper of`, and `isxdigit of` bind to the corresponding `<ctype.h>` functions. Their operands are integer character codes and their results are whole numbers; callers should pass either an unsigned-character value or `EOF` once that constant is exposed.
+
 Reading a qualified scalar follows C value conversion: top-level qualifiers do not become qualifiers on arithmetic results. Pointer conversions may add pointee qualification, such as `pointer to integer` to `pointer to constant integer`, but may not discard it. Nested pointer qualification remains strict, so the unsafe C-style `T **` to `const T **` conversion is not accepted merely because the innermost object can be qualified.
 
 `constant` is enforced through every current native mutation surface: direct `Set`, `Add`/`Subtract`, pointer stores, array element stores and structure/union member stores. Qualifiers on an aggregate propagate to member access as C requires. A const pointer may still modify a mutable pointee; a pointer to const may not.

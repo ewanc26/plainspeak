@@ -1275,7 +1275,9 @@ Expr *Parser::parsePrimary() {
         return arena_.makeExpr(MathCallExpr{"abs", operand}, line);
     }
     {
-        static const char *mathFns[] = {"sine", "cosine", "tangent", "sqrt", "log", "abs", "floor", "ceil"};
+        static const char *mathFns[] = {"sine", "cosine", "tangent", "sqrt", "log", "abs", "floor", "ceil",
+                                        "isalpha", "isalnum", "isblank", "iscntrl", "isdigit", "isgraph",
+                                        "islower", "isprint", "ispunct", "isspace", "isupper", "isxdigit"};
         for (const char *fn : mathFns) {
             if (checkWord(fn) && checkWordAt(1, "of")) {
                 int line = peek().line;

@@ -1,0 +1,6 @@
+Say isdigit of 7.
+Say isdigit of 65.
+Say isalpha of 65.
+Say isalnum of 95.
+Say isspace of 32.
+Say isxdigit of 70.
