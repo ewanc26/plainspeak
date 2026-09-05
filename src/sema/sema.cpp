@@ -1631,7 +1631,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
-            if (node.func == "real" || node.func == "imaginary" || node.func == "magnitude" || node.func == "conjugate") {
+            if (node.func == "atomic_load") {
+                if (!std::holds_alternative<VarRef>(node.arg->node) || !arg.qualifiers.isAtomic) {
+                    diags.push_back({24, line, "Atomic load needs a named atomic native object."});
+                }
+                return stripTopQualifiers(arg);
+            } else if (node.func == "real" || node.func == "imaginary" || node.func == "magnitude" || node.func == "conjugate") {
                 if (arg.kind != TypeKind::Complex)
                     diags.push_back({2, line, node.func + " part needs a complex decimal, not a " + typeToString(arg) + "."});
             } else if (node.func.rfind("is", 0) == 0 || node.func == "tolower" || node.func == "toupper") {

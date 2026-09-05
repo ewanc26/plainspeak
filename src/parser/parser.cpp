@@ -1209,6 +1209,11 @@ Expr *Parser::parsePrimary() {
         advance(); advance(); advance();
         return arena_.makeExpr(LockFreeExpr{expectIdentName()}, line);
     }
+    if (checkWord("atomic") && checkWordAt(1, "load") && checkWordAt(2, "of")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        return arena_.makeExpr(MathCallExpr{"atomic_load", parsePrimary()}, line);
+    }
     if (checkWord("list") && checkWordAt(1, "with")) {
         int line = peek().line;
         advance(); advance();

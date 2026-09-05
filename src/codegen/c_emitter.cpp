@@ -453,6 +453,7 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             if (node.func == "imaginary") return "ps_double(cimag(" + emitRawExpr(node.arg, analysis) + "))";
             if (node.func == "magnitude") return "ps_double(cabs(" + emitRawExpr(node.arg, analysis) + "))";
             if (node.func == "conjugate") return "conj(" + emitRawExpr(node.arg, analysis) + ")";
+            if (node.func == "atomic_load") return boxRaw("atomic_load(&" + emitRawExpr(node.arg, analysis) + ")", exprType(e, analysis));
             static const std::unordered_set<std::string> ctypeFns = {
                 "isalpha", "isalnum", "isblank", "iscntrl", "isdigit", "isgraph",
                 "islower", "isprint", "ispunct", "isspace", "isupper", "isxdigit",
