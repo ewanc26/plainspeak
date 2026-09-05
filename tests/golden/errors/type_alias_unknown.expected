@@ -1,0 +1,1 @@
+error[E0022]: Type alias "count" refers to an unknown or recursive alias.
