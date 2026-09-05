@@ -1,0 +1,1 @@
+error[E0030]: Switch needs a whole-number value to test, not a decimal.

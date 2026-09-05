@@ -55,6 +55,10 @@ struct AnalysisResult {
     std::unordered_set<const Expr *> nativeObjectRefs;
     std::unordered_set<const Expr *> bitFieldExprs;
 
+    // Translation-time values of validated Switch When labels, keyed by the
+    // label expression, so codegen can emit plain C case constants.
+    std::unordered_map<const Expr *, long> switchCaseValues;
+
     // Existing Set/Add/Sub statements whose target is an explicitly declared
     // C object. C itself performs the already-checked assignment conversion.
     std::unordered_set<const Stmt *> nativeMutationTargets;

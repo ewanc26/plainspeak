@@ -1,0 +1,1 @@
+error[E0030]: Switch has more than one When clause for the value 1.

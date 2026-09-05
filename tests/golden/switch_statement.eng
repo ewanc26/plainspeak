@@ -1,0 +1,32 @@
+Set level to 2.
+Switch level:
+    When 1:
+        Say "low".
+        Break.
+    When 2:
+        Say "medium".
+        Break.
+    Otherwise:
+        Say "high".
+        Break.
+End switch.
+
+Set word to 5.
+Switch word:
+    When 1:
+        Say "one".
+    When 5:
+        Say "five".
+        Break.
+    Otherwise:
+        Say "other".
+        Break.
+End switch.
+
+Set code to 3.
+Switch code:
+    When 2:
+        Say "second".
+    When 3:
+        Say "third".
+    End switch.

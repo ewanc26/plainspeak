@@ -1996,6 +1996,42 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             --breakableDepth_;
             --loopDepth_;
         }
+        else if constexpr (std::is_same_v<T, SwitchStmt>) {
+            std::size_t before = diags.size();
+            Type condType = inferExpr(node.cond, s->line, diags);
+            if (diags.size() == before && !isIntegralType(condType)) {
+                diags.push_back({30, s->line, "Switch needs a whole-number value to test, not a " +
+                                            typeToString(condType) + "."});
+            }
+            ++breakableDepth_;
+            // C cases share one block scope, so variables declared in one When
+            // clause stay visible (and collide consistently) across the switch.
+            enterScope();
+            std::unordered_set<long> seen;
+            bool seenDefault = false;
+            for (const auto &c : node.cases) {
+                if (!c.value) {
+                    if (seenDefault) {
+                        diags.push_back({30, s->line, "A Switch can have only one Otherwise clause."});
+                    }
+                    seenDefault = true;
+                } else {
+                    auto constant = integerConstantValue(c.value);
+                    if (!constant) {
+                        diags.push_back({30, s->line, "A When clause needs a whole-number constant to match; a runtime value cannot label a C switch case."});
+                    } else {
+                        if (analysis_) analysis_->switchCaseValues[c.value] = *constant;
+                        if (!seen.insert(*constant).second) {
+                            diags.push_back({30, s->line, "Switch has more than one When clause for the value " +
+                                                        std::to_string(*constant) + "."});
+                        }
+                    }
+                }
+                for (Stmt *inner : c.body) checkStmt(inner, diags);
+            }
+            leaveScope();
+            --breakableDepth_;
+        }
         else if constexpr (std::is_same_v<T, ProcedureStmt>) {
             auto signatureIt = procTable_.find(node.name);
             if (signatureIt == procTable_.end()) return;

@@ -87,6 +87,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
+    if (t.text == "switch") return parseSwitch();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
@@ -127,6 +128,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "while") return parseWhile();
     if (t.text == "do") return parseDoWhile();
     if (t.text == "for") return checkWordAt(1, "each") ? parseForEach() : parseFor();
+    if (t.text == "switch") return parseSwitch();
     if (t.text == "call") return parseCall();
     if (t.text == "procedure") return parseProcedure();
     if (t.text == "return") return parseReturn();
@@ -563,6 +565,43 @@ Stmt *Parser::parseFor() {
     expectColon();
     auto body = parseBlockUntil("end", "for");
     return arena_.makeStmt(ForStmt{varName, from, to, descending, std::move(body)}, line);
+}
+
+Stmt *Parser::parseSwitch() {
+    int line = peek().line;
+    advance();
+    Expr *cond = parseExpr();
+    expectColon();
+
+    std::vector<SwitchCase> cases;
+    while (!(checkWord("end") && checkWordAt(1, "switch"))) {
+        if (peek().kind == TokKind::Eof)
+            error("reached end of file while looking for \"End switch.\" to close this block");
+        Expr *value = nullptr;
+        if (checkWord("otherwise")) {
+            advance();
+            expectColon();
+        } else if (checkWord("when")) {
+            advance();
+            value = parseExpr();
+            expectColon();
+        } else {
+            error("expected \"When\" or \"Otherwise\" to open a Switch clause");
+        }
+        std::vector<Stmt *> body;
+        while (!(checkWord("when") || checkWord("otherwise") ||
+                 (checkWord("end") && checkWordAt(1, "switch")))) {
+            if (peek().kind == TokKind::Eof)
+                error("reached end of file while looking for \"End switch.\" to close this block");
+            body.push_back(parseStmt());
+        }
+        cases.push_back(SwitchCase{value, std::move(body)});
+    }
+    advance();
+    advance();
+    expectDot();
+    if (cases.empty()) error("A Switch block needs at least one When or Otherwise clause.");
+    return arena_.makeStmt(SwitchStmt{cond, std::move(cases)}, line);
 }
 
 Stmt *Parser::parseReturn() {

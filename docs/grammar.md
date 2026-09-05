@@ -77,13 +77,15 @@ WhileStmt ::= "While" Expr ":" Stmt* "End" "while" "."
 DoWhileStmt ::= "Do" ":" Stmt* "End" "do" "while" Expr "."
 ForEachStmt ::= "For" "each" IDENT "in" Expr ":" Stmt* "End" "for" "."
 ForStmt ::= "For" IDENT "from" Expr ("to" Expr | "down" "to" Expr) ":" Stmt* "End" "for" "."
+SwitchCase ::= ("When" Expr | "Otherwise") ":" Stmt*
+SwitchStmt ::= "Switch" Expr ":" SwitchCase+ "End" "switch" "."
 CallStmt ::= "Call" IDENT ("with" Expr ("," Expr)*)? "done" "."
 ProcedureParam ::= IDENT ("as" CType)?
 ProcedureStmt ::= "Procedure" IDENT ("takes" ProcedureParam ("," ProcedureParam)*)? ("returns" CType)? ":" Stmt* "End" "procedure" "."
 ReturnStmt ::= "Return" Expr? "."
 ```
 
-`Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, `Do`/`while`, and `For each`). `Continue.` is loop-only. `Break.` currently exits loops and is tracked as foundation-level C compatibility until `switch` lands, at which point the same breakable-context model extends to switch statements. Both lower directly to C `break;` / `continue;`.
+`Break.` and `Continue.` are valid inside the current loop forms (`Repeat`, `While`, `Do`/`while`, `For each`, and `For`) and, for `Break.`, inside a `Switch` block as well. `Continue.` is loop-only: inside a `Switch` body it is allowed only when that switch itself sits inside a loop, where it continues the enclosing loop just as C does. Both lower directly to C `break;` / `continue;`.
 
 `Set` has two related roles. If its name does not exist in the current visible scopes, it creates the existing inferred boxed PlainSpeak variable. If that name already denotes a variable, `Set` assigns a new value to it instead. Explicit C-compatible objects are introduced only with `Declare`.
 
@@ -127,6 +129,14 @@ For i from 10 down to 1: Say i. End for.
 ```
 
 A `Continue.` transfers control to that loop's own step (the increment or decrement), matching C `continue` in a `for` statement.
+
+A `Switch` tests a whole-number value against one or more clauses. `When` clauses need an integer constant expression to label the case; `Otherwise` supplies the default, which may appear anywhere among the clauses and may be written at most once. Clause bodies share one scope and fall through when a body does not end with `Break.`, matching C `switch` exactly:
+
+```text
+Switch code: When 1: Say "one". Break. When 2: Say "two". Break. Otherwise: Say "other". Break. End switch.
+```
+
+`Switch` is a breakable but not a loop context. `Break.` exits the nearest switch or loop; `Continue.` requires a surrounding loop, and inside a switch that is contained in a loop it jumps to that loop's next step.
 
 ## C type spellings
 

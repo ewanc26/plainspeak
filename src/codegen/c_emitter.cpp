@@ -515,6 +515,9 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
             else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, ForEachStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, ForStmt>) collectVars(node.body, out, analysis);
+            else if constexpr (std::is_same_v<T, SwitchStmt>) {
+                for (const auto &c : node.cases) collectVars(c.body, out, analysis);
+            }
         }, s->node);
     }
 }
@@ -677,6 +680,17 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << mangle(node.varName) << (node.descending ? "--" : "++") << ") {\n";
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "        ", loopCounter, analysis, sourceLines, currentProcedure);
             out << indent << "    }\n";
+            out << indent << "}\n";
+        } else if constexpr (std::is_same_v<T, SwitchStmt>) {
+            out << indent << "switch (ps_as_int(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
+            for (const auto &c : node.cases) {
+                if (c.value) {
+                    out << indent << "case " << analysis.switchCaseValues.at(c.value) << ":\n";
+                } else {
+                    out << indent << "default:\n";
+                }
+                for (Stmt *inner : c.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
+            }
             out << indent << "}\n";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);

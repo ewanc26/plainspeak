@@ -1,0 +1,1 @@
+error[E0030]: A When clause needs a whole-number constant to match; a runtime value cannot label a C switch case.

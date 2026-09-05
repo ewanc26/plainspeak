@@ -254,6 +254,13 @@ std::string printStmt(const Stmt *s) {
                               (node.descending ? " down to " : " to ") + printExpr(node.to) + ": ";
             for (Stmt *inner : node.body) out += printStmt(inner);
             return out + "End for. ";
+        } else if constexpr (std::is_same_v<T, SwitchStmt>) {
+            std::string out = "Switch " + printExpr(node.cond) + ": ";
+            for (const auto &c : node.cases) {
+                out += (c.value ? "When " + printExpr(c.value) + ": " : "Otherwise: ");
+                for (Stmt *inner : c.body) out += printStmt(inner);
+            }
+            return out + "End switch. ";
         } else if constexpr (std::is_same_v<T, CallStmt>) {
             std::string out = "Call " + node.name;
             if (!node.args.empty()) {
