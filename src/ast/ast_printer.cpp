@@ -44,6 +44,8 @@ std::string printTypeSpec(const TypeSpec &type) {
             body = "enumeration " + type.tag; break;
         case TypeSpecKind::Nullptr:
             body = "null pointer type"; break;
+        case TypeSpecKind::Alias:
+            body = type.tag; break;
     }
     if (body.empty()) body = "<unknown type>";
     return prefix + body;
