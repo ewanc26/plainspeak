@@ -1736,6 +1736,15 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             // This spelling has no operands; lowering supplies C11's default
             // sequentially consistent fence semantics.
         }
+        else if constexpr (std::is_same_v<T, AtomicStoreStmt>) {
+            Type value = inferExpr(node.expr, s->line, diags);
+            auto [symbol, found] = lookupVar(node.name, s->line, diags);
+            if (!found || !symbol.nativeObject || !symbol.type.qualifiers.isAtomic) {
+                diags.push_back({24, s->line, "Atomic store needs a named atomic native object."});
+            } else if (!assignableExprTo(stripTopQualifiers(symbol.type), value, node.expr)) {
+                diags.push_back({3, s->line, "Atomic store value does not match the type of \"" + node.name + "\"."});
+            }
+        }
         else if constexpr (std::is_same_v<T, SetStmt>) {
             Type exprType = inferExpr(node.expr, s->line, diags);
             if (Symbol *existing = findVar(node.name)) {

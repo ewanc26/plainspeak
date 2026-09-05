@@ -1,0 +1,3 @@
+Declare value as atomic integer with value 0.
+Atomic store 9 to value.
+Say Atomic load of value.

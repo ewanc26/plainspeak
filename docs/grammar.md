@@ -280,6 +280,8 @@ The words map directly to C `const`, `volatile`, `restrict`, and `_Atomic`. Qual
 
 `Atomic load of object` reads a named atomic native object with C11 `atomic_load` and returns its unqualified value. It uses the backend's default sequentially consistent memory order; explicit memory orders and the remaining atomic operation families remain pending.
 
+`Atomic store value to object.` stores an assignment-compatible value into a named atomic native object with C11 `atomic_store`, using the backend's default sequentially consistent memory order.
+
 The classification forms `isalpha of`, `isalnum of`, `isblank of`, `iscntrl of`, `isdigit of`, `isgraph of`, `islower of`, `isprint of`, `ispunct of`, `isspace of`, `isupper of`, and `isxdigit of`, plus `tolower of` and `toupper of`, bind to the corresponding `<ctype.h>` functions. Their operands are integer character codes and their results are whole numbers; callers should pass either an unsigned-character value or `EOF` once that constant is exposed.
 
 Reading a qualified scalar follows C value conversion: top-level qualifiers do not become qualifiers on arithmetic results. Pointer conversions may add pointee qualification, such as `pointer to integer` to `pointer to constant integer`, but may not discard it. Nested pointer qualification remains strict, so the unsafe C-style `T **` to `const T **` conversion is not accepted merely because the innermost object can be qualified.

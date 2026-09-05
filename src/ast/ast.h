@@ -179,13 +179,14 @@ struct CommentStmt   { std::string text; };
 struct StaticAssertStmt { Expr *condition; };
 struct RuntimeAssertStmt { Expr *condition; };
 struct AtomicFenceStmt {};
+struct AtomicStoreStmt { std::string name; Expr *expr; };
 
 using StmtNode = std::variant<SayStmt, SetStmt, NativeDeclStmt, StructureStmt, UnionStmt, EnumerationStmt, TypeAliasStmt,
                               StoreThroughStmt, StoreElementStmt, StoreMemberStmt, AddStmt, SubStmt, ReadStmt,
                               ReadFloatStmt, AppendStmt, ReplaceItemStmt,
                               RemoveItemStmt, BreakStmt, ContinueStmt, RepeatStmt, IfStmt, WhileStmt,
                               DoWhileStmt, ForEachStmt, ForStmt, SwitchStmt, GotoStmt, LabelStmt, CallStmt, ProcedureStmt, ReturnStmt,
-                              CommentStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt>;
+                              CommentStmt, StaticAssertStmt, RuntimeAssertStmt, AtomicFenceStmt, AtomicStoreStmt>;
 struct Stmt { StmtNode node; int line; };
 
 // Owns every Expr/Stmt produced while parsing one source file. deque

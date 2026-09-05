@@ -595,6 +595,9 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "assert(" << emitRawExpr(node.condition, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, AtomicFenceStmt>) {
             out << indent << "atomic_thread_fence(memory_order_seq_cst);\n";
+        } else if constexpr (std::is_same_v<T, AtomicStoreStmt>) {
+            out << indent << "atomic_store(&" << mangle(node.name) << ", "
+                << emitRawExpr(node.expr, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, SetStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {
                 out << indent << mangle(node.name) << " = " << emitRawExpr(node.expr, analysis) << ";\n";

@@ -68,6 +68,7 @@ private:
     Stmt *parseStaticAssert();
     Stmt *parseRuntimeAssert();
     Stmt *parseAtomicFence();
+    Stmt *parseAtomicStore();
     Stmt *parseTopLevelStmt();
     Stmt *parseProcedure();
     std::vector<Stmt *> parseBlockUntil(const std::string &w1, const std::string &w2);

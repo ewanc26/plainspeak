@@ -100,6 +100,9 @@ Stmt *Parser::parseTopLevelStmt() {
     if (isReturnKeyword(t.text)) return parseReturn();
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
     if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
+    if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
+    if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
+    if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
           "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
@@ -127,6 +130,16 @@ Stmt *Parser::parseAtomicFence() {
     advance(); advance();
     expectDot();
     return arena_.makeStmt(AtomicFenceStmt{}, line);
+}
+
+Stmt *Parser::parseAtomicStore() {
+    int line = peek().line;
+    advance(); advance();
+    Expr *expr = parseExpr();
+    expectWord("to");
+    std::string name = expectIdentName();
+    expectDot();
+    return arena_.makeStmt(AtomicStoreStmt{std::move(name), expr}, line);
 }
 
 Stmt *Parser::parseStmt() {

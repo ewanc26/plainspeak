@@ -1,0 +1,1 @@
+error[E0024]: Atomic store needs a named atomic native object.
