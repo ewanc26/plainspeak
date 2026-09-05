@@ -15,6 +15,8 @@ include(FetchContent)
 FetchContent_Declare(
     catch2
     URL https://github.com/catchorg/Catch2/archive/refs/tags/v3.5.0.tar.gz
+    TIMEOUT 60
+    DOWNLOAD_EXTRACT_TIMESTAMP TRUE
 )
 FetchContent_MakeAvailable(catch2)
 

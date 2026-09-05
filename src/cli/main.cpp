@@ -106,8 +106,12 @@ int main(int argc, char **argv) {
 
     // C11 is the first backend dialect needed beyond the C99 baseline: it
     // supplies the standard _Alignof operator used by PlainSpeak's alignment
-    // query. C99 programs remain valid C11 programs.
-    std::string cmd = "cc -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR
+    // query. C99 programs remain valid C11 programs. CI and users targeting
+    // C23-only facilities can select a capable compiler without changing the
+    // PlainSpeak source via PLAINSPEAK_CC.
+    const char *configuredCompiler = std::getenv("PLAINSPEAK_CC");
+    std::string compiler = configuredCompiler && *configuredCompiler ? configuredCompiler : "cc";
+    std::string cmd = compiler + " -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR
                        " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm";
     for (const auto &library : analysis.cLibraries) cmd += " -l" + library;
     cmd += " -o \"" + outPath + "\"";

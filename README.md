@@ -53,5 +53,9 @@ Inspect or lint a program without building a binary:
 ./plainspeak examples/hello.eng --show-generated-c
 ```
 
+The native compiler defaults to `cc`. Set `PLAINSPEAK_CC` when a program uses
+a target-specific C23 facility such as `_BitInt` and needs a different C
+compiler, for example `PLAINSPEAK_CC=clang ./plainspeak program.eng`.
+
 PlainSpeak source highlighting for VS Code is provided in
 `editors/vscode-plainspeak`.

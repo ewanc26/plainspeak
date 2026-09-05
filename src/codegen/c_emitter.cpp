@@ -557,6 +557,10 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
                 "tolower", "toupper"
             };
             if (ctypeFns.count(node.func)) {
+                if (node.func.rfind("is", 0) == 0) {
+                    return "ps_int((long)(" + node.func + "((unsigned char)ps_as_int(" +
+                           emitBoxedExpr(node.arg, analysis) + ")) != 0))";
+                }
                 return "ps_int((long)" + node.func + "((unsigned char)ps_as_int(" +
                        emitBoxedExpr(node.arg, analysis) + ")))";
             }
