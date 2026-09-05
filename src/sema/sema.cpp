@@ -895,6 +895,35 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         result.procedureSignatures[proc->name] = signature;
     }
 
+    for (Stmt *s : program) {
+        auto *import = std::get_if<CFunctionImportStmt>(&s->node);
+        if (!import) continue;
+        if (procTable_.count(import->name) || result.cFunctionSignatures.count(import->name)) {
+            result.diagnostics.push_back({18, s->line, "C function \"" + import->name + "\" is already declared."});
+            continue;
+        }
+        ProcedureSignature signature;
+        signature.nativeTyped = true;
+        signature.returnType = resolveTypeSpec(import->returnType);
+        validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
+        for (const TypeSpec &spec : import->parameterTypes) {
+            Type type = resolveTypeSpec(spec);
+            validateTypeQualifiers(type, s->line, result.diagnostics);
+            if (type.kind == TypeKind::Void) {
+                result.diagnostics.push_back({18, s->line, "An imported C function parameter cannot have type void."});
+                type = Type::number();
+            }
+            if (type.isArray()) type = decayArray(type);
+            signature.parameterTypes.push_back(std::move(type));
+        }
+        if (signature.returnType.isArray()) {
+            result.diagnostics.push_back({18, s->line, "An imported C function cannot return an array directly."});
+        }
+        result.cFunctionSignatures[import->name] = std::move(signature);
+        if (std::find(result.cHeaders.begin(), result.cHeaders.end(), import->header) == result.cHeaders.end())
+            result.cHeaders.push_back(import->header);
+    }
+
     for (Stmt *s : program) checkStmt(s, result.diagnostics);
 
     for (Stmt *s : program) {
@@ -1551,14 +1580,19 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, CallExpr>) {
             auto found = procTable_.find(node.name);
-            if (found == procTable_.end()) {
+            const ProcedureSignature *imported = nullptr;
+            if (analysis_) {
+                auto importedIt = analysis_->cFunctionSignatures.find(node.name);
+                if (importedIt != analysis_->cFunctionSignatures.end()) imported = &importedIt->second;
+            }
+            if (found == procTable_.end() && !imported) {
                 diags.push_back({7, line, "I don't know what to do with \"" + node.name +
                                          "\" — it is used here but never defined. Use Procedure to create it first."});
                 for (Expr *arg : node.args) inferExpr(arg, line, diags);
                 return Type::number();
             }
 
-            const ProcedureSignature &signature = found->second;
+            const ProcedureSignature &signature = found != procTable_.end() ? found->second : *imported;
             if (node.args.size() != signature.parameterTypes.size()) {
                 diags.push_back({8, line, "Call to \"" + node.name + "\" expects " +
                                          std::to_string(signature.parameterTypes.size()) + " arguments but got " +
@@ -1570,7 +1604,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 if (signature.nativeTyped) {
                     if (i < signature.parameterTypes.size() && diags.size() == before &&
                         !assignableExprTo(signature.parameterTypes[i], argType, node.args[i])) {
-                        diags.push_back({18, line, "Argument " + std::to_string(i + 1) + " to typed Procedure \"" +
+                        diags.push_back({18, line, "Argument " + std::to_string(i + 1) + " to typed C function \"" +
                                                  node.name + "\" expects " + typeToString(signature.parameterTypes[i]) +
                                                  " but got " + typeToString(argType) + "."});
                     }

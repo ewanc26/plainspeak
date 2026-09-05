@@ -71,7 +71,7 @@
     {"id":"func.noreturn","revision":"C11","area":"language","status":"planned","tests":[],"note":"_Noreturn/C23 noreturn capability pending."},
 
     {"id":"pp.translation-units","revision":"C99","area":"preprocessor","status":"planned","tests":[],"note":"Separate PlainSpeak translation units/linkage pending."},
-    {"id":"pp.header-interop","revision":"C99","area":"preprocessor","status":"foundation","tests":["tests/golden/c_imports.eng","tests/golden/errors/c_import_unsafe.eng"],"note":"Validated C header and linker-library imports are emitted into generated C and the native link command; typed symbol declarations and calls remain pending."},
+    {"id":"pp.header-interop","revision":"C99","area":"preprocessor","status":"foundation","tests":["tests/golden/c_imports.eng","tests/golden/errors/c_import_unsafe.eng","tests/golden/c_imported_function.eng","tests/golden/errors/imported_function_mismatch.eng"],"note":"Validated C header and linker-library imports plus typed external C function declarations/calls are emitted into generated C and the native link command; complete header parsing, variadics and macro/import semantics remain pending."},
     {"id":"pp.conditional-compilation","revision":"C99","area":"preprocessor","status":"planned","tests":[],"note":"Compile-time conditional capability pending."},
     {"id":"pp.macros","revision":"C99","area":"preprocessor","status":"planned","tests":[],"note":"Capability equivalent to C object/function-like preprocessing substitution pending."},
     {"id":"pp.variadic-vaopt","revision":"C23","area":"preprocessor","status":"planned","tests":[],"note":"Variadic preprocessing and __VA_OPT__ capability pending."},

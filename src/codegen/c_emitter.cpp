@@ -186,6 +186,12 @@ const ProcedureSignature *procedureSignature(const std::string &name,
     return it == analysis.procedureSignatures.end() ? nullptr : &it->second;
 }
 
+const ProcedureSignature *cFunctionSignature(const std::string &name,
+                                             const AnalysisResult &analysis) {
+    auto it = analysis.cFunctionSignatures.find(name);
+    return it == analysis.cFunctionSignatures.end() ? nullptr : &it->second;
+}
+
 std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis);
 std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
 
@@ -300,8 +306,10 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             if (isNativeRef(e, analysis)) return mangle(node.name);
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
+            bool imported = false;
+            if (!signature) { signature = cFunctionSignature(node.name, analysis); imported = signature != nullptr; }
             if (signature && signature->nativeTyped) {
-                std::string result = mangle(node.name) + "(";
+                std::string result = (imported ? node.name : mangle(node.name)) + "(";
                 for (size_t i = 0; i < node.args.size(); ++i) {
                     if (i > 0) result += ", ";
                     result += emitRawExpr(node.args[i], analysis);
@@ -479,8 +487,10 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return fn + "(" + emitBoxedExpr(node.arg, analysis) + ")";
         } else if constexpr (std::is_same_v<T, CallExpr>) {
             const ProcedureSignature *signature = procedureSignature(node.name, analysis);
+            bool imported = false;
+            if (!signature) { signature = cFunctionSignature(node.name, analysis); imported = signature != nullptr; }
             if (signature && signature->nativeTyped) {
-                std::string raw = mangle(node.name) + "(";
+                std::string raw = (imported ? node.name : mangle(node.name)) + "(";
                 for (size_t i = 0; i < node.args.size(); ++i) {
                     if (i > 0) raw += ", ";
                     raw += emitRawExpr(node.args[i], analysis);

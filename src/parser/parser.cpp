@@ -146,6 +146,7 @@ Stmt *Parser::parseAtomicStore() {
 Stmt *Parser::parseCImport() {
     int line = peek().line;
     advance(); expectWord("c");
+    if (checkWord("function")) return parseCFunctionImport();
     CImportKind kind;
     if (checkWord("header")) kind = CImportKind::Header;
     else if (checkWord("library")) kind = CImportKind::Library;
@@ -155,6 +156,31 @@ Stmt *Parser::parseCImport() {
     std::string name = advance().text;
     expectDot();
     return arena_.makeStmt(CImportStmt{kind, std::move(name)}, line);
+}
+
+Stmt *Parser::parseCFunctionImport() {
+    int line = peek().line;
+    advance(); // function
+    std::string name = expectIdentName();
+    expectWord("taking");
+    std::vector<TypeSpec> parameters;
+    if (checkWord("no")) {
+        advance(); expectWord("parameters");
+    } else {
+        do {
+            expectWord("type");
+            parameters.push_back(parseTypeSpec());
+            if (!checkWord("and")) break;
+            advance();
+        } while (true);
+    }
+    expectWord("returns"); expectWord("type");
+    TypeSpec returnType = parseTypeSpec();
+    expectWord("from"); expectWord("header");
+    if (peek().kind != TokKind::String) error("a C function import needs a quoted header name");
+    std::string header = advance().text;
+    expectDot();
+    return arena_.makeStmt(CFunctionImportStmt{std::move(name), std::move(parameters), std::move(returnType), std::move(header)}, line);
 }
 
 Stmt *Parser::parseStmt() {

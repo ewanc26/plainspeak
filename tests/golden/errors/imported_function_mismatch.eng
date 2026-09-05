@@ -1,0 +1,2 @@
+Import C function abs taking type integer returns type integer from header "stdlib.h".
+Say Call abs with 1.5 done.

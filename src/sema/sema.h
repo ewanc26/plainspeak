@@ -56,6 +56,7 @@ struct AnalysisResult {
     std::unordered_set<const Expr *> bitFieldExprs;
     std::vector<std::string> cHeaders;
     std::vector<std::string> cLibraries;
+    std::unordered_map<std::string, ProcedureSignature> cFunctionSignatures;
 
     // Translation-time values of validated Switch When labels, keyed by the
     // label expression, so codegen can emit plain C case constants.
