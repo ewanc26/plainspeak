@@ -33,6 +33,8 @@ std::string emitQualifierWords(const TypeQualifiers &q) {
     return out;
 }
 
+std::string emitCBaseType(const Type &type);
+
 std::string emitCUnqualifiedBaseType(const Type &type) {
     if (type.kind == TypeKind::Boolean) return "_Bool";
     if (type.kind == TypeKind::Integer) {
@@ -59,6 +61,16 @@ std::string emitCUnqualifiedBaseType(const Type &type) {
         return "double";
     }
     if (type.kind == TypeKind::Complex) return "double _Complex";
+    if (type.kind == TypeKind::Function) {
+        std::string result = type.returnType ? emitCBaseType(*type.returnType) : "void";
+        result += " (";
+        for (std::size_t i = 0; i < type.parameterTypes.size(); ++i) {
+            if (i) result += ", ";
+            result += emitCBaseType(type.parameterTypes[i]);
+        }
+        result += ")";
+        return result;
+    }
     if (type.kind == TypeKind::Void) return "void";
     if (type.kind == TypeKind::Structure) return "struct " + mangle(type.tag);
     if (type.kind == TypeKind::Union) return "union " + mangle(type.tag);
@@ -76,6 +88,17 @@ std::string emitCBaseType(const Type &type) {
 }
 
 std::string emitCDeclarator(const Type &type, const std::string &name) {
+    if (type.kind == TypeKind::Function) {
+        std::string result = type.returnType ? emitCBaseType(*type.returnType) : "void";
+        result += " " + name + "(";
+        if (type.parameterTypes.empty()) result += "void";
+        for (std::size_t i = 0; i < type.parameterTypes.size(); ++i) {
+            if (i) result += ", ";
+            result += emitCBaseType(type.parameterTypes[i]);
+        }
+        result += ")";
+        return result;
+    }
     if (type.kind == TypeKind::Array && type.elementType) {
         std::string bound = type.arrayBound ? std::to_string(*type.arrayBound) : "";
         return emitCDeclarator(*type.elementType, name + "[" + bound + "]");

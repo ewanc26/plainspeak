@@ -58,6 +58,7 @@ enum class TypeSpecKind {
     SizeType,
     PtrdiffType,
     Complex
+    ,Function
 };
 
 struct TypeSpecQualifiers {
@@ -76,6 +77,7 @@ struct TypeSpec {
     std::size_t bitWidth = 0;
     bool bitIntUnsigned = false;
     TypeSpecQualifiers qualifiers{};
+    std::shared_ptr<TypeSpec> returnType{};
 };
 
 enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or };

@@ -1079,6 +1079,9 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
         case TypeSpecKind::SizeType: result = Type::integer(IntegerRank::Long, true); break;
         case TypeSpecKind::PtrdiffType: result = Type::integer(IntegerRank::Long, false); break;
         case TypeSpecKind::Complex: result = Type::complex(); break;
+        case TypeSpecKind::Function:
+            result = Type::function(spec.returnType ? resolveTypeSpec(*spec.returnType) : Type::voidType(), {});
+            break;
     }
 
     TypeQualifiers q = semanticQualifiers(spec.qualifiers);

@@ -987,6 +987,12 @@ TypeSpec Parser::parseTypeSpec() {
         std::size_t bound = static_cast<std::size_t>(advance().num);
         return finish(TypeSpec{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element)), bound});
     }
+    if (checkWord("function") && checkWordAt(1, "returning")) {
+        advance(); advance();
+        TypeSpec type{TypeSpecKind::Function};
+        type.returnType = std::make_shared<TypeSpec>(parseTypeSpec());
+        return finish(std::move(type));
+    }
     if (checkWord("pointer") && checkWordAt(1, "to")) {
         advance(); advance();
         TypeSpec pointee = parseTypeSpec();
