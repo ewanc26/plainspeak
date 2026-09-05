@@ -1622,6 +1622,13 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return Type::number();
         }
+        else if constexpr (std::is_same_v<T, LockFreeExpr>) {
+            auto [symbol, found] = lookupVar(node.name, line, diags);
+            if (!found || !symbol.nativeObject || !symbol.type.qualifiers.isAtomic) {
+                diags.push_back({24, line, "Is lock free needs an atomic native object, not \"" + node.name + "\"."});
+            }
+            return Type::integer(IntegerRank::Int);
+        }
         else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
             if (node.func == "real" || node.func == "imaginary" || node.func == "magnitude" || node.func == "conjugate") {

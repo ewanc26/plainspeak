@@ -1204,6 +1204,11 @@ Expr *Parser::parsePrimary() {
         expectWord("in"); expectWord("type");
         return arena_.makeExpr(OffsetOfExpr{std::move(member), parseTypeSpec()}, line);
     }
+    if (checkWord("is") && checkWordAt(1, "lock") && checkWordAt(2, "free")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        return arena_.makeExpr(LockFreeExpr{expectIdentName()}, line);
+    }
     if (checkWord("list") && checkWordAt(1, "with")) {
         int line = peek().line;
         advance(); advance();

@@ -1,0 +1,1 @@
+error[E0024]: Is lock free needs an atomic native object, not "value".

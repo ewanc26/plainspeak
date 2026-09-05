@@ -441,6 +441,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             Type type = typeOperand(e, analysis);
             std::string aggregate = type.kind == TypeKind::Union ? "union " : "struct ";
             return "ps_int((long)offsetof(" + aggregate + mangle(type.tag) + ", " + mangle(node.member) + "))";
+        } else if constexpr (std::is_same_v<T, LockFreeExpr>) {
+            return "ps_int((long)atomic_is_lock_free(&" + mangle(node.name) + "))";
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             static const std::unordered_map<std::string, std::string> mathFn = {
                 {"sine", "ps_sin"}, {"cosine", "ps_cos"}, {"tangent", "ps_tan"},
