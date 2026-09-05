@@ -1,4 +1,4 @@
-Declare octet as unsigned integer with exactly 8 bits.
-Declare signedword as integer with exactly 16 bits.
+Declare octet as unsigned integer with exactly 8 bits with value 255.
+Declare signedword as integer with exactly 16 bits with value minus 123.
 Say octet.
 Say signedword.
