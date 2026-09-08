@@ -2376,11 +2376,16 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, StaticAssertStmt>) {
             Type type = inferExpr(node.condition, s->line, diags);
             if (!isIntegralType(type)) {
-                diags.push_back({3, s->line, "A static assertion needs a whole-number condition."});
+                diags.push_back({37, s->line, "A static assertion needs an integer constant expression."});
             } else {
                 auto value = integerConstantValue(node.condition);
-                if (!value) diags.push_back({30, s->line, "A static assertion needs an integer constant expression."});
-                else if (*value == 0) diags.push_back({30, s->line, "Static assertion failed."});
+                if (!value) {
+                    diags.push_back({37, s->line, "A static assertion needs an integer constant expression."});
+                } else if (*value == 0) {
+                    std::string message = "Static assertion failed";
+                    if (node.message && !node.message->empty()) message += ": " + *node.message;
+                    diags.push_back({37, s->line, std::move(message) + "."});
+                }
             }
         }
         else if constexpr (std::is_same_v<T, RuntimeAssertStmt>) {
