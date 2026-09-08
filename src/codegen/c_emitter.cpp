@@ -813,7 +813,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 out << "});\n";
             }
         } else if constexpr (std::is_same_v<T, StaticAssertStmt>) {
-            out << indent << "_Static_assert(" << emitRawExpr(node.condition, analysis) << ", \"PlainSpeak static assertion\");\n";
+            const std::string &message = node.message && !node.message->empty()
+                                       ? *node.message : "PlainSpeak static assertion";
+            out << indent << "_Static_assert(" << emitRawExpr(node.condition, analysis)
+                << ", \"" << message << "\");\n";
         } else if constexpr (std::is_same_v<T, RuntimeAssertStmt>) {
             out << indent << "assert(" << emitRawExpr(node.condition, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, AtomicFenceStmt>) {

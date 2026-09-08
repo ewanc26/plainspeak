@@ -237,7 +237,10 @@ struct ProcedureStmt {
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };
 struct WarningStmt   { std::string message; };
-struct StaticAssertStmt { Expr *condition; };
+struct StaticAssertStmt {
+    Expr *condition;
+    std::optional<std::string> message;
+};
 struct RuntimeAssertStmt { Expr *condition; };
 struct AtomicFenceStmt {};
 struct AtomicStoreStmt { std::string name; Expr *expr; };

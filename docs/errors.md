@@ -41,6 +41,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0034 | Native object is read or modified more than once without a C sequence point |
 | E0035 | Use of a declaration marked deprecated |
 | E0036 | Invalid variadic argument operation or variadic Procedure declaration |
+| E0037 | Invalid or failed compile-time static assertion |
 
 ## Parse-time errors
 

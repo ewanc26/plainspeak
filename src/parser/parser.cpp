@@ -129,8 +129,17 @@ Stmt *Parser::parseStaticAssert() {
     advance();
     if (checkWord("that")) advance();
     Expr *condition = parseExpr();
+
+    std::optional<std::string> message;
+    if (checkWord("with") && checkWordAt(1, "message")) {
+        advance();
+        advance();
+        if (peek().kind != TokKind::String)
+            error("a static assertion message must be a quoted string");
+        message = advance().text;
+    }
     expectDot();
-    return arena_.makeStmt(StaticAssertStmt{condition}, line);
+    return arena_.makeStmt(StaticAssertStmt{condition, std::move(message)}, line);
 }
 
 Stmt *Parser::parseRuntimeAssert() {

@@ -174,10 +174,10 @@ For i from 10 down to 1: Say i. End for.
 
 A `Continue.` transfers control to that loop's own step (the increment or decrement), matching C `continue` in a `for` statement.
 
-`Assert that` introduces a C11 translation-time assertion. Its condition must be an integer constant expression and must be nonzero:
+`Assert that` introduces a C11 translation-time assertion. Its condition must be an integer constant expression and must be nonzero. `with message "text"` is optional, covering C11 diagnostic text and C23's optional message:
 
 ```text
-Assert that 1 is equal to 1.
+Assert that 1 is equal to 1 with message "math still works".
 ```
 
 `Assert` without `that` checks a scalar condition at runtime through `<assert.h>`:
