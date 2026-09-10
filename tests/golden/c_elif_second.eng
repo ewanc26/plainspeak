@@ -1,0 +1,8 @@
+Compile if A is defined:
+    Say "a".
+Elif B is defined:
+    Say "b".
+Otherwise:
+    Say "none".
+End compile if.
+Say "base".

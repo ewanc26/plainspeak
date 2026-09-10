@@ -86,7 +86,7 @@ struct AnalysisResult {
     std::unordered_map<const Expr *, int> genericSelections;
     std::unordered_set<const Expr *> sequencingDiagnostics;
     std::unordered_map<const Expr *, Type> variadicArgumentTypes;
-    std::unordered_map<const Stmt *, bool> compileIfSelected;
+    std::unordered_map<const Stmt *, const std::vector<Stmt *> *> compileIfSelected;
 };
 
 class Sema {

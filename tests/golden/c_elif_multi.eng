@@ -1,0 +1,9 @@
+Compile if X is defined:
+    Say "x".
+Elif Y is defined:
+    Say "y".
+Elif Z is defined:
+    Say "z".
+Otherwise:
+    Say "none".
+End compile if.

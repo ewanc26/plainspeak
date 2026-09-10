@@ -758,11 +758,36 @@ Stmt *Parser::parseCompileIf() {
     expectWord("defined");
     expectColon();
 
+    auto atEndOrBranch = [&]() -> bool {
+        if (checkWord("end") && checkWordAt(1, "compile") && checkWordAt(2, "if")) return true;
+        if (checkWord("otherwise")) return true;
+        if (checkWord("elif")) return true;
+        return false;
+    };
+
     std::vector<Stmt *> thenBody;
-    while (!(checkWord("end") && checkWordAt(1, "compile") && checkWordAt(2, "if")) &&
-           !checkWord("otherwise")) {
+    while (!atEndOrBranch()) {
         if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"End compile if.\"");
         thenBody.push_back(parseStmt());
+    }
+
+    std::vector<CompileElifBranch> elifBranches;
+    while (checkWord("elif")) {
+        advance();
+        if (peek().kind != TokKind::Ident) error("Elif needs a macro name");
+        const Token &elifToken = peek();
+        std::string elifName = elifToken.sourceText.empty() ? elifToken.text : elifToken.sourceText;
+        advance();
+        expectWord("is");
+        expectWord("defined");
+        expectColon();
+
+        std::vector<Stmt *> elifBody;
+        while (!atEndOrBranch()) {
+            if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"End compile if.\"");
+            elifBody.push_back(parseStmt());
+        }
+        elifBranches.push_back(CompileElifBranch{std::move(elifName), std::move(elifBody)});
     }
 
     std::vector<Stmt *> elseBody;
@@ -778,7 +803,7 @@ Stmt *Parser::parseCompileIf() {
     expectWord("compile");
     expectWord("if");
     expectDot();
-    return arena_.makeStmt(CompileIfStmt{std::move(macroName), std::move(thenBody), std::move(elseBody)}, line);
+    return arena_.makeStmt(CompileIfStmt{std::move(macroName), std::move(thenBody), std::move(elifBranches), std::move(elseBody)}, line);
 }
 
 Stmt *Parser::parseUnless() {

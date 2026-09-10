@@ -56,6 +56,25 @@ TEST_CASE("parser represents compile-time conditional", "[parser][c99]") {
     const auto &conditional = std::get<CompileIfStmt>(program[0]->node);
     CHECK(conditional.macroName == "FEATURE");
     CHECK(conditional.thenBody.size() == 1);
+    CHECK(conditional.elifBranches.empty());
+    CHECK(conditional.elseBody.size() == 1);
+}
+
+TEST_CASE("parser represents compile-time elif chain", "[parser][c99]") {
+    Tokenizer t("Compile if A is defined: Say \"a\". Elif B is defined: Say \"b\". Elif C is defined: Say \"c\". Otherwise: Say \"none\". End compile if.");
+    auto tokens = t.tokenize();
+    Arena arena;
+    Parser p(tokens, arena);
+    auto program = p.parseProgram();
+    REQUIRE(program.size() == 1);
+    const auto &conditional = std::get<CompileIfStmt>(program[0]->node);
+    CHECK(conditional.macroName == "A");
+    CHECK(conditional.thenBody.size() == 1);
+    REQUIRE(conditional.elifBranches.size() == 2);
+    CHECK(conditional.elifBranches[0].macroName == "B");
+    CHECK(conditional.elifBranches[0].body.size() == 1);
+    CHECK(conditional.elifBranches[1].macroName == "C");
+    CHECK(conditional.elifBranches[1].body.size() == 1);
     CHECK(conditional.elseBody.size() == 1);
 }
 

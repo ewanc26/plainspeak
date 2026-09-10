@@ -148,7 +148,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `pp.conditional-compilation` | foundation |
 | `pp.macros` | foundation |
 | `pp.variadic-vaopt` | planned |
-| `pp.elifdef` | planned |
+| `pp.elifdef` | foundation |
 | `pp.warning` | foundation |
 | `pp.embed` | planned |
 | `pp.predefined-environment` | planned |

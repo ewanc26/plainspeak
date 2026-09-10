@@ -1,0 +1,6 @@
+Compile if A is defined:
+    Say "a".
+Elif B is defined:
+    Say "b".
+End compile if.
+Say "done".

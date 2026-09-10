@@ -746,9 +746,9 @@ void collectVars(const std::vector<Stmt *> &stmts, std::set<std::string> &out,
             }
             else if constexpr (std::is_same_v<T, CompileIfStmt>) {
                 auto selected = analysis.compileIfSelected.find(s);
-                const auto &body = selected != analysis.compileIfSelected.end() && selected->second
-                                 ? node.thenBody : node.elseBody;
-                collectVars(body, out, analysis);
+                if (selected != analysis.compileIfSelected.end() && selected->second) {
+                    collectVars(*selected->second, out, analysis);
+                }
             }
             else if constexpr (std::is_same_v<T, WhileStmt>) collectVars(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVars(node.body, out, analysis);
@@ -775,9 +775,9 @@ void collectVariadicCopies(const std::vector<Stmt *> &stmts, std::set<std::strin
                 // Compile-time conditionals are resolved before codegen; do
                 // not declare va_list cursors for an inactive branch.
                 auto selected = analysis.compileIfSelected.find(s);
-                const auto &body = selected != analysis.compileIfSelected.end() && selected->second
-                                 ? node.thenBody : node.elseBody;
-                collectVariadicCopies(body, out, analysis);
+                if (selected != analysis.compileIfSelected.end() && selected->second) {
+                    collectVariadicCopies(*selected->second, out, analysis);
+                }
             } else if constexpr (std::is_same_v<T, WhileStmt>) collectVariadicCopies(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, DoWhileStmt>) collectVariadicCopies(node.body, out, analysis);
             else if constexpr (std::is_same_v<T, ForEachStmt>) collectVariadicCopies(node.body, out, analysis);
@@ -944,10 +944,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             }
         } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
             auto selected = analysis.compileIfSelected.find(s);
-            const bool enabled = selected != analysis.compileIfSelected.end() && selected->second;
-            const auto &body = enabled ? node.thenBody : node.elseBody;
-            for (Stmt *inner : body)
-                emitStmt(inner, out, indent, loopCounter, analysis, sourceLines, currentProcedure);
+            if (selected != analysis.compileIfSelected.end() && selected->second) {
+                for (Stmt *inner : *selected->second)
+                    emitStmt(inner, out, indent, loopCounter, analysis, sourceLines, currentProcedure);
+            }
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             Type condType = exprType(node.cond, analysis);
             if (isCScalarType(condType)) {

@@ -338,6 +338,10 @@ std::string printStmt(const Stmt *s) {
         } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
             std::string out = "Compile if " + node.macroName + " is defined: ";
             for (Stmt *inner : node.thenBody) out += printStmt(inner);
+            for (const auto &elif : node.elifBranches) {
+                out += "Elif " + elif.macroName + " is defined: ";
+                for (Stmt *inner : elif.body) out += printStmt(inner);
+            }
             if (!node.elseBody.empty()) {
                 out += "Otherwise: ";
                 for (Stmt *inner : node.elseBody) out += printStmt(inner);

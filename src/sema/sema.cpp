@@ -417,17 +417,17 @@ std::optional<std::string> findUnsequencedConflict(const Expr *expr,
 }
 
 bool containsReturnStatement(const std::vector<Stmt *> &statements,
-                             const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
+                             const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected) {
     for (const Stmt *statement : statements) {
         if (std::holds_alternative<ReturnStmt>(statement->node)) return true;
         if (const auto *ifStmt = std::get_if<IfStmt>(&statement->node)) {
             if (containsReturnStatement(ifStmt->thenBody, compileIfSelected) ||
                 containsReturnStatement(ifStmt->elseBody, compileIfSelected)) return true;
-        } else if (const auto *compileIf = std::get_if<CompileIfStmt>(&statement->node)) {
+        } else if (std::get_if<CompileIfStmt>(&statement->node)) {
             auto selected = compileIfSelected.find(statement);
-            const auto &body = selected != compileIfSelected.end() && selected->second
-                             ? compileIf->thenBody : compileIf->elseBody;
-            if (containsReturnStatement(body, compileIfSelected)) return true;
+            if (selected != compileIfSelected.end() && selected->second) {
+                if (containsReturnStatement(*selected->second, compileIfSelected)) return true;
+            }
         } else if (const auto *loop = std::get_if<RepeatStmt>(&statement->node)) {
             if (containsReturnStatement(loop->body, compileIfSelected)) return true;
         } else if (const auto *loop = std::get_if<WhileStmt>(&statement->node)) {
@@ -447,9 +447,9 @@ bool containsReturnStatement(const std::vector<Stmt *> &statements,
 }
 
 bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth,
-                       const std::unordered_map<const Stmt *, bool> &compileIfSelected);
+                       const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected);
 bool statementHasLevelBreak(const Stmt *s, int depth,
-                            const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
+                            const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected) {
     if (!s) return false;
     const StmtNode &node = s->node;
     if (std::holds_alternative<BreakStmt>(node)) return depth == 0;
@@ -457,11 +457,11 @@ bool statementHasLevelBreak(const Stmt *s, int depth,
         return bodyHasLevelBreak(ifStmt->thenBody, depth, compileIfSelected) ||
                bodyHasLevelBreak(ifStmt->elseBody, depth, compileIfSelected);
     }
-    if (const auto *compileIf = std::get_if<CompileIfStmt>(&node)) {
+    if (std::get_if<CompileIfStmt>(&node)) {
         auto selected = compileIfSelected.find(s);
-        const auto &body = selected != compileIfSelected.end() && selected->second
-                         ? compileIf->thenBody : compileIf->elseBody;
-        return bodyHasLevelBreak(body, depth, compileIfSelected);
+        if (selected != compileIfSelected.end() && selected->second) {
+            return bodyHasLevelBreak(*selected->second, depth, compileIfSelected);
+        }
     }
     const int nested = depth + 1;
     if (const auto *repeat = std::get_if<RepeatStmt>(&node)) return bodyHasLevelBreak(repeat->body, nested, compileIfSelected);
@@ -478,7 +478,7 @@ bool statementHasLevelBreak(const Stmt *s, int depth,
 }
 
 bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth,
-                       const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
+                       const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected) {
     for (const Stmt *s : stmts) {
         if (statementHasLevelBreak(s, depth, compileIfSelected)) return true;
     }
@@ -498,7 +498,7 @@ bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth,
 class ReturnPathChecker {
 public:
     static bool endIsReachable(const std::vector<Stmt *> &body,
-                               const std::unordered_map<const Stmt *, bool> &compileIfSelected) {
+                               const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected) {
         ReturnPathChecker checker(compileIfSelected);
         NodeId entry = checker.buildBlock(body, kFuncEnd);
         checker.resolveGotos();
@@ -515,10 +515,10 @@ private:
     std::unordered_map<std::string, NodeId> labelNodes_;
     std::vector<NodeId> breakStack_;
     std::vector<NodeId> continueStack_;
-    const std::unordered_map<const Stmt *, bool> &compileIfSelected_;
+    const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected_;
     bool reachedEnd_ = false;
 
-    explicit ReturnPathChecker(const std::unordered_map<const Stmt *, bool> &compileIfSelected)
+    explicit ReturnPathChecker(const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected)
         : compileIfSelected_(compileIfSelected) {
         successors_.emplace_back(); // node 0 is the function end
     }
@@ -609,9 +609,10 @@ ReturnPathChecker::NodeId ReturnPathChecker::buildStmt(const Stmt *s, NodeId con
             return cond;
         } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
             auto selected = compileIfSelected_.find(s);
-            const bool enabled = selected != compileIfSelected_.end() && selected->second;
-            const auto &body = enabled ? node.thenBody : node.elseBody;
-            return buildBlock(body, continuation);
+            if (selected != compileIfSelected_.end() && selected->second) {
+                return buildBlock(*selected->second, continuation);
+            }
+            return buildBlock(node.thenBody, continuation);
         } else if constexpr (std::is_same_v<T, SwitchStmt>) {
             return buildSwitch(node, continuation);
         } else if constexpr (std::is_same_v<T, RepeatStmt>) {
@@ -3195,10 +3196,24 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             else currentProcedure_.reset();
         }
         else if constexpr (std::is_same_v<T, CompileIfStmt>) {
-            const bool selected = defines_.count(node.macroName) != 0;
-            if (analysis_) analysis_->compileIfSelected[s] = selected;
-            const auto &body = selected ? node.thenBody : node.elseBody;
-            for (Stmt *inner : body) checkStmt(inner, diags);
+            const std::vector<Stmt *> *selectedBody = nullptr;
+            if (defines_.count(node.macroName) != 0) {
+                selectedBody = &node.thenBody;
+            } else {
+                for (const auto &elif : node.elifBranches) {
+                    if (defines_.count(elif.macroName) != 0) {
+                        selectedBody = &elif.body;
+                        break;
+                    }
+                }
+                if (!selectedBody && !node.elseBody.empty()) {
+                    selectedBody = &node.elseBody;
+                }
+            }
+            if (analysis_) analysis_->compileIfSelected[s] = selectedBody;
+            if (selectedBody) {
+                for (Stmt *inner : *selectedBody) checkStmt(inner, diags);
+            }
         }
         else if constexpr (std::is_same_v<T, VaStartStmt>) {
             if (!currentProcedure_ || !currentProcedure_->variadic) {
