@@ -67,6 +67,7 @@ add_executable(unit_tests
     tests/unit/test_goto.cpp
     tests/unit/test_return_paths.cpp
     tests/unit/test_integer_constant_expressions.cpp
+    tests/unit/test_static_assert.cpp
     src/lexer/tokenizer.cpp
     src/lexer/alias_table.cpp
     src/parser/parser.cpp
