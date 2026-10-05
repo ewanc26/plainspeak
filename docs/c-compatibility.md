@@ -168,7 +168,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `concurrency.threads` | foundation | Typed C imports with function-pointer parameters can create and join C11 <threads.h> threads from a typed Procedure start routine (thrd_create/thrd_join); native thread types, detach/sleep, thread-local interaction rules and sync primitives remain pending. |
 | `concurrency.thread-local` | planned |
 | `concurrency.sync` | planned |
-| `concurrency.memory-model` | planned |
+| `concurrency.memory-model` | foundation | PlainSpeak adopts the C11 memory model (documented in docs/c-compatibility.md): atomic operations are sequentially consistent, unsynchronised conflicting non-atomic accesses are data races, and thread create/join establish happens-before; executable coverage is a three-thread atomic counter. Explicit memory orders, release/acquire fences and race detection remain pending. |
 
 Native `atomic` objects currently lower to real C11 `_Atomic` objects. Ordinary reads, simple assignments and stores through atomic-qualified pointers therefore use the C compiler's native default atomic semantics. This is only a foundation: explicit memory-order selection, the atomic RMW/API families, fences, lock-free queries, thread-local storage, threads/synchronization, and full happens-before/data-race conformance remain pending.
 
@@ -223,3 +223,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 The compiler now has structural C-capable semantic types, scalar type/size/alignment queries, and the first real C object layer. Explicit native scalar/pointer declarations carry actual C storage; semantic analysis retains those types into codegen; object addresses, dereference/store-through, pointer-to-pointer composition and object-expression `sizeof` are first-class source capabilities.
 
 The next milestones are fixed arrays plus subscript/decay/pointer arithmetic, then typed function signatures/function pointers, aggregates/initializers, qualifiers/storage/linkage and the remainder of the C99 expression/control-flow model. C11/C17/C23 facilities build on that object model rather than being disconnected runtime tricks.
+
+## Memory model
+
+PlainSpeak adopts the C11 memory model for generated programs. Every atomic operation (`Atomic load`, `Atomic exchange`, `Atomic fetch ...`, atomic stores and atomic fences) is sequentially consistent. A thread's start (`thrd_create`) happens-before the start routine, and a routine's completion happens-before the matching `thrd_join` returns. Two conflicting accesses to the same non-atomic object from different threads without such an ordering are a data race and have undefined behaviour, exactly as in C; PlainSpeak does not currently detect them. `tests/golden/c_memory_model.eng` checks that three threads incrementing one atomic object always total 3000.

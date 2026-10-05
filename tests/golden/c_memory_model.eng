@@ -1,0 +1,23 @@
+Import the C function thrd_create taking a pointer to unsigned long integer and a pointer to function taking pointer to void returning integer and a pointer to void, returning an integer, from the header "threads.h".
+Import the C function thrd_join taking an unsigned long integer and a pointer to integer, returning an integer, from the header "threads.h".
+Declare counter as atomic integer with value 0.
+Procedure worker takes arg as pointer to void returns integer:
+    Declare i as integer with value 0.
+    Declare previous as integer with value 0.
+    While i is less than 1000:
+        Set previous to Atomic fetch add 1 to counter.
+        Increase i by 1.
+    End while.
+    Return 0.
+End procedure.
+Declare a as unsigned long integer.
+Declare b as unsigned long integer.
+Declare c as unsigned long integer.
+Declare status as integer.
+Set status to Call thrd_create with Address of a, Address of worker, null pointer done.
+Set status to Call thrd_create with Address of b, Address of worker, null pointer done.
+Set status to Call thrd_create with Address of c, Address of worker, null pointer done.
+Set status to Call thrd_join with a, null pointer done.
+Set status to Call thrd_join with b, null pointer done.
+Set status to Call thrd_join with c, null pointer done.
+Say Atomic load of counter.
