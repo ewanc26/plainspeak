@@ -1,0 +1,10 @@
+Declare result as integer.
+Declare overflowed as integer.
+Set overflowed to Checked add 2 and 3 into result.
+Say overflowed.
+Say result.
+Set overflowed to Checked multiply 65536 and 65536 into result.
+Say overflowed.
+Set overflowed to Checked subtract 10 and 4 into result.
+Say overflowed.
+Say result.

@@ -207,7 +207,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.wchar` | foundation | Typed C imports can bind <wchar.h> conversion functions such as btowc and wctob with wint_t-compatible integers; wide strings, wide stream I/O and mbstate_t objects remain pending. |
 | `lib.wctype` | foundation | Typed C imports can bind <wctype.h> classification functions such as iswalpha and iswdigit with wint_t-compatible integer arguments; wctype_t/wctrans_t handles and wide-character literals remain pending. |
 | `lib.stdbit` | foundation | Typed C imports can bind C23 <stdbit.h> unsigned-integer bit-query functions such as stdc_leading_zeros_ui, stdc_count_ones_ui and stdc_bit_width_ui; the type-generic stdc_* macros and endian macros remain pending. |
-| `lib.stdckdint` | planned | C23 `<stdckdint.h>` |
+| `lib.stdckdint` | foundation | Checked add/subtract/multiply A and B into NAME expressions lower to the compiler overflow builtins behind C23 ckd_add/ckd_sub/ckd_mul, store the wrapped result in a modifiable native integer object and yield the overflow flag; mixed-signedness operand-type rules and non-integer result types remain pending. |
 
 ## Conformance rules
 

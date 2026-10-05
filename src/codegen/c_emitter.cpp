@@ -433,6 +433,10 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             auto it = analysis.variadicArgumentTypes.find(e);
             Type type = it == analysis.variadicArgumentTypes.end() ? Type::number() : it->second;
             return "va_arg(" + variadicListName(node.source) + ", " + emitCType(type, &analysis) + ")";
+        } else if constexpr (std::is_same_v<T, CheckedArithExpr>) {
+            return std::string(node.operation == "add" ? "__builtin_add_overflow" :
+                               node.operation == "subtract" ? "__builtin_sub_overflow" : "__builtin_mul_overflow") +
+                   "(" + emitRawExpr(node.lhs, analysis) + ", " + emitRawExpr(node.rhs, analysis) + ", &" + mangle(node.result) + ")";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
@@ -609,6 +613,8 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             return "ps_int((long)offsetof(" + aggregate + mangle(type.tag) + ", " + mangle(node.member) + "))";
         } else if constexpr (std::is_same_v<T, LockFreeExpr>) {
             return "ps_int((long)atomic_is_lock_free(&" + mangle(node.name) + "))";
+        } else if constexpr (std::is_same_v<T, CheckedArithExpr>) {
+            return "ps_int((long)" + emitRawExpr(e, analysis) + ")";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return boxRaw("atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")", exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {

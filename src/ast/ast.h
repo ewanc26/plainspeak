@@ -111,6 +111,7 @@ struct AlignOfTypeExpr { TypeSpec type; };
 struct LimitOfTypeExpr { TypeSpec type; bool maximum; };
 struct OffsetOfExpr { std::string member; TypeSpec type; };
 struct LockFreeExpr { std::string name; };
+struct CheckedArithExpr { std::string operation; Expr *lhs; Expr *rhs; std::string result; };
 struct AtomicExchangeExpr { std::string name; Expr *expr; };
 struct AtomicRmwExpr { std::string operation; std::string name; Expr *expr; };
 struct AddressOfExpr   { std::string name; };
@@ -141,7 +142,7 @@ struct VaArgExpr       { TypeSpec type; std::string source{}; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
-                              AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
+                              AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, CheckedArithExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
                               CompoundLiteralExpr, GenericSelectionExpr, ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr, VaArgExpr>;
 struct Expr { ExprNode node; int line; };

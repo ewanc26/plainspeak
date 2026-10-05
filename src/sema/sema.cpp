@@ -2251,6 +2251,17 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return Type::integer(IntegerRank::Int);
         }
+        else if constexpr (std::is_same_v<T, CheckedArithExpr>) {
+            Type lhs = inferExpr(node.lhs, line, diags);
+            Type rhs = inferExpr(node.rhs, line, diags);
+            if (!isIntegralType(lhs) || !isIntegralType(rhs))
+                diags.push_back({3, line, "Checked " + node.operation + " needs integer operands."});
+            auto [symbol, found] = lookupVar(node.result, line, diags);
+            if (!found || !symbol.nativeObject || !symbol.type.isInteger() ||
+                !isModifiableObjectType(symbol.type) || symbol.type.qualifiers.isAtomic)
+                diags.push_back({3, line, "Checked " + node.operation + " needs a modifiable native integer object to store into, not \"" + node.result + "\"."});
+            return Type::integer(IntegerRank::Int);
+        }
         else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             Type value = inferExpr(node.expr, line, diags);
             auto [symbol, found] = lookupVar(node.name, line, diags);

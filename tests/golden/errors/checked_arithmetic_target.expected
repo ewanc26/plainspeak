@@ -1,0 +1,2 @@
+error[E0001]: I don't know what to do with "missing" — it is used here but never declared. Use Set or Declare to create it first.
+error[E0003]: Checked add needs a modifiable native integer object to store into, not "missing".

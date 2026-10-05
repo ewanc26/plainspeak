@@ -1748,6 +1748,16 @@ Expr *Parser::parsePrimary() {
         advance(); advance(); advance();
         return arena_.makeExpr(MathCallExpr{"atomic_load", parsePrimary()}, line);
     }
+    if (checkWord("checked") && (checkWordAt(1, "add") || checkWordAt(1, "subtract") || checkWordAt(1, "multiply"))) {
+        int line = peek().line;
+        advance();
+        std::string operation = advance().text;
+        Expr *lhs = parsePrimary();
+        expectWord("and");
+        Expr *rhs = parsePrimary();
+        expectWord("into");
+        return arena_.makeExpr(CheckedArithExpr{std::move(operation), lhs, rhs, expectIdentName()}, line);
+    }
     if (checkWord("atomic") && checkWordAt(1, "exchange")) {
         int line = peek().line;
         advance(); advance();

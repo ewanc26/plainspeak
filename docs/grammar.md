@@ -712,3 +712,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Embedding binary resources
 
 `Embed the file "data.bin" as bytes.` reads the file at compile time (a relative path resolves against the directory of the source file) and declares `bytes` as a native fixed array of `unsigned character` initialised with every byte. The file must be non-empty and at most 1 MiB.
+
+## Checked integer arithmetic
+
+`Checked add A and B into result`, `Checked subtract A and B into result` and `Checked multiply A and B into result` are expressions equivalent to C23 `ckd_add`, `ckd_sub` and `ckd_mul`. `result` must be a modifiable native integer object; it receives the wrapped mathematical result and the expression yields 1 on overflow and 0 otherwise.
