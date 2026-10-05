@@ -708,3 +708,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Pragmas
 
 `Pragma "STDC FP_CONTRACT OFF".` emits the corresponding C `#pragma` line at that point in the generated C. The directive text must be a non-empty quoted string containing only letters, digits, spaces and `_ ( ) , . + - =`; anything else is rejected so a pragma cannot smuggle arbitrary C into the output.
+
+## Embedding binary resources
+
+`Embed the file "data.bin" as bytes.` reads the file at compile time (a relative path resolves against the directory of the source file) and declares `bytes` as a native fixed array of `unsigned character` initialised with every byte. The file must be non-empty and at most 1 MiB.

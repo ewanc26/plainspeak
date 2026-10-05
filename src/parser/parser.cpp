@@ -1,5 +1,8 @@
 #include "parser.h"
 #include "../lexer/alias_table.h"
+#include <fstream>
+#include <iterator>
+#include <cctype>
 
 const Token &Parser::peek(int ahead) const {
     size_t idx = pos_ + static_cast<size_t>(ahead);
@@ -75,6 +78,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
     if (t.text == "pragma") return parsePragma();
+    if (t.text == "embed" && checkWordAt(1, "the")) return parseEmbed();
     if (t.text == "break") {
         int line = peek().line;
         advance();
@@ -123,6 +127,36 @@ Stmt *Parser::parseWarning() {
     std::string message = advance().text;
     expectDot();
     return arena_.makeStmt(WarningStmt{std::move(message)}, line);
+}
+
+Stmt *Parser::parseEmbed() {
+    int line = peek().line;
+    advance(); // embed
+    expectWord("the");
+    expectWord("file");
+    if (peek().kind != TokKind::String) error("an Embed needs a quoted file path");
+    std::string path = advance().text;
+    expectWord("as");
+    std::string name = expectIdentName();
+    expectDot();
+    std::string full = path;
+    if (!path.empty() && path[0] != '/' && !baseDirectory_.empty()) full = baseDirectory_ + "/" + path;
+    std::ifstream in(full, std::ios::binary);
+    if (!in) error("Embed cannot read file \"" + path + "\"");
+    std::vector<unsigned char> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+    if (bytes.empty()) error("Embed cannot include the empty file \"" + path + "\"");
+    if (bytes.size() > (1u << 20)) error("Embed file \"" + path + "\" is larger than 1 MiB");
+    TypeSpec element{TypeSpecKind::UnsignedCharacter};
+    TypeSpec type{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element))};
+    type.arrayBound = bytes.size();
+    AggregateInitializer aggregate;
+    aggregate.kind = AggregateInitKind::Positional;
+    for (unsigned char byte : bytes) {
+        AggregateInitEntry entry;
+        entry.expr = arena_.makeExpr(IntLit{static_cast<long>(byte)}, line);
+        aggregate.entries.push_back(entry);
+    }
+    return arena_.makeStmt(NativeDeclStmt{name, std::move(type), nullptr, std::move(aggregate), false, std::nullopt, false, false, false, false, false, "", false}, line);
 }
 
 Stmt *Parser::parsePragma() {
@@ -327,6 +361,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
     if (t.text == "pragma") return parsePragma();
+    if (t.text == "embed" && checkWordAt(1, "the")) return parseEmbed();
     if (t.text == "break") {
         int line = peek().line;
         advance();

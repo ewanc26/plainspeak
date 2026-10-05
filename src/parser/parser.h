@@ -16,11 +16,13 @@ public:
         : tokens_(std::move(tokens)), arena_(arena) {}
 
     std::vector<Stmt *> parseProgram();
+    void setBaseDirectory(std::string directory) { baseDirectory_ = std::move(directory); }
 
 private:
     std::vector<Token> tokens_;
     Arena &arena_;
     size_t pos_ = 0;
+    std::string baseDirectory_;
 
     const Token &peek(int ahead = 0) const;
     const Token &advance();
@@ -52,6 +54,7 @@ private:
     Stmt *parseComment();
     Stmt *parseWarning();
     Stmt *parsePragma();
+    Stmt *parseEmbed();
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseCompileIf();

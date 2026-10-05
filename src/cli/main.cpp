@@ -106,6 +106,10 @@ int main(int argc, char **argv) {
     std::vector<Stmt *> program;
     try {
         Parser parser(tokens, arena);
+        {
+            std::size_t slash = srcPath.find_last_of('/');
+            parser.setBaseDirectory(slash == std::string::npos ? std::string(".") : srcPath.substr(0, slash));
+        }
         program = parser.parseProgram();
     } catch (const ParseError &e) {
         std::cerr << "error: " << e.what() << "\n";

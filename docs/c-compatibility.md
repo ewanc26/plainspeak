@@ -152,7 +152,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `pp.variadic-vaopt` | planned |
 | `pp.elifdef` | foundation |
 | `pp.warning` | foundation |
-| `pp.embed` | planned |
+| `pp.embed` | foundation | Embed the file "path" as NAME. reads a non-empty file (up to 1 MiB, path relative to the source file) at compile time and declares a native unsigned-character array initialised with its bytes; C23 embed parameters (limit, prefix, suffix, if_empty) and non-byte element types remain pending. |
 | `pp.predefined-environment` | foundation | The compiler seeds a deterministic predefined environment (PLAINSPEAK, __STDC__, __STDC_HOSTED__ and __STDC_VERSION__=202311) that Compile if NAME is defined can test and --define can override; target-specific and numeric-valued queries remain pending. |
 | `pp.pragma` | foundation | Pragma "directive". lowers to a C #pragma line after validating the directive text (letters, digits, spaces and _ ( ) , . + - =); standard STDC pragma semantics, _Pragma-in-expression forms and target-specific pragma interpretation remain pending. |
 
