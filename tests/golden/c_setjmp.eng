@@ -1,0 +1,12 @@
+Import the C function ps_jump_mark taking an integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_jump taking an integer and an integer, returning void, from the header "plainspeak_runtime.h".
+Declare code as integer.
+Set code to Call ps_jump_mark with 0 done.
+If code is equal to 0 then:
+    Say "first pass".
+    Call ps_jump with 0, 42 done.
+    Say "not reached".
+Else:
+    Say "recovered".
+    Say code.
+End if.

@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include <setjmp.h>
 
 typedef enum { PS_INT, PS_DOUBLE, PS_STRING, PS_LIST } PsType;
 
@@ -86,3 +87,12 @@ int ps_cond_wait(long cond, long mutex);
 int ps_cond_signal(long cond);
 int ps_cond_broadcast(long cond);
 int ps_cond_destroy(long cond);
+
+/* <setjmp.h> access through numbered jump points (0..PS_JUMP_POINTS-1).
+ * ps_jump_mark(n) is setjmp on point n and must be used directly as the
+ * controlling value of a condition or assignment, exactly as C requires;
+ * ps_jump(n, value) is longjmp to point n and never returns. */
+#define PS_JUMP_POINTS 16
+extern jmp_buf ps_jump_table[PS_JUMP_POINTS];
+#define ps_jump_mark(n) setjmp(ps_jump_table[(n)])
+void ps_jump(int point, int value);

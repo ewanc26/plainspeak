@@ -188,7 +188,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.limits` | planned | `<limits.h>` |
 | `lib.locale` | foundation | Typed C imports can bind `<locale.h>` functions such as `setlocale`, including native character-pointer and null-pointer arguments; locale categories, `localeconv`, locale object ownership and the remaining locale semantics remain pending. |
 | `lib.math` | foundation | `<math.h>`; current runtime exposes only a small subset. |
-| `lib.setjmp` | planned | `<setjmp.h>` |
+| `lib.setjmp` | foundation | The runtime provides numbered jump points: typed imports of ps_jump_mark (setjmp on point n) and ps_jump (longjmp) from plainspeak_runtime.h give deterministic non-local control transfer; native jmp_buf objects, sigjmp/signal-mask variants and automatic-object indeterminacy diagnostics remain pending. |
 | `lib.signal` | foundation | Typed C constant and function imports can bind standard `<signal.h>` names such as `SIGTERM`; signal-handler typing and complete signal delivery semantics remain pending. |
 | `lib.stdalign` | foundation | Native `_Alignas` declaration requests are tested; `<stdalign.h>` macro bindings and complete compatibility remain pending. |
 | `lib.stdarg` | foundation | Typed variadic Procedures use `<stdarg.h>` `va_list`, `va_start`, `va_arg`, `va_copy`, and `va_end` through deterministic PlainSpeak operations; default argument promotions, `va_end` control-flow obligations and the remaining header surface remain pending. |

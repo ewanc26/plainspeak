@@ -316,3 +316,10 @@ int ps_cond_destroy(long c) {
     free(cv);
     return thrd_success;
 }
+
+jmp_buf ps_jump_table[PS_JUMP_POINTS];
+
+void ps_jump(int point, int value) {
+    if (point < 0 || point >= PS_JUMP_POINTS) die("jump point out of range");
+    longjmp(ps_jump_table[point], value);
+}
