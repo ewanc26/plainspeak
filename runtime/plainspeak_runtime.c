@@ -282,3 +282,37 @@ PsValue ps_pow(PsValue a, PsValue b) {
     if ((a.type == PS_INT || a.type == PS_DOUBLE) && (b.type == PS_INT || b.type == PS_DOUBLE)) return ps_double(pow(as_double(a), as_double(b)));
     die("cannot compute power of a non-number"); return ps_int(0);
 }
+
+#include <stdint.h>
+#include <threads.h>
+#include <stdlib.h>
+
+long ps_mutex_create(void) {
+    mtx_t *m = malloc(sizeof *m);
+    if (!m) return 0;
+    if (mtx_init(m, mtx_plain) != thrd_success) { free(m); return 0; }
+    return (long)(intptr_t)m;
+}
+int ps_mutex_lock(long h) { return mtx_lock((mtx_t *)(intptr_t)h); }
+int ps_mutex_unlock(long h) { return mtx_unlock((mtx_t *)(intptr_t)h); }
+int ps_mutex_destroy(long h) {
+    mtx_t *m = (mtx_t *)(intptr_t)h;
+    mtx_destroy(m);
+    free(m);
+    return thrd_success;
+}
+long ps_cond_create(void) {
+    cnd_t *c = malloc(sizeof *c);
+    if (!c) return 0;
+    if (cnd_init(c) != thrd_success) { free(c); return 0; }
+    return (long)(intptr_t)c;
+}
+int ps_cond_wait(long c, long m) { return cnd_wait((cnd_t *)(intptr_t)c, (mtx_t *)(intptr_t)m); }
+int ps_cond_signal(long c) { return cnd_signal((cnd_t *)(intptr_t)c); }
+int ps_cond_broadcast(long c) { return cnd_broadcast((cnd_t *)(intptr_t)c); }
+int ps_cond_destroy(long c) {
+    cnd_t *cv = (cnd_t *)(intptr_t)c;
+    cnd_destroy(cv);
+    free(cv);
+    return thrd_success;
+}

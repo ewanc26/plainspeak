@@ -1,0 +1,29 @@
+Import the C function thrd_create taking a pointer to unsigned long integer and a pointer to function taking pointer to void returning integer and a pointer to void, returning an integer, from the header "threads.h".
+Import the C function thrd_join taking an unsigned long integer and a pointer to integer, returning an integer, from the header "threads.h".
+Import the C function ps_mutex_create taking no parameters, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_mutex_lock taking a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_mutex_unlock taking a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_cond_create taking no parameters, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_cond_wait taking a long integer and a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_cond_signal taking a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Declare lock as long integer with value Call ps_mutex_create done.
+Declare ready_cond as long integer with value Call ps_cond_create done.
+Declare ready as integer with value 0.
+Procedure signaller takes arg as pointer to void returns integer:
+    Declare status as integer with value 0.
+    Set status to Call ps_mutex_lock with lock done.
+    Set ready to 1.
+    Set status to Call ps_cond_signal with ready_cond done.
+    Set status to Call ps_mutex_unlock with lock done.
+    Return 0.
+End procedure.
+Declare worker_thread as unsigned long integer.
+Declare status as integer.
+Set status to Call ps_mutex_lock with lock done.
+Set status to Call thrd_create with Address of worker_thread, Address of signaller, null pointer done.
+While ready is equal to 0:
+    Set status to Call ps_cond_wait with ready_cond, lock done.
+End while.
+Set status to Call ps_mutex_unlock with lock done.
+Set status to Call thrd_join with worker_thread, null pointer done.
+Say "signalled".

@@ -74,3 +74,15 @@ PsValue ps_abs(PsValue v);
 PsValue ps_floor(PsValue v);
 PsValue ps_ceil(PsValue v);
 PsValue ps_pow(PsValue a, PsValue b);
+
+/* C11 synchronisation handles. Each create call returns an opaque nonzero
+ * handle (0 on failure) that PlainSpeak programs keep in an integer object. */
+long ps_mutex_create(void);
+int ps_mutex_lock(long handle);
+int ps_mutex_unlock(long handle);
+int ps_mutex_destroy(long handle);
+long ps_cond_create(void);
+int ps_cond_wait(long cond, long mutex);
+int ps_cond_signal(long cond);
+int ps_cond_broadcast(long cond);
+int ps_cond_destroy(long cond);

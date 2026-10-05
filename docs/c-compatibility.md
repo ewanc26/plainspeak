@@ -167,7 +167,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `concurrency.lock-free` | planned |
 | `concurrency.threads` | foundation | Typed C imports with function-pointer parameters can create and join C11 <threads.h> threads from a typed Procedure start routine (thrd_create/thrd_join); native thread types, detach/sleep, thread-local interaction rules and sync primitives remain pending. |
 | `concurrency.thread-local` | planned |
-| `concurrency.sync` | planned |
+| `concurrency.sync` | foundation | The runtime exposes C11 mutex and condition-variable handles (ps_mutex_*/ps_cond_* over <threads.h> mtx_t/cnd_t) that programs bind with typed imports from plainspeak_runtime.h and use with thrd_create/thrd_join; once flags, timed/recursive mutexes and native mutex/condition types remain pending. |
 | `concurrency.memory-model` | foundation | PlainSpeak adopts the C11 memory model (documented in docs/c-compatibility.md): atomic operations are sequentially consistent, unsynchronised conflicting non-atomic accesses are data races, and thread create/join establish happens-before; executable coverage is a three-thread atomic counter. Explicit memory orders, release/acquire fences and race detection remain pending. |
 
 Native `atomic` objects currently lower to real C11 `_Atomic` objects. Ordinary reads, simple assignments and stores through atomic-qualified pointers therefore use the C compiler's native default atomic semantics. This is only a foundation: explicit memory-order selection, the atomic RMW/API families, fences, lock-free queries, thread-local storage, threads/synchronization, and full happens-before/data-race conformance remain pending.
