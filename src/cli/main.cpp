@@ -32,7 +32,13 @@ int main(int argc, char **argv) {
     bool emitCOnly = false;
     bool lintOnly = false;
     bool printAstOnly = false;
-    std::unordered_map<std::string, long> defines;
+    // Deterministic predefined environment; --define may override any entry.
+    std::unordered_map<std::string, long> defines = {
+        {"PLAINSPEAK", 1},
+        {"__STDC__", 1},
+        {"__STDC_HOSTED__", 1},
+        {"__STDC_VERSION__", 202311},
+    };
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
         if (a == "-o" && i + 1 < argc) outPath = argv[++i];

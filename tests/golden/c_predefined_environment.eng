@@ -1,0 +1,14 @@
+Compile if PLAINSPEAK is defined:
+    Say "plainspeak".
+End compile if.
+Compile if __STDC_HOSTED__ is defined:
+    Say "hosted".
+End compile if.
+Compile if __STDC_VERSION__ is defined:
+    Say "versioned".
+End compile if.
+Compile if NOT_PREDEFINED is defined:
+    Say "wrong".
+Otherwise:
+    Say "undefined".
+End compile if.
