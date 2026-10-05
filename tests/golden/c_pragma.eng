@@ -1,4 +1,3 @@
-Pragma "STDC FENV_ACCESS OFF".
-Say "before".
 Pragma "STDC FP_CONTRACT OFF".
+Say "before".
 Say "after".
