@@ -165,7 +165,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `concurrency.atomics` | foundation |
 | `concurrency.fences` | planned |
 | `concurrency.lock-free` | planned |
-| `concurrency.threads` | planned |
+| `concurrency.threads` | foundation | Typed C imports with function-pointer parameters can create and join C11 <threads.h> threads from a typed Procedure start routine (thrd_create/thrd_join); native thread types, detach/sleep, thread-local interaction rules and sync primitives remain pending. |
 | `concurrency.thread-local` | planned |
 | `concurrency.sync` | planned |
 | `concurrency.memory-model` | planned |
