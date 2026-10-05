@@ -200,13 +200,13 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.stdlib` | foundation | Typed imports cover allocation plus `atoi`/`atol`/`atof`/`strtoll` string conversions; the remainder of the conversion, process, sorting and searching surface remains pending. |
 | `lib.stdnoreturn` | foundation | `<stdnoreturn.h>` can be imported, and typed Procedures can request the C11/C23 noreturn function specifier with `with no return`; the complete macro compatibility and all declaration contexts remain pending. |
 | `lib.string` | foundation | Typed imports cover `strlen` and `strcmp` with string-literal decay; byte-memory mutation and the remaining `<string.h>` surface remain pending. |
-| `lib.tgmath` | planned | `<tgmath.h>` |
-| `lib.threads` | planned | `<threads.h>` |
+| `lib.tgmath` | foundation | The <tgmath.h> header can be imported and typed imports can bind its underlying real math functions; type-generic macro dispatch remains pending. |
+| `lib.threads` | foundation | Typed C imports can bind <threads.h> functions such as thrd_current and thrd_equal using thrd_t-compatible integers; thread creation, mutexes, condition variables and call_once remain pending. |
 | `lib.time` | foundation | Typed C imports can bind `<time.h>` functions such as `time` and `clock`; calendar conversion, formatting, clock-type aliases and the remaining time facilities remain pending. |
 | `lib.uchar` | planned | `<uchar.h>` |
 | `lib.wchar` | planned | `<wchar.h>` |
-| `lib.wctype` | planned | `<wctype.h>` |
-| `lib.stdbit` | planned | C23 `<stdbit.h>` |
+| `lib.wctype` | foundation | Typed C imports can bind <wctype.h> classification functions such as iswalpha and iswdigit with wint_t-compatible integer arguments; wctype_t/wctrans_t handles and wide-character literals remain pending. |
+| `lib.stdbit` | foundation | Typed C imports can bind C23 <stdbit.h> unsigned-integer bit-query functions such as stdc_leading_zeros_ui, stdc_count_ones_ui and stdc_bit_width_ui; the type-generic stdc_* macros and endian macros remain pending. |
 | `lib.stdckdint` | planned | C23 `<stdckdint.h>` |
 
 ## Conformance rules

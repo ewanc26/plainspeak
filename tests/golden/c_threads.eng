@@ -1,0 +1,4 @@
+Import the C function thrd_current taking no parameters, returning an unsigned long integer, from the header "threads.h".
+Import the C function thrd_equal taking an unsigned long integer and an unsigned long integer, returning an integer, from the header "threads.h".
+Declare me as unsigned long integer with value Call thrd_current done.
+If Call thrd_equal with me, me done is not equal to 0 then: Say "same thread". End if.

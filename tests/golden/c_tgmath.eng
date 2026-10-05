@@ -1,0 +1,2 @@
+Import the C function fabs taking a decimal, returning a decimal, from the header "tgmath.h".
+Say Call fabs with 0 minus 2.5 done.

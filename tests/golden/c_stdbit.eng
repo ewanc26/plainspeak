@@ -1,0 +1,6 @@
+Import the C function stdc_leading_zeros_ui taking an unsigned integer, returning an unsigned integer, from the header "stdbit.h".
+Import the C function stdc_count_ones_ui taking an unsigned integer, returning an unsigned integer, from the header "stdbit.h".
+Import the C function stdc_bit_width_ui taking an unsigned integer, returning an unsigned integer, from the header "stdbit.h".
+Say Call stdc_leading_zeros_ui with 1 done.
+Say Call stdc_count_ones_ui with 255 done.
+Say Call stdc_bit_width_ui with 1024 done.

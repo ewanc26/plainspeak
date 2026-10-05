@@ -1,0 +1,4 @@
+Import the C function iswalpha taking an unsigned integer, returning an integer, from the header "wctype.h".
+Import the C function iswdigit taking an unsigned integer, returning an integer, from the header "wctype.h".
+If Call iswalpha with 65 done is not equal to 0 then: Say "alpha". End if.
+If Call iswdigit with 65 done is equal to 0 then: Say "not digit". End if.
