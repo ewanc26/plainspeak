@@ -1,0 +1,4 @@
+Import the C function btowc taking an integer, returning an unsigned integer, from the header "wchar.h".
+Import the C function wctob taking an unsigned integer, returning an integer, from the header "wchar.h".
+Say Call btowc with 65 done.
+Say Call wctob with 66 done.

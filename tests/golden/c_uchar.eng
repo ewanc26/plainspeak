@@ -1,0 +1,2 @@
+Import the C function c16rtomb taking a pointer to character and an unsigned short integer and a pointer to void, returning an unsigned long integer, from the header "uchar.h".
+Say Call c16rtomb with null pointer, 0, null pointer done.

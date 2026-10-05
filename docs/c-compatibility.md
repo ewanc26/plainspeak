@@ -203,8 +203,8 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.tgmath` | foundation | The <tgmath.h> header can be imported and typed imports can bind its underlying real math functions; type-generic macro dispatch remains pending. |
 | `lib.threads` | foundation | Typed C imports can bind <threads.h> functions such as thrd_current and thrd_equal using thrd_t-compatible integers; thread creation, mutexes, condition variables and call_once remain pending. |
 | `lib.time` | foundation | Typed C imports can bind `<time.h>` functions such as `time` and `clock`; calendar conversion, formatting, clock-type aliases and the remaining time facilities remain pending. |
-| `lib.uchar` | planned | `<uchar.h>` |
-| `lib.wchar` | planned | `<wchar.h>` |
+| `lib.uchar` | foundation | Typed C imports can bind C11/C23 <uchar.h> conversion functions such as c16rtomb with character-pointer and opaque state-pointer arguments; char16_t/char32_t/char8_t types and UTF literals remain pending. |
+| `lib.wchar` | foundation | Typed C imports can bind <wchar.h> conversion functions such as btowc and wctob with wint_t-compatible integers; wide strings, wide stream I/O and mbstate_t objects remain pending. |
 | `lib.wctype` | foundation | Typed C imports can bind <wctype.h> classification functions such as iswalpha and iswdigit with wint_t-compatible integer arguments; wctype_t/wctrans_t handles and wide-character literals remain pending. |
 | `lib.stdbit` | foundation | Typed C imports can bind C23 <stdbit.h> unsigned-integer bit-query functions such as stdc_leading_zeros_ui, stdc_count_ones_ui and stdc_bit_width_ui; the type-generic stdc_* macros and endian macros remain pending. |
 | `lib.stdckdint` | planned | C23 `<stdckdint.h>` |
