@@ -74,6 +74,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
+    if (t.text == "pragma") return parsePragma();
     if (t.text == "break") {
         int line = peek().line;
         advance();
@@ -122,6 +123,22 @@ Stmt *Parser::parseWarning() {
     std::string message = advance().text;
     expectDot();
     return arena_.makeStmt(WarningStmt{std::move(message)}, line);
+}
+
+Stmt *Parser::parsePragma() {
+    int line = peek().line;
+    advance();
+    if (peek().kind != TokKind::String) error("a Pragma needs a quoted directive");
+    std::string text = advance().text;
+    if (text.empty()) error("a Pragma directive cannot be empty");
+    for (unsigned char c : text) {
+        if (!(std::isalnum(c) || c == '_' || c == ' ' || c == '(' || c == ')' ||
+              c == ',' || c == '.' || c == '+' || c == '-' || c == '=')) {
+            error("a Pragma directive may contain only letters, digits, spaces and _ ( ) , . + - =");
+        }
+    }
+    expectDot();
+    return arena_.makeStmt(PragmaStmt{std::move(text)}, line);
 }
 
 Stmt *Parser::parseStaticAssert() {
@@ -309,6 +326,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
+    if (t.text == "pragma") return parsePragma();
     if (t.text == "break") {
         int line = peek().line;
         advance();

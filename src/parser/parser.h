@@ -51,6 +51,7 @@ private:
     Stmt *parseRemoveItem();
     Stmt *parseComment();
     Stmt *parseWarning();
+    Stmt *parsePragma();
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseCompileIf();

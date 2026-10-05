@@ -154,7 +154,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `pp.warning` | foundation |
 | `pp.embed` | planned |
 | `pp.predefined-environment` | foundation | The compiler seeds a deterministic predefined environment (PLAINSPEAK, __STDC__, __STDC_HOSTED__ and __STDC_VERSION__=202311) that Compile if NAME is defined can test and --define can override; target-specific and numeric-valued queries remain pending. |
-| `pp.pragma` | planned |
+| `pp.pragma` | foundation | Pragma "directive". lowers to a C #pragma line after validating the directive text (letters, digits, spaces and _ ( ) , . + - =); standard STDC pragma semantics, _Pragma-in-expression forms and target-specific pragma interpretation remain pending. |
 
 `Import the C header`, `Import the C library`, typed external C-function declarations, and typed C-constant imports provide a deterministic interop foundation: generated C includes validated headers, the native link command receives validated libraries, imported calls retain native C signatures and symbol names, and object-like macros retain their case-sensitive C spelling. Full header parsing, function-like/variadic macro expansion, and separate translation units remain pending.
 

@@ -704,3 +704,7 @@ The compiler's structural semantic type system also represents functions, qualif
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.
 
 Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, parser, semantic analysis, code generation, runtime behaviour, documentation, and tests must land together.
+
+## Pragmas
+
+`Pragma "STDC FP_CONTRACT OFF".` emits the corresponding C `#pragma` line at that point in the generated C. The directive text must be a non-empty quoted string containing only letters, digits, spaces and `_ ( ) , . + - =`; anything else is rejected so a pragma cannot smuggle arbitrary C into the output.
