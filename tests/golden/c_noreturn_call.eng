@@ -1,0 +1,12 @@
+Import the C function exit taking an integer, returning void, from the header "stdlib.h".
+Procedure quit takes code as integer returns void with no return:
+    Call exit with code done.
+End procedure.
+Procedure choose takes value as integer returns integer:
+    If value is greater than 0 then:
+        Return value.
+    Else:
+        Call quit with 3 done.
+    End if.
+End procedure.
+Say Call choose with 7 done.

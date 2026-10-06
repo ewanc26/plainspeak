@@ -499,8 +499,10 @@ bool bodyHasLevelBreak(const std::vector<Stmt *> &stmts, int depth,
 class ReturnPathChecker {
 public:
     static bool endIsReachable(const std::vector<Stmt *> &body,
-                               const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected) {
+                               const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected,
+                               const std::unordered_set<std::string> *noreturnProcedures = nullptr) {
         ReturnPathChecker checker(compileIfSelected);
+        checker.noreturnProcedures_ = noreturnProcedures;
         NodeId entry = checker.buildBlock(body, kFuncEnd);
         checker.resolveGotos();
         checker.sweepFrom(entry);
@@ -518,6 +520,7 @@ private:
     std::vector<NodeId> continueStack_;
     const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected_;
     bool reachedEnd_ = false;
+    const std::unordered_set<std::string> *noreturnProcedures_ = nullptr;
 
     explicit ReturnPathChecker(const std::unordered_map<const Stmt *, const std::vector<Stmt *> *> &compileIfSelected)
         : compileIfSelected_(compileIfSelected) {
@@ -591,6 +594,11 @@ ReturnPathChecker::NodeId ReturnPathChecker::buildStmt(const Stmt *s, NodeId con
         if constexpr (std::is_same_v<T, ReturnStmt>) {
             // Control leaves the procedure; the function end is not reached.
             return newNode();
+        } else if constexpr (std::is_same_v<T, CallStmt>) {
+            NodeId call = newNode();
+            // A call to a no-return Procedure never completes normally.
+            if (!(noreturnProcedures_ && noreturnProcedures_->count(node.name))) addEdge(call, continuation);
+            return call;
         } else if constexpr (std::is_same_v<T, GotoStmt>) {
             NodeId jump = newNode();
             pendingGotos_.push_back({jump, node.label});
@@ -1130,6 +1138,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             }
             if (proc->externalDefinition) continue;
         }
+        if (signature.noreturnSpecifier) noreturnNames_.insert(proc->name);
         if (!proc->externalDefinition) definedProcedures.insert(proc->name);
         procTable_[proc->name] = signature;
         result.procedureSignatures[proc->name] = signature;
@@ -1145,6 +1154,10 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         ProcedureSignature signature;
         signature.nativeTyped = true;
         signature.variadic = import->variadic;
+        // C standard library functions that never return.
+        static const char *standardNoreturn[] = {"exit", "abort", "_Exit", "quick_exit", "longjmp", "thrd_exit"};
+        for (const char *noreturnName : standardNoreturn)
+            if (import->name == noreturnName) noreturnNames_.insert(import->name);
         signature.returnType = resolveTypeSpec(import->returnType);
         validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
         for (const TypeSpec &spec : import->parameterTypes) {
@@ -3307,14 +3320,14 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             if (signatureIt->second.nativeTyped &&
                 !signatureIt->second.noreturnSpecifier &&
                 signatureIt->second.returnType.kind != TypeKind::Void) {
-                if (ReturnPathChecker::endIsReachable(node.body, analysis_->compileIfSelected)) {
+                if (ReturnPathChecker::endIsReachable(node.body, analysis_->compileIfSelected, &noreturnNames_)) {
                     diags.push_back({18, s->line, "Typed Procedure \"" + node.name +
                                               "\" can reach its end without a Return on some path; every path must return a value."});
                 }
             }
 
             if (signatureIt->second.noreturnSpecifier) {
-                if (ReturnPathChecker::endIsReachable(node.body, analysis_->compileIfSelected)) {
+                if (ReturnPathChecker::endIsReachable(node.body, analysis_->compileIfSelected, &noreturnNames_)) {
                     diags.push_back({18, s->line, "No-return Procedure \"" + node.name +
                                               "\" can reach its end; every path must leave without returning."});
                 }

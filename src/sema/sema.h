@@ -114,6 +114,7 @@ private:
 
     std::vector<std::unordered_map<std::string, Symbol>> scopes_;
     std::unordered_map<std::string, ProcedureSignature> procTable_;
+    std::unordered_set<std::string> noreturnNames_;
     std::unordered_map<std::string, StructureInfo> structureTable_;
     std::unordered_map<std::string, StructureInfo> unionTable_;
     std::unordered_map<std::string, EnumerationInfo> enumerationTable_;
