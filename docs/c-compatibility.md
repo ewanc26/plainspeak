@@ -147,7 +147,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 |---|---|
 | `pp.translation-units` | foundation | Include the file "path". splices another PlainSpeak source file into the program at that point (paths relative to the including file, nested up to 16 deep, each file included once so cycles and repeats are harmless), giving multi-file programs; separately compiled units with per-unit linkage, header/implementation separation and incremental builds remain pending. |
 | `pp.header-interop` | foundation |
-| `pp.conditional-compilation` | foundation |
+| `pp.conditional-compilation` | foundation | Compile if / Elif NAME is defined, not defined, equal to / not equal to / less than / greater than / at least / at most N select a branch before semantic analysis through --define NAME[=VALUE] and the predefined environment (an undefined name compares as 0, like #if); logical and/or composition and arbitrary constant expressions remain pending. |
 | `pp.macros` | foundation |
 | `pp.variadic-vaopt` | foundation | Token-level macros (Define the macro NAME taking a and variadic rest: ... End macro. / Expand NAME with tokens done.) substitute one token per named parameter and all remaining tokens for the variadic parameter, and a Variadic option rest: ... End variadic option. region is kept only when variadic arguments were supplied (the __VA_OPT__ capability); arguments are single tokens, and hygiene, stringizing/pasting and function-like expression macros remain pending. |
 | `pp.elifdef` | foundation |

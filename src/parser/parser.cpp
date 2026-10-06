@@ -966,6 +966,28 @@ Stmt *Parser::parseIf() {
     return parseConditional(false);
 }
 
+CompilePredicate Parser::parseCompilePredicate() {
+    expectWord("is");
+    CompilePredicate predicate;
+    auto number = [&]() -> long {
+        bool negative = false;
+        if (checkWord("minus")) { advance(); negative = true; }
+        if (peek().kind != TokKind::Number) error("a compile-time comparison needs a whole-number value");
+        long value = advance().num;
+        return negative ? -value : value;
+    };
+    if (checkWord("defined")) { advance(); predicate.kind = CompilePredicateKind::Defined; }
+    else if (checkWord("not") && checkWordAt(1, "defined")) { advance(); advance(); predicate.kind = CompilePredicateKind::NotDefined; }
+    else if (checkWord("equal") && checkWordAt(1, "to")) { advance(); advance(); predicate.kind = CompilePredicateKind::Equal; predicate.value = number(); }
+    else if (checkWord("not") && checkWordAt(1, "equal") && checkWordAt(2, "to")) { advance(); advance(); advance(); predicate.kind = CompilePredicateKind::NotEqual; predicate.value = number(); }
+    else if (checkWord("less") && checkWordAt(1, "than")) { advance(); advance(); predicate.kind = CompilePredicateKind::Less; predicate.value = number(); }
+    else if (checkWord("greater") && checkWordAt(1, "than")) { advance(); advance(); predicate.kind = CompilePredicateKind::Greater; predicate.value = number(); }
+    else if (checkWord("at") && checkWordAt(1, "least")) { advance(); advance(); predicate.kind = CompilePredicateKind::GreaterEqual; predicate.value = number(); }
+    else if (checkWord("at") && checkWordAt(1, "most")) { advance(); advance(); predicate.kind = CompilePredicateKind::LessEqual; predicate.value = number(); }
+    else error("a compile-time condition must be \"defined\", \"not defined\", \"equal to N\", \"not equal to N\", \"less than N\", \"greater than N\", \"at least N\" or \"at most N\"");
+    return predicate;
+}
+
 Stmt *Parser::parseCompileIf() {
     int line = peek().line;
     advance(); advance();
@@ -973,8 +995,7 @@ Stmt *Parser::parseCompileIf() {
     const Token &macroToken = peek();
     std::string macroName = macroToken.sourceText.empty() ? macroToken.text : macroToken.sourceText;
     advance();
-    expectWord("is");
-    expectWord("defined");
+    CompilePredicate predicate = parseCompilePredicate();
     expectColon();
 
     auto atEndOrBranch = [&]() -> bool {
@@ -997,8 +1018,7 @@ Stmt *Parser::parseCompileIf() {
         const Token &elifToken = peek();
         std::string elifName = elifToken.sourceText.empty() ? elifToken.text : elifToken.sourceText;
         advance();
-        expectWord("is");
-        expectWord("defined");
+        CompilePredicate elifPredicate = parseCompilePredicate();
         expectColon();
 
         std::vector<Stmt *> elifBody;
@@ -1006,7 +1026,7 @@ Stmt *Parser::parseCompileIf() {
             if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"End compile if.\"");
             elifBody.push_back(parseStmt());
         }
-        elifBranches.push_back(CompileElifBranch{std::move(elifName), std::move(elifBody)});
+        elifBranches.push_back(CompileElifBranch{std::move(elifName), std::move(elifBody), elifPredicate});
     }
 
     std::vector<Stmt *> elseBody;
@@ -1022,7 +1042,7 @@ Stmt *Parser::parseCompileIf() {
     expectWord("compile");
     expectWord("if");
     expectDot();
-    return arena_.makeStmt(CompileIfStmt{std::move(macroName), std::move(thenBody), std::move(elifBranches), std::move(elseBody)}, line);
+    return arena_.makeStmt(CompileIfStmt{std::move(macroName), std::move(thenBody), std::move(elifBranches), std::move(elseBody), predicate}, line);
 }
 
 Stmt *Parser::parseUnless() {

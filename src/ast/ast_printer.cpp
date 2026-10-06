@@ -6,6 +6,21 @@ namespace {
 
 std::string printExpr(const Expr *e);
 
+std::string printCompilePredicate(const CompilePredicate &p) {
+    const std::string v = std::to_string(p.value);
+    switch (p.kind) {
+        case CompilePredicateKind::Defined: return "is defined";
+        case CompilePredicateKind::NotDefined: return "is not defined";
+        case CompilePredicateKind::Equal: return "is equal to " + v;
+        case CompilePredicateKind::NotEqual: return "is not equal to " + v;
+        case CompilePredicateKind::Less: return "is less than " + v;
+        case CompilePredicateKind::LessEqual: return "is at most " + v;
+        case CompilePredicateKind::Greater: return "is greater than " + v;
+        case CompilePredicateKind::GreaterEqual: return "is at least " + v;
+    }
+    return "is defined";
+}
+
 std::string printTypeSpec(const TypeSpec &type) {
     std::string prefix;
     if (type.qualifiers.isConst) prefix += "constant ";
@@ -337,10 +352,10 @@ std::string printStmt(const Stmt *s) {
             }
             return out + "End if. ";
         } else if constexpr (std::is_same_v<T, CompileIfStmt>) {
-            std::string out = "Compile if " + node.macroName + " is defined: ";
+            std::string out = "Compile if " + node.macroName + " " + printCompilePredicate(node.predicate) + ": ";
             for (Stmt *inner : node.thenBody) out += printStmt(inner);
             for (const auto &elif : node.elifBranches) {
-                out += "Elif " + elif.macroName + " is defined: ";
+                out += "Elif " + elif.macroName + " " + printCompilePredicate(elif.predicate) + ": ";
                 for (Stmt *inner : elif.body) out += printStmt(inner);
             }
             if (!node.elseBody.empty()) {

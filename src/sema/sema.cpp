@@ -3213,11 +3213,27 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, CompileIfStmt>) {
             const std::vector<Stmt *> *selectedBody = nullptr;
-            if (defines_.count(node.macroName) != 0) {
+            auto holds = [&](const std::string &name, const CompilePredicate &predicate) {
+                auto found = defines_.find(name);
+                const bool isDefined = found != defines_.end();
+                const long value = isDefined ? found->second : 0;
+                switch (predicate.kind) {
+                    case CompilePredicateKind::Defined: return isDefined;
+                    case CompilePredicateKind::NotDefined: return !isDefined;
+                    case CompilePredicateKind::Equal: return value == predicate.value;
+                    case CompilePredicateKind::NotEqual: return value != predicate.value;
+                    case CompilePredicateKind::Less: return value < predicate.value;
+                    case CompilePredicateKind::LessEqual: return value <= predicate.value;
+                    case CompilePredicateKind::Greater: return value > predicate.value;
+                    case CompilePredicateKind::GreaterEqual: return value >= predicate.value;
+                }
+                return false;
+            };
+            if (holds(node.macroName, node.predicate)) {
                 selectedBody = &node.thenBody;
             } else {
                 for (const auto &elif : node.elifBranches) {
-                    if (defines_.count(elif.macroName) != 0) {
+                    if (holds(elif.macroName, elif.predicate)) {
                         selectedBody = &elif.body;
                         break;
                     }

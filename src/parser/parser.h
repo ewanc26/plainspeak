@@ -58,6 +58,7 @@ private:
     Stmt *parseWarning();
     Stmt *parsePragma();
     Stmt *parseEmbed();
+    CompilePredicate parseCompilePredicate();
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseCompileIf();

@@ -1,0 +1,20 @@
+Compile if __STDC_VERSION__ is at least 202311:
+    Say "c23".
+Elif __STDC_VERSION__ is at least 201112:
+    Say "c11".
+Otherwise:
+    Say "older".
+End compile if.
+Compile if LEVEL is equal to 3:
+    Say "level three".
+Elif LEVEL is greater than 3:
+    Say "above three".
+Otherwise:
+    Say "below three".
+End compile if.
+Compile if MISSING is not defined:
+    Say "missing".
+End compile if.
+Compile if LEVEL is less than 10:
+    Say "small".
+End compile if.
