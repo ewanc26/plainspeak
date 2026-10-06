@@ -1,4 +1,5 @@
 #include "sema.h"
+#include "../codegen/mangling.h"
 #include <algorithm>
 #include <cctype>
 #include <climits>
@@ -1468,7 +1469,8 @@ bool Sema::containsFlexibleArray(const Type &type) const {
     return info && info->complete && info->hasFlexibleArray;
 }
 
-const AggregateFieldInfo *Sema::findAggregateField(const Type &base, const std::string &name) const {
+const AggregateFieldInfo *Sema::findAggregateField(const Type &base, const std::string &name,
+                                                   std::string *anonymousPath, bool searchAnonymous) const {
     Type aggregate = base;
     if (aggregate.isPointer() && aggregate.elementType) aggregate = *aggregate.elementType;
 
@@ -1483,6 +1485,16 @@ const AggregateFieldInfo *Sema::findAggregateField(const Type &base, const std::
     if (!info || !info->complete) return nullptr;
     for (const auto &field : info->fields) {
         if (!field.name.empty() && field.name == name) return &field;
+    }
+    if (searchAnonymous) {
+        for (const auto &field : info->fields) {
+            if (!field.anonymous) continue;
+            std::string inner;
+            if (const AggregateFieldInfo *found = findAggregateField(field.type, name, &inner, true)) {
+                if (anonymousPath) *anonymousPath = mangle(field.name) + "." + inner;
+                return found;
+            }
+        }
     }
     return nullptr;
 }
@@ -1901,7 +1913,9 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                                             "\" is incomplete here, so its members are not available."});
                 return Type::number();
             }
-            const AggregateFieldInfo *field = findAggregateField(base, node.name);
+            std::string anonymousPath;
+            const AggregateFieldInfo *field = findAggregateField(base, node.name, &anonymousPath, true);
+            if (field && !anonymousPath.empty() && analysis_) analysis_->memberPaths[e] = anonymousPath;
             if (!field) {
                 diags.push_back({code, line, kind + " \"" + aggregate.tag + "\" has no member \"" + node.name + "\"."});
                 return Type::number();
@@ -2513,9 +2527,44 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                               "\" cannot contain a flexible-array structure by value; use a pointer instead."});
                     valid = false;
                 }
-                fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), std::nullopt, false});
+                if (field.anonymous && !(fieldType.kind == TypeKind::Structure || fieldType.kind == TypeKind::Union)) {
+                    diags.push_back({19, s->line, "An anonymous member must be a structure or union type, not " + typeToString(fieldType) + "."});
+                    valid = false;
+                }
+                fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), std::nullopt, false, field.anonymous});
             }
 
+            {
+                std::function<void(const Type &, std::unordered_set<std::string> &)> collect =
+                    [&](const Type &aggregateType, std::unordered_set<std::string> &out) {
+                        const StructureInfo *inner = nullptr;
+                        if (aggregateType.kind == TypeKind::Structure) {
+                            auto it = structureTable_.find(aggregateType.tag);
+                            if (it != structureTable_.end()) inner = &it->second;
+                        } else if (aggregateType.kind == TypeKind::Union) {
+                            auto it = unionTable_.find(aggregateType.tag);
+                            if (it != unionTable_.end()) inner = &it->second;
+                        }
+                        if (!inner) return;
+                        for (const auto &innerField : inner->fields) {
+                            if (innerField.anonymous) collect(innerField.type, out);
+                            else if (!innerField.name.empty()) out.insert(innerField.name);
+                        }
+                    };
+                std::unordered_set<std::string> seen = names;
+                for (const auto &field : fields) {
+                    if (!field.anonymous) continue;
+                    std::unordered_set<std::string> inner;
+                    collect(field.type, inner);
+                    for (const auto &innerName : inner) {
+                        if (!seen.insert(innerName).second) {
+                            diags.push_back({19, s->line, "Structure \"" + node.name + "\" has a member \"" + innerName +
+                                                      "\" that conflicts with a member reachable through an anonymous member."});
+                            valid = false;
+                        }
+                    }
+                }
+            }
             if (node.fields.empty()) {
                 diags.push_back({19, s->line, "Structure \"" + node.name + "\" needs at least one member in this tranche."});
                 valid = false;
@@ -2585,9 +2634,44 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 } else if (!fieldType.isPointer() && containsFlexibleArray(fieldType)) {
                     containsFlexible = true;
                 }
-                fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), std::nullopt, false});
+                if (field.anonymous && !(fieldType.kind == TypeKind::Structure || fieldType.kind == TypeKind::Union)) {
+                    diags.push_back({19, s->line, "An anonymous member must be a structure or union type, not " + typeToString(fieldType) + "."});
+                    valid = false;
+                }
+                fields.push_back(AggregateFieldInfo{field.name, std::move(fieldType), std::nullopt, false, field.anonymous});
             }
 
+            {
+                std::function<void(const Type &, std::unordered_set<std::string> &)> collect =
+                    [&](const Type &aggregateType, std::unordered_set<std::string> &out) {
+                        const StructureInfo *inner = nullptr;
+                        if (aggregateType.kind == TypeKind::Structure) {
+                            auto it = structureTable_.find(aggregateType.tag);
+                            if (it != structureTable_.end()) inner = &it->second;
+                        } else if (aggregateType.kind == TypeKind::Union) {
+                            auto it = unionTable_.find(aggregateType.tag);
+                            if (it != unionTable_.end()) inner = &it->second;
+                        }
+                        if (!inner) return;
+                        for (const auto &innerField : inner->fields) {
+                            if (innerField.anonymous) collect(innerField.type, out);
+                            else if (!innerField.name.empty()) out.insert(innerField.name);
+                        }
+                    };
+                std::unordered_set<std::string> seen = names;
+                for (const auto &field : fields) {
+                    if (!field.anonymous) continue;
+                    std::unordered_set<std::string> inner;
+                    collect(field.type, inner);
+                    for (const auto &innerName : inner) {
+                        if (!seen.insert(innerName).second) {
+                            diags.push_back({20, s->line, "Union \"" + node.name + "\" has a member \"" + innerName +
+                                                      "\" that conflicts with a member reachable through an anonymous member."});
+                            valid = false;
+                        }
+                    }
+                }
+            }
             if (node.fields.empty()) {
                 diags.push_back({20, s->line, "Union \"" + node.name + "\" needs at least one member in this tranche."});
                 valid = false;
@@ -2903,6 +2987,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                                            typeToString(base) + "."});
             } else {
                 const StructureInfo *info = nullptr;
+                std::string storeAnonymousPath;
                 int code = aggregate.kind == TypeKind::Structure ? 19 : 20;
                 std::string kind = aggregate.kind == TypeKind::Structure ? "Structure" : "Union";
                 if (aggregate.kind == TypeKind::Structure) {
@@ -2918,7 +3003,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 } else if (aggregate.qualifiers.isAtomic) {
                     diags.push_back({24, s->line, "Member access on atomic " + kind + " \"" + aggregate.tag +
                                               "\" is undefined in C; use whole-object atomic operations instead."});
-                } else if (const AggregateFieldInfo *field = findAggregateField(base, node.name)) {
+                } else if (const AggregateFieldInfo *field = findAggregateField(base, node.name, &storeAnonymousPath, true)) {
+                    if (!storeAnonymousPath.empty() && analysis_) analysis_->memberPaths[s] = storeAnonymousPath;
                     Type effectiveField = memberTypeWithAggregateQualifiers(field->type, aggregate.qualifiers);
                     if (effectiveField.isArray()) {
                         diags.push_back({code, s->line, "Whole-array aggregate member assignment is not implemented yet."});

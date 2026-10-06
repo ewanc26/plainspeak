@@ -1,0 +1,1 @@
+error[E0019]: An anonymous member must be a structure or union type, not integer.

@@ -30,10 +30,10 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.function-types` | implemented | Explicit typed Procedure parameters/returns lower to native C function types with recursive native qualifiers, C array-parameter adjustment, checked calls, generated prototypes, forward calls and mutual recursion. Variadics, function pointers and complete compatible-type rules remain pending in their own rows. |
 | `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; incomplete source declarations and whole-array initialization remain pending. |
 | `types.vla` | foundation | Block-scope variable-length native arrays accept native integral bounds, lower to C99 VLAs, support subscripting and runtime sizeof, and reject file-scope, aggregate-member, invalid-bound, and initializer cases; variably modified pointer/function shapes remain pending. |
-| `types.structures` | foundation | Tagged structures have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access, bit-fields and flexible-array tails; anonymous members remain pending. |
+| `types.structures` | implemented | Tagged structures have native layout/member access, named/unnamed bit-fields, C99 flexible-array tails and C11 anonymous structure/union members (Anonymous field as structure TAG.) whose members are reached directly, with scalar-typed and name-conflicting anonymous members rejected. |
 | `types.bit-fields` | foundation | Named/unnamed native C bit-fields support width checks, width-0 unnamed separators, member access/store and initialization, with completed enums required before layout; C23 _BitInt source types and exhaustive implementation-defined base/enum-representation detection remain pending. |
 | `types.flexible-array-members` | foundation | C99 trailing flexible structure members have native incomplete-array layout, sizeof/completeness and initializer constraints, including recursive propagation through unions for structure-member/array-element restrictions; allocation of extended objects remains pending. |
-| `types.unions` | foundation | Tagged unions have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access and native bit-fields; unions may contain flexible-array structures while inheriting C's placement restrictions; anonymous members remain pending. |
+| `types.unions` | implemented | Tagged unions have native layout/member access, bit-fields and C11 anonymous members; a union cannot directly declare a flexible array member but may contain a flexible-array structure and then inherits C's structure-member/array-element restriction. |
 | `types.enumerations` | foundation | Tagged enumerations have source definitions, implicit/explicit int-range enumerators, native enum storage, qualified enumerator expressions and typed transport; general integer constant expressions and C23 fixed underlying/wider rules remain pending. |
 | `types.aliases` | implemented | Named aliases resolve to the structural native type model. |
 | `types.typeof` | foundation | C23 `typeof` / `typeof_unqual` capability for native object names and parenthesized expressions. |
@@ -53,7 +53,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.assignment` | foundation |
 | `expr.increment-decrement` | foundation |
 | `expr.address-indirection` | foundation |
-| `expr.subscript-member` | foundation |
+| `expr.subscript-member` | implemented | Native subscript/member reads/stores preserve effective const/volatile qualification, bit-fields and flexible-array typing, reach members of anonymous structure/union members directly, and reject atomic aggregate member access as C undefined behavior. |
 | `expr.casts` | foundation |
 | `expr.conditional` | foundation |
 | `expr.sequencing` | foundation |
@@ -231,3 +231,7 @@ PlainSpeak adopts the C11 memory model for generated programs. Every atomic oper
 ## Memory orders
 
 Atomic fences, loads, stores, exchanges and fetch operations accept a trailing `with relaxed order`, `with acquire order`, `with release order`, `with acquire release order` or `with sequentially consistent order` clause (for example `Atomic store 1 to flag with release order.`). Omitting it keeps C11's default sequentially consistent semantics. A load may not be `release` or `acquire release`, and a store may not be `acquire` or `acquire release`.
+
+## Anonymous members
+
+Inside a `Structure` or `Union`, `Anonymous field as structure inner.` (or `as union number.`) embeds that aggregate by value without naming the member. Its members are then accessed directly on the outer object — `Member x of s` — as in C11. The generated C keeps the embedded aggregate under a compiler-generated member name, so layout is identical to a named member. The embedded type must be a structure or union, and names reachable through anonymous members may not duplicate other members of the same aggregate.

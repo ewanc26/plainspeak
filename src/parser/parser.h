@@ -24,6 +24,7 @@ private:
     size_t pos_ = 0;
     std::string baseDirectory_;
     std::vector<std::string> includedFiles_;
+    int anonymousCounter_ = 0;
     void expandMacros(std::vector<Token> &tokens);
     void expandIncludes(std::vector<Token> &tokens, const std::string &directory, int depth);
 

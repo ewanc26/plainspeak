@@ -36,6 +36,7 @@ struct AggregateFieldInfo {
     Type type;
     std::optional<std::size_t> bitWidth;
     bool flexibleArray = false;
+    bool anonymous = false;
 
     bool isUnnamedBitField() const { return bitWidth.has_value() && name.empty(); }
 };
@@ -65,6 +66,9 @@ struct AnalysisResult {
     std::unordered_map<const Stmt *, std::vector<std::pair<std::string, long>>> enumerationValues;
     std::unordered_set<const Expr *> nativeObjectRefs;
     std::unordered_set<const Expr *> bitFieldExprs;
+    // Mangled anonymous-member prefix (e.g. "anonymous_member_0.") for member accesses
+    // that reach their field through anonymous structure/union members.
+    std::unordered_map<const void *, std::string> memberPaths;
     std::vector<std::string> cHeaders;
     std::vector<std::string> cLibraries;
     std::unordered_map<std::string, ProcedureSignature> cFunctionSignatures;
@@ -140,7 +144,8 @@ private:
     bool hasConstSubobject(const Type &type) const;
     bool isModifiableObjectType(const Type &type) const;
     bool containsFlexibleArray(const Type &type) const;
-    const AggregateFieldInfo *findAggregateField(const Type &base, const std::string &name) const;
+    const AggregateFieldInfo *findAggregateField(const Type &base, const std::string &name,
+                                                 std::string *anonymousPath = nullptr, bool searchAnonymous = false) const;
     bool isNativeLvalueExpr(const Expr *e) const;
     Type inferExpr(const Expr *e, int line, std::vector<Diag> &diags);
     void checkStmt(const Stmt *s, std::vector<Diag> &diags);

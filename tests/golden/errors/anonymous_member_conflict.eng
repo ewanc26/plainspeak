@@ -1,0 +1,7 @@
+Structure inner:
+    Field x as integer.
+End structure.
+Structure outer:
+    Field x as integer.
+    Anonymous field as structure inner.
+End structure.

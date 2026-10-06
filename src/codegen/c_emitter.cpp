@@ -420,7 +420,9 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, MemberExpr>) {
             Type baseType = exprType(node.base, analysis);
             std::string op = baseType.isPointer() ? "->" : ".";
-            return "((" + emitRawExpr(node.base, analysis) + ")" + op + mangle(node.name) + ")";
+            auto path = analysis.memberPaths.find(e);
+            return "((" + emitRawExpr(node.base, analysis) + ")" + op +
+                   (path == analysis.memberPaths.end() ? std::string() : path->second) + mangle(node.name) + ")";
         } else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
             return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
@@ -898,8 +900,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << emitRawExpr(node.expr, analysis) << ";\n";
         } else if constexpr (std::is_same_v<T, StoreMemberStmt>) {
             Type baseType = exprType(node.base, analysis);
+            auto storePath = analysis.memberPaths.find(s);
             out << indent << "(" << emitRawExpr(node.base, analysis) << ")"
-                << (baseType.isPointer() ? "->" : ".") << mangle(node.name)
+                << (baseType.isPointer() ? "->" : ".")
+                << (storePath == analysis.memberPaths.end() ? std::string() : storePath->second) << mangle(node.name)
                 << " = " << emitRawExpr(node.expr, analysis) << ";\n";
         } else if constexpr (std::is_same_v<T, AddStmt>) {
             if (analysis.nativeMutationTargets.count(s)) {

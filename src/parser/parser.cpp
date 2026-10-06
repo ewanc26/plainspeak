@@ -778,6 +778,16 @@ Stmt *Parser::parseStructure() {
             fields.push_back(StructureField{std::move(fieldName), std::move(fieldType), width, false});
             continue;
         }
+        if (checkWord("anonymous") && checkWordAt(1, "field")) {
+            advance(); advance();
+            expectWord("as");
+            TypeSpec fieldType = parseTypeSpec();
+            expectDot();
+            StructureField anonymousField{"anonymous_member_" + std::to_string(anonymousCounter_++), std::move(fieldType), std::nullopt, false};
+            anonymousField.anonymous = true;
+            fields.push_back(std::move(anonymousField));
+            continue;
+        }
         if (checkWord("flexible") && checkWordAt(1, "field")) {
             advance(); advance();
             std::string fieldName = expectIdentName();
@@ -824,6 +834,16 @@ Stmt *Parser::parseUnion() {
             std::size_t width = static_cast<std::size_t>(advance().num);
             expectDot();
             fields.push_back(StructureField{std::move(fieldName), std::move(fieldType), width, false});
+            continue;
+        }
+        if (checkWord("anonymous") && checkWordAt(1, "field")) {
+            advance(); advance();
+            expectWord("as");
+            TypeSpec fieldType = parseTypeSpec();
+            expectDot();
+            StructureField anonymousField{"anonymous_member_" + std::to_string(anonymousCounter_++), std::move(fieldType), std::nullopt, false};
+            anonymousField.anonymous = true;
+            fields.push_back(std::move(anonymousField));
             continue;
         }
         if (checkWord("flexible") && checkWordAt(1, "field")) {

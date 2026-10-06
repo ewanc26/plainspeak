@@ -172,6 +172,7 @@ struct StructureField {
     TypeSpec type;
     std::optional<std::size_t> bitWidth;
     bool flexibleArray = false;
+    bool anonymous = false;
 };
 struct StructureStmt { std::string name; std::vector<StructureField> fields; };
 struct UnionStmt { std::string name; std::vector<StructureField> fields; };

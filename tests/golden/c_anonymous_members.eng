@@ -1,0 +1,21 @@
+Structure point:
+    Field x as integer.
+    Field y as integer.
+End structure.
+Union number:
+    Field whole as integer.
+    Field bits as unsigned integer.
+End union.
+Structure shape:
+    Field id as integer.
+    Anonymous field as structure point.
+    Anonymous field as union number.
+End structure.
+Declare s as structure shape.
+Set member id of s to 1.
+Set member x of s to 10.
+Set member y of s to 20.
+Set member whole of s to 7.
+Say Member id of s.
+Say Member x of s plus Member y of s.
+Say Member bits of s.

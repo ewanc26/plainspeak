@@ -1,0 +1,1 @@
+error[E0019]: Structure "outer" has a member "x" that conflicts with a member reachable through an anonymous member.
