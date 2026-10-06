@@ -1,0 +1,31 @@
+Import the C function ps_mutex_create taking no parameters, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_mutex_create_recursive taking no parameters, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_mutex_lock taking a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_mutex_lock_ms taking a long integer and a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_mutex_unlock taking a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_cond_create taking no parameters, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_cond_wait_ms taking a long integer and a long integer and a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_once_create taking no parameters, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_once_run taking a long integer and a pointer to function taking no parameters returning void, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function ps_sleep_ms taking a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Declare initialisations as integer with value 0.
+Procedure initialise returns void:
+    Increase initialisations by 1.
+End procedure.
+Declare status as integer.
+Declare once as long integer with value Call ps_once_create done.
+Set status to Call ps_once_run with once, Address of initialise done.
+Set status to Call ps_once_run with once, Address of initialise done.
+Say initialisations.
+Declare recursive as long integer with value Call ps_mutex_create_recursive done.
+Set status to Call ps_mutex_lock with recursive done.
+Set status to Call ps_mutex_lock with recursive done.
+Set status to Call ps_mutex_unlock with recursive done.
+Set status to Call ps_mutex_unlock with recursive done.
+Say "recursive ok".
+Declare lock as long integer with value Call ps_mutex_create done.
+Declare ready as long integer with value Call ps_cond_create done.
+Set status to Call ps_mutex_lock with lock done.
+Say Call ps_cond_wait_ms with ready, lock, 20 done.
+Set status to Call ps_mutex_unlock with lock done.
+Say Call ps_sleep_ms with 5 done.

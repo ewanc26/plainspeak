@@ -290,7 +290,7 @@ PsValue ps_pow(PsValue a, PsValue b) {
 long ps_mutex_create(void) {
     mtx_t *m = malloc(sizeof *m);
     if (!m) return 0;
-    if (mtx_init(m, mtx_plain) != thrd_success) { free(m); return 0; }
+    if (mtx_init(m, mtx_plain | mtx_timed) != thrd_success) { free(m); return 0; }
     return (long)(intptr_t)m;
 }
 int ps_mutex_lock(long h) { return mtx_lock((mtx_t *)(intptr_t)h); }
@@ -322,4 +322,53 @@ jmp_buf ps_jump_table[PS_JUMP_POINTS];
 void ps_jump(int point, int value) {
     if (point < 0 || point >= PS_JUMP_POINTS) die("jump point out of range");
     longjmp(ps_jump_table[point], value);
+}
+
+static int ps_translate_status(int status) {
+    if (status == thrd_success) return PS_THRD_SUCCESS;
+    if (status == thrd_timedout) return PS_THRD_TIMEDOUT;
+    return PS_THRD_ERROR;
+}
+
+static struct timespec ps_deadline_ms(long milliseconds) {
+    struct timespec deadline;
+    timespec_get(&deadline, TIME_UTC);
+    deadline.tv_sec += milliseconds / 1000;
+    deadline.tv_nsec += (milliseconds % 1000) * 1000000L;
+    if (deadline.tv_nsec >= 1000000000L) { deadline.tv_sec += 1; deadline.tv_nsec -= 1000000000L; }
+    return deadline;
+}
+
+int ps_sleep_ms(long milliseconds) {
+    struct timespec duration = { milliseconds / 1000, (milliseconds % 1000) * 1000000L };
+    return thrd_sleep(&duration, NULL);
+}
+
+long ps_mutex_create_recursive(void) {
+    mtx_t *m = malloc(sizeof *m);
+    if (!m) return 0;
+    if (mtx_init(m, mtx_plain | mtx_recursive | mtx_timed) != thrd_success) { free(m); return 0; }
+    return (long)(intptr_t)m;
+}
+
+int ps_mutex_lock_ms(long h, long milliseconds) {
+    struct timespec deadline = ps_deadline_ms(milliseconds);
+    return ps_translate_status(mtx_timedlock((mtx_t *)(intptr_t)h, &deadline));
+}
+
+int ps_cond_wait_ms(long c, long m, long milliseconds) {
+    struct timespec deadline = ps_deadline_ms(milliseconds);
+    return ps_translate_status(cnd_timedwait((cnd_t *)(intptr_t)c, (mtx_t *)(intptr_t)m, &deadline));
+}
+
+long ps_once_create(void) {
+    once_flag *flag = malloc(sizeof *flag);
+    if (!flag) return 0;
+    *flag = (once_flag)ONCE_FLAG_INIT;
+    return (long)(intptr_t)flag;
+}
+
+int ps_once_run(long h, void (*routine)(void)) {
+    call_once((once_flag *)(intptr_t)h, routine);
+    return PS_THRD_SUCCESS;
 }

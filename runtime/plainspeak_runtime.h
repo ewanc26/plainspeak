@@ -96,3 +96,16 @@ int ps_cond_destroy(long cond);
 extern jmp_buf ps_jump_table[PS_JUMP_POINTS];
 #define ps_jump_mark(n) setjmp(ps_jump_table[(n)])
 void ps_jump(int point, int value);
+
+/* More C11 threading helpers: sleeping, recursive/timed mutexes, timed condition
+ * waits and call-once flags. Return values follow <threads.h> (thrd_success = 0,
+ * thrd_timedout = 3 on common targets; see PS_THRD_* below). */
+#define PS_THRD_SUCCESS 0
+#define PS_THRD_TIMEDOUT 1
+#define PS_THRD_ERROR 2
+int ps_sleep_ms(long milliseconds);
+long ps_mutex_create_recursive(void);
+int ps_mutex_lock_ms(long handle, long milliseconds);
+int ps_cond_wait_ms(long cond, long mutex, long milliseconds);
+long ps_once_create(void);
+int ps_once_run(long handle, void (*routine)(void));

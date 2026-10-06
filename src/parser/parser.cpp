@@ -712,6 +712,8 @@ Stmt *Parser::parseStmt() {
     if (t.text == "copy" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaCopy();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments") && checkWordAt(3, "copy")) return parseVaCopyEnd();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaEnd();
+    if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
+    if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
           "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");

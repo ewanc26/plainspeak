@@ -1,0 +1,26 @@
+Import the C function thrd_create taking a pointer to unsigned long integer and a pointer to function taking pointer to void returning integer and a pointer to void, returning an integer, from the header "threads.h".
+Import the C function thrd_join taking an unsigned long integer and a pointer to integer, returning an integer, from the header "threads.h".
+Import the C function thrd_detach taking an unsigned long integer, returning an integer, from the header "threads.h".
+Import the C function thrd_exit taking an integer, returning void, from the header "threads.h".
+Import the C function ps_sleep_ms taking a long integer, returning an integer, from the header "plainspeak_runtime.h".
+Declare finished as atomic integer with value 0.
+Procedure exits_early takes arg as pointer to void returns integer:
+    Call thrd_exit with 5 done.
+End procedure.
+Procedure background takes arg as pointer to void returns integer:
+    Atomic store 1 to finished.
+    Return 0.
+End procedure.
+Declare first as unsigned long integer.
+Declare second as unsigned long integer.
+Declare result as integer.
+Declare status as integer.
+Set status to Call thrd_create with Address of first, Address of exits_early, null pointer done.
+Set status to Call thrd_join with first, Address of result done.
+Say result.
+Set status to Call thrd_create with Address of second, Address of background, null pointer done.
+Set status to Call thrd_detach with second done.
+While Atomic load of finished is equal to 0:
+    Set status to Call ps_sleep_ms with 1 done.
+End while.
+Say "detached thread finished".
