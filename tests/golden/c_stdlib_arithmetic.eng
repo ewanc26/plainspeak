@@ -1,0 +1,12 @@
+Import the C function abs taking an integer, returning an integer, from the header "stdlib.h".
+Import the C function labs taking a long integer, returning a long integer, from the header "stdlib.h".
+Import the C function llabs taking a long long integer, returning a long long integer, from the header "stdlib.h".
+Import the C function strtol taking a pointer to character and a pointer to pointer to character and an integer, returning a long integer, from the header "stdlib.h".
+Import the C function strtoul taking a pointer to character and a pointer to pointer to character and an integer, returning an unsigned long integer, from the header "stdlib.h".
+Import the C function strtod taking a pointer to character and a pointer to pointer to character, returning a decimal, from the header "stdlib.h".
+Say Call abs with 0 minus 5 done.
+Say Call labs with 0 minus 70000 done.
+Say Call llabs with 0 minus 5000000000 done.
+Say Call strtol with "ff", null pointer, 16 done.
+Say Call strtoul with "777", null pointer, 8 done.
+Say Call strtod with "2.5", null pointer done.
