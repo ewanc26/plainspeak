@@ -1,0 +1,14 @@
+Import the C function malloc taking a size type, returning a pointer to void, from the header "stdlib.h".
+Import the C function free taking a pointer to void, returning void, from the header "stdlib.h".
+Structure packet:
+    Field length as integer.
+    Flexible field data as integer.
+End structure.
+Declare raw as pointer to void with value Call malloc with (Size of type structure packet plus 4 times Size of type integer) done.
+Declare p as pointer to structure packet with value Convert raw to type pointer to structure packet.
+Set member length of p to 4.
+Set element at 0 in Member data of p to 5.
+Set element at 3 in Member data of p to 9.
+Say Member length of p.
+Say Element at 0 in Member data of p plus Element at 3 in Member data of p.
+Call free with raw done.
