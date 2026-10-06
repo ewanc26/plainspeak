@@ -1,0 +1,16 @@
+Import the C function strcpy taking a pointer to character and a pointer to character, returning a pointer to character, from the header "string.h".
+Import the C function strcat taking a pointer to character and a pointer to character, returning a pointer to character, from the header "string.h".
+Import the C function strncmp taking a pointer to character and a pointer to character and an unsigned long integer, returning an integer, from the header "string.h".
+Import the C function strchr taking a pointer to character and an integer, returning a pointer to character, from the header "string.h".
+Import the C function memset taking a pointer to void and an integer and an unsigned long integer, returning a pointer to void, from the header "string.h".
+Import the C function strlen taking a pointer to character, returning an unsigned long integer, from the header "string.h".
+Declare buffer as array of character with length 32.
+Declare p as pointer to character.
+Set p to Call strcpy with buffer, "hello" done.
+Set p to Call strcat with buffer, ", world" done.
+Say Call strlen with buffer done.
+Say Call strncmp with buffer, "help", 3 done.
+Set p to Call strchr with buffer, 44 done.
+Say Call strlen with p done.
+Set p to Call memset with buffer, 0, 32 done.
+Say Call strlen with buffer done.
