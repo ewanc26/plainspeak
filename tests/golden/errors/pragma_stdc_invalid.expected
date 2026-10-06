@@ -1,0 +1,1 @@
+error: line 1: a standard pragma must be "STDC FP_CONTRACT", "STDC FENV_ACCESS" or "STDC CX_LIMITED_RANGE" followed by ON, OFF or DEFAULT

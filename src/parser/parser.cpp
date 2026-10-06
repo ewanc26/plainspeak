@@ -457,6 +457,20 @@ Stmt *Parser::parsePragma() {
             error("a Pragma directive may contain only letters, digits, spaces and _ ( ) , . + - =");
         }
     }
+    if (text.rfind("STDC ", 0) == 0) {
+        // Standard pragmas have exactly one of three names and ON/OFF/DEFAULT.
+        static const char *names[] = {"FP_CONTRACT", "FENV_ACCESS", "CX_LIMITED_RANGE"};
+        static const char *values[] = {"ON", "OFF", "DEFAULT"};
+        std::string rest = text.substr(5);
+        std::size_t space = rest.find(' ');
+        std::string pragmaName = space == std::string::npos ? rest : rest.substr(0, space);
+        std::string pragmaValue = space == std::string::npos ? std::string() : rest.substr(space + 1);
+        bool nameOk = false, valueOk = false;
+        for (const char *n : names) nameOk = nameOk || pragmaName == n;
+        for (const char *v : values) valueOk = valueOk || pragmaValue == v;
+        if (!nameOk || !valueOk)
+            error("a standard pragma must be \"STDC FP_CONTRACT\", \"STDC FENV_ACCESS\" or \"STDC CX_LIMITED_RANGE\" followed by ON, OFF or DEFAULT");
+    }
     expectDot();
     return arena_.makeStmt(PragmaStmt{std::move(text)}, line);
 }
