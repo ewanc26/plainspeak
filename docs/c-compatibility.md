@@ -20,7 +20,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.integer-model` | foundation | Structural integer ranks/signedness and the ordinary C integer promotions/usual signed-unsigned conversions are executable; C23 `_BitInt` rank interactions and remaining conversion edge cases are incomplete. |
 | `types.bitint` | foundation | C23 bit-precise integer type is structurally representable. |
 | `types.floating-model` | foundation | Float/double/long-double ranks are structurally represented and native objects can use all three; the full C floating environment/model is still incomplete. |
-| `types.complex` | foundation | Native complex decimal object representation exists; complete arithmetic and library parity remain pending. |
+| `types.complex` | foundation | Complex decimal native objects lower to double _Complex, can be constructed with `Complex with real A and imaginary B` (C11 CMPLX), support +, -, * and / and the real/imaginary/magnitude/conjugate queries, and reject invalid relational ordering; float/long-double complex variants and complete conversion rules remain pending. |
 | `types.boolean` | foundation | Native `_Bool` objects are spellable; legacy true/false literals still preserve numeric compatibility. |
 | `types.nullptr` | foundation | C23 `null pointer` and `null pointer type` are source-spellable; the distinct scalar type has void-pointer/character-pointer-compatible layout, C23 default initialization, native object storage, and supported null-constant/pointer/bool conversions enforced semantically. |
 | `types.object-representation` | foundation | Explicit scalar, pointer, fixed-array, tagged-structure, tagged-union and tagged-enumeration objects use real C storage, address, size and target layout; padding/effective-type rules and complete lifetime semantics remain pending. |
@@ -179,7 +179,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | ID | Status | C surface |
 |---|---|---|
 | `lib.assert` | implemented | Runtime `Assert` uses the conforming `<assert.h>` facility for scalar conditions. |
-| `lib.complex` | foundation | Real/imaginary/magnitude queries use `<complex.h>`; the remaining library surface is pending. |
+| `lib.complex` | foundation | Real, imaginary, magnitude and conjugate queries use the platform <complex.h> functions, construction uses CMPLX, and typed imports can bind functions such as csqrt over complex decimal values; the remaining complex library surface and complex float/long-double variants remain pending. |
 | `lib.ctype` | planned | `<ctype.h>` |
 | `lib.errno` | foundation | Typed C object imports can read `errno`; complete error-setting and implementation-specific macro semantics remain pending. |
 | `lib.fenv` | foundation | Typed C imports can bind `<fenv.h>` environment queries and controls such as `fegetround` and `feclearexcept`; exception/mode constants, pragma interaction and the remaining floating-environment surface remain pending. |

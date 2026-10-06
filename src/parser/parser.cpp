@@ -1980,6 +1980,15 @@ Expr *Parser::parsePrimary() {
         std::string order = parseOptionalMemoryOrder();
         return arena_.makeExpr(MathCallExpr{"atomic_load", operand, std::move(order)}, line);
     }
+    if (checkWord("complex") && checkWordAt(1, "with") && checkWordAt(2, "real")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        Expr *real = parsePrimary();
+        expectWord("and");
+        expectWord("imaginary");
+        Expr *imaginary = parsePrimary();
+        return arena_.makeExpr(ComplexValueExpr{real, imaginary}, line);
+    }
     if (checkWord("checked") && (checkWordAt(1, "add") || checkWordAt(1, "subtract") || checkWordAt(1, "multiply"))) {
         int line = peek().line;
         advance();

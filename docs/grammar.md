@@ -732,3 +732,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Discarding values
 
 `Discard expression.` evaluates an expression for its side effects and discards the result, lowering to a C `(void)` cast. For example, `Discard Increment after counter.` or `Discard Call strlen with "text" done.`.
+
+## Complex values
+
+`Complex with real A and imaginary B` builds a `complex decimal` from two real arithmetic expressions (lowering to C11 `CMPLX`). Use parentheses around compound components, for example `Complex with real (0 minus 4) and imaginary 0`.

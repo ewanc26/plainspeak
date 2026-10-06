@@ -2267,6 +2267,14 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             return Type::integer(IntegerRank::Int);
         }
+        else if constexpr (std::is_same_v<T, ComplexValueExpr>) {
+            Type real = inferExpr(node.real, line, diags);
+            Type imaginary = inferExpr(node.imaginary, line, diags);
+            if (!isArithmeticScalar(real) || !isArithmeticScalar(imaginary) ||
+                real.kind == TypeKind::Complex || imaginary.kind == TypeKind::Complex)
+                diags.push_back({3, line, "A complex value needs real arithmetic components, not " + typeToString(real) + " and " + typeToString(imaginary) + "."});
+            return Type::complex();
+        }
         else if constexpr (std::is_same_v<T, CheckedArithExpr>) {
             Type lhs = inferExpr(node.lhs, line, diags);
             Type rhs = inferExpr(node.rhs, line, diags);

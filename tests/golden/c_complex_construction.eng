@@ -1,0 +1,15 @@
+Declare z as complex decimal with value Complex with real 3 and imaginary 4.
+Say Real part of z.
+Say Imaginary part of z.
+Say Magnitude of z.
+Declare w as complex decimal with value Complex with real 1 and imaginary (0 minus 2).
+Declare product as complex decimal with value z times w.
+Say Real part of product.
+Say Imaginary part of product.
+Declare quotient as complex decimal with value product divided by w.
+Say Real part of quotient.
+Say Imaginary part of quotient.
+Import the C function csqrt taking a complex decimal, returning a complex decimal, from the header "complex.h".
+Declare root as complex decimal with value Call csqrt with Complex with real (0 minus 4) and imaginary 0 done.
+Say Real part of root.
+Say Imaginary part of root.
