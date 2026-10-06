@@ -28,6 +28,8 @@ struct ProcedureSignature {
     bool deprecated = false;
     std::string deprecationMessage;
     bool maybeUnused = false;
+    bool nodiscard = false;
+    std::string nodiscardMessage;
     std::string variadicLastParameter;
 };
 

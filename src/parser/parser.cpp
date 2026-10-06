@@ -1360,9 +1360,15 @@ Stmt *Parser::parseProcedure() {
     bool deprecated = false;
     std::string deprecationMessage;
     bool maybeUnused = false;
+    bool nodiscard = false;
+    std::string nodiscardMessage;
     while (checkWord("with")) {
         advance();
-        if (checkWord("inline")) {
+        if (checkWord("nodiscard")) {
+            advance();
+            nodiscard = true;
+            if (peek().kind == TokKind::String) nodiscardMessage = advance().text;
+        } else if (checkWord("inline")) {
             advance();
             inlineSpecifier = true;
         } else if (checkWord("no") && checkWordAt(1, "return")) {
@@ -1376,13 +1382,13 @@ Stmt *Parser::parseProcedure() {
             advance(); advance();
             maybeUnused = true;
         } else {
-            error("expected \"inline\", \"no return\", \"deprecated\", or \"maybe unused\" after Procedure with");
+            error("expected \"inline\", \"no return\", \"deprecated\", \"nodiscard\", or \"maybe unused\" after Procedure with");
         }
     }
 
     expectColon();
     auto body = parseBlockUntil("end", "procedure");
-    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused, variadic}, line);
+    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused, variadic, nodiscard, std::move(nodiscardMessage)}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {

@@ -1,0 +1,7 @@
+Procedure checked takes value as integer returns integer with nodiscard "check the result":
+    Return value plus 1.
+End procedure.
+Call checked with 1 done.
+Discard Call checked with 2 done.
+Declare kept as integer with value Call checked with 3 done.
+Say kept.

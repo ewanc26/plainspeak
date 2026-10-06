@@ -238,6 +238,8 @@ struct ProcedureStmt {
     std::string deprecationMessage{};
     bool maybeUnused = false;
     bool variadic = false;
+    bool nodiscard = false;
+    std::string nodiscardMessage{};
 };
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };

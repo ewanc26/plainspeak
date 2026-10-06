@@ -1069,6 +1069,8 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         signature.deprecated = proc->deprecated;
         signature.deprecationMessage = proc->deprecationMessage;
         signature.maybeUnused = proc->maybeUnused;
+        signature.nodiscard = proc->nodiscard;
+        signature.nodiscardMessage = proc->nodiscardMessage;
         signature.returnType = typed ? resolveTypeSpec(*proc->returnType) : Type::number();
         if (typed) validateTypeQualifiers(signature.returnType, s->line, result.diagnostics);
 
@@ -3416,6 +3418,12 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                         ? "Call to deprecated Procedure \"" + node.name + "\"."
                         : signature.deprecationMessage;
                     diags.push_back({35, s->line, message, DiagSeverity::Warning});
+                }
+                if (signature.nodiscard && signature.nativeTyped && signature.returnType.kind != TypeKind::Void) {
+                    std::string message = signature.nodiscardMessage.empty()
+                        ? "The result of Procedure \"" + node.name + "\" must not be discarded; use Discard to ignore it deliberately."
+                        : signature.nodiscardMessage;
+                    diags.push_back({38, s->line, message, DiagSeverity::Warning});
                 }
                 if ((!signature.variadic && node.args.size() != signature.parameterTypes.size()) ||
                     (signature.variadic && node.args.size() < signature.parameterTypes.size())) {
