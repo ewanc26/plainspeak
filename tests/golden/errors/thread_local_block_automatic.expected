@@ -1,0 +1,1 @@
+error[E0042]: A block-scope thread local object needs static storage (add "with static storage").

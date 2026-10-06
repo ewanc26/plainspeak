@@ -2815,6 +2815,15 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
                 declared.qualifiers.isConst = true;
             }
+            if (node.threadLocal) {
+                if (scopes_.size() != 1 && !node.staticStorage && !node.externalLinkage) {
+                    diags.push_back({42, s->line, "A block-scope thread local object needs static storage (add \"with static storage\")."});
+                }
+                if (node.initializer && !integerConstantValue(node.initializer) &&
+                    !std::holds_alternative<FloatLit>(node.initializer->node)) {
+                    diags.push_back({42, s->line, "A thread local object needs a constant initializer."});
+                }
+            }
             if (declared.variableLengthArray) {
                 if (scopes_.size() == 1) {
                     diags.push_back({17, s->line, "A variable-length native array needs block scope; file-scope C objects cannot have variably modified types."});

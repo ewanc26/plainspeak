@@ -1,0 +1,7 @@
+Procedure counter returns integer:
+    Declare calls with static storage as thread local integer with value 100.
+    Increase calls by 1.
+    Return calls.
+End procedure.
+Say Call counter done.
+Say Call counter done.

@@ -1,0 +1,1 @@
+error[E0042]: A thread local object needs a constant initializer.

@@ -1,0 +1,4 @@
+Procedure counter returns integer:
+    Declare calls as thread local integer with value 1.
+    Return calls.
+End procedure.

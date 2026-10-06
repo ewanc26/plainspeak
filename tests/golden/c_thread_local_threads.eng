@@ -1,0 +1,14 @@
+Import the C function thrd_create taking a pointer to unsigned long integer and a pointer to function taking pointer to void returning integer and a pointer to void, returning an integer, from the header "threads.h".
+Import the C function thrd_join taking an unsigned long integer and a pointer to integer, returning an integer, from the header "threads.h".
+Declare local_count as thread local integer with value 10.
+Procedure worker takes arg as pointer to void returns integer:
+    Increase local_count by 5.
+    Return local_count.
+End procedure.
+Declare t as unsigned long integer.
+Declare result as integer.
+Declare status as integer.
+Set status to Call thrd_create with Address of t, Address of worker, null pointer done.
+Set status to Call thrd_join with t, Address of result done.
+Say result.
+Say local_count.

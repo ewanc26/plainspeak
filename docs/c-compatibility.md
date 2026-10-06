@@ -166,7 +166,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `concurrency.fences` | planned |
 | `concurrency.lock-free` | planned |
 | `concurrency.threads` | foundation | Typed C imports with function-pointer parameters can create and join C11 <threads.h> threads from a typed Procedure start routine (thrd_create/thrd_join); native thread types, detach/sleep, thread-local interaction rules and sync primitives remain pending. |
-| `concurrency.thread-local` | planned |
+| `concurrency.thread-local` | implemented | Native declarations can request _Thread_local storage: file-scope thread-local objects are statically initialised from constant initializers so every thread starts with its own initial copy, block-scope thread-local objects require static storage, and non-constant initializers are rejected (E0042); threaded coverage checks per-thread values. |
 | `concurrency.sync` | foundation | The runtime exposes C11 mutex and condition-variable handles (ps_mutex_*/ps_cond_* over <threads.h> mtx_t/cnd_t) that programs bind with typed imports from plainspeak_runtime.h and use with thrd_create/thrd_join; once flags, timed/recursive mutexes and native mutex/condition types remain pending. |
 | `concurrency.memory-model` | foundation | PlainSpeak adopts the C11 memory model (documented in docs/c-compatibility.md): atomic operations are sequentially consistent, unsynchronised conflicting non-atomic accesses are data races, and thread create/join establish happens-before; executable coverage is a three-thread atomic counter. Explicit memory orders, release/acquire fences and race detection remain pending. |
 
