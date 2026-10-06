@@ -25,6 +25,7 @@ struct PsList {
 
 PsValue ps_int(long v);
 PsValue ps_double(double v);
+PsValue ps_uint(unsigned long v);
 PsValue ps_str(const char *v);
 
 PsValue ps_list_from(const PsValue *items, size_t count);

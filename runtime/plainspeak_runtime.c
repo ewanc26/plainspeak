@@ -1,4 +1,5 @@
 #include "plainspeak_runtime.h"
+#include <limits.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -23,6 +24,15 @@ static void type_error(const char *op, PsValue a, PsValue b) {
 }
 
 PsValue ps_int(long v) { PsValue r; r.type = PS_INT; r.as.i = v; return r; }
+PsValue ps_uint(unsigned long v) {
+    if (v <= (unsigned long)LONG_MAX) return ps_int((long)v);
+    /* Large unsigned values keep their exact decimal spelling. */
+    static char ring[16][32];
+    static unsigned next;
+    char *slot = ring[next++ % 16];
+    snprintf(slot, 32, "%lu", v);
+    return ps_str(slot);
+}
 PsValue ps_double(double v) { PsValue r; r.type = PS_DOUBLE; r.as.d = v; return r; }
 PsValue ps_str(const char *v) { PsValue r; r.type = PS_STRING; r.as.s = v; return r; }
 

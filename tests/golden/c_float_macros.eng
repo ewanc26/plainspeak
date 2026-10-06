@@ -1,0 +1,14 @@
+Import the C constant DBL_EPSILON as decimal from the header "float.h".
+Import the C constant FLT_RADIX as integer from the header "float.h".
+Import the C constant DBL_DIG as integer from the header "float.h".
+Import the C constant DBL_MANT_DIG as integer from the header "float.h".
+Import the C constant FLT_MAX_EXP as integer from the header "float.h".
+Import the C constant DBL_MAX as decimal from the header "float.h".
+Import the C constant DECIMAL_DIG as integer from the header "float.h".
+Say FLT_RADIX.
+Say DBL_DIG.
+Say DBL_MANT_DIG.
+Say FLT_MAX_EXP.
+Say DECIMAL_DIG.
+If DBL_EPSILON is less than 0.0001 then: Say "epsilon small". End if.
+If DBL_MAX is greater than 1000000.0 then: Say "max large". End if.

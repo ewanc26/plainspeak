@@ -1,0 +1,5 @@
+Import the C function imaxabs taking a long integer, returning a long integer, from the header "inttypes.h".
+Import the C function strtoumax taking a pointer to character and a pointer to pointer to character and an integer, returning an unsigned long integer, from the header "inttypes.h".
+Import the C constant PRId64 as pointer to character from the header "inttypes.h".
+Say Call imaxabs with 0 minus 7 done.
+Say Call strtoumax with "18446744073709551615", null pointer, 10 done.

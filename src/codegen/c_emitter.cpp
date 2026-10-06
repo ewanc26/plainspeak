@@ -342,6 +342,11 @@ std::string boxRaw(const std::string &raw, const Type &type) {
     if (type.kind == TypeKind::Floating) {
         return "ps_double((double)(" + raw + "))";
     }
+    if (type.kind == TypeKind::Integer && type.isUnsigned &&
+        (type.integerRank == IntegerRank::Long || type.integerRank == IntegerRank::LongLong)) {
+        // Values above LONG_MAX would print as negative through the signed box.
+        return "ps_uint((unsigned long)(" + raw + "))";
+    }
     if (type.kind == TypeKind::Boolean || type.kind == TypeKind::Integer ||
         type.kind == TypeKind::Enumeration || type.kind == TypeKind::BitInt) {
         return "ps_int((long)(" + raw + "))";

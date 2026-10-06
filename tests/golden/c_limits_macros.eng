@@ -1,0 +1,16 @@
+Import the C constant INT_MAX as integer from the header "limits.h".
+Import the C constant INT_MIN as integer from the header "limits.h".
+Import the C constant UINT_MAX as unsigned integer from the header "limits.h".
+Import the C constant LLONG_MAX as long long integer from the header "limits.h".
+Import the C constant CHAR_BIT as integer from the header "limits.h".
+Import the C constant SCHAR_MAX as integer from the header "limits.h".
+Import the C constant USHRT_MAX as integer from the header "limits.h".
+Import the C constant MB_LEN_MAX as integer from the header "limits.h".
+Say INT_MAX.
+Say INT_MIN.
+Say UINT_MAX.
+Say LLONG_MAX.
+Say CHAR_BIT.
+Say SCHAR_MAX.
+Say USHRT_MAX.
+Say MB_LEN_MAX.

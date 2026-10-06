@@ -1,0 +1,16 @@
+Import the C constant INT32_MAX as integer from the header "stdint.h".
+Import the C constant UINT16_MAX as integer from the header "stdint.h".
+Import the C constant INT64_MIN as long integer from the header "stdint.h".
+Import the C constant UINT64_MAX as unsigned long integer from the header "stdint.h".
+Import the C constant SIZE_MAX as unsigned long integer from the header "stdint.h".
+Import the C constant INTPTR_MAX as long integer from the header "stdint.h".
+Import the C constant INT_FAST8_MAX as integer from the header "stdint.h".
+Import the C constant INTMAX_MAX as long integer from the header "stdint.h".
+Say INT32_MAX.
+Say UINT16_MAX.
+Say INT64_MIN.
+Say UINT64_MAX.
+Say SIZE_MAX.
+Say INTPTR_MAX.
+Say INT_FAST8_MAX.
+Say INTMAX_MAX.
