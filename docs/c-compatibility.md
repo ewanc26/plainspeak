@@ -235,3 +235,7 @@ Atomic fences, loads, stores, exchanges and fetch operations accept a trailing `
 ## Anonymous members
 
 Inside a `Structure` or `Union`, `Anonymous field as structure inner.` (or `as union number.`) embeds that aggregate by value without naming the member. Its members are then accessed directly on the outer object — `Member x of s` — as in C11. The generated C keeps the embedded aggregate under a compiler-generated member name, so layout is identical to a named member. The embedded type must be a structure or union, and names reachable through anonymous members may not duplicate other members of the same aggregate.
+
+## Nested initializers
+
+Nested aggregate initialization is written by placing a compound value inside a member or element initializer, for example `Declare s as structure segment with members start as Compound value of type structure point with values 1 followed by 2 done followed by finish as Compound value of type structure point with values 3 followed by 4 done done.` and `Declare grid as array of structure point with length 2 with elements at 1 as Compound value of type structure point with values 7 followed by 8 done done.` The generated C uses C99 compound literals; `tests/golden/c_nested_initializers.eng` covers both shapes.
