@@ -132,7 +132,7 @@ PlainSpeak's `For each` is a language extension and is not counted as a replacem
 | `func.prototypes` | implemented | Sema pre-registers signatures and generated C emits prototypes before definitions, enabling forward/mutual calls; Procedure NAME takes ... returns T defined elsewhere. gives a declaration-only prototype (compatible later definitions are accepted, conflicting ones rejected) that links across translation units. |
 | `func.variadic` | foundation |
 | `func.recursion` | implemented | Pre-registered signatures plus generated prototypes (and declaration-only Procedures defined elsewhere) support direct, forward, mutual and cross-unit recursive Procedures. |
-| `func.inline` | foundation |
+| `func.inline` | implemented | with inline lowers to C99 inline: externally visible inline Procedures also get a non-inline declaration so an external definition exists (callable through pointers and from other units), and combined with internal linkage they become static inline. |
 | `func.noreturn` | foundation |
 
 Native pointers deliberately do not pass through legacy untyped `Procedure` parameters or returns yet; typed signatures/function pointers are the next required function-model layer. `with inline` and `with no return` preserve the corresponding C function specifiers, with no-return Procedures restricted to explicit `void` functions whose control flow cannot reach the end and which contain no `Return`; complete C inline/linkage compatibility rules remain pending.

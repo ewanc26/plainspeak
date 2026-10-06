@@ -1,0 +1,6 @@
+Procedure quad takes value as integer returns integer with inline with internal linkage:
+    Return value times 4.
+End procedure.
+Declare callback as pointer to function taking integer returning integer with value Address of quad.
+Say Call through callback with 3 done.
+Say Call quad with 2 done.

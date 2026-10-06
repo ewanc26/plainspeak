@@ -1076,7 +1076,8 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
 }
 
 std::string emitProcedureDeclaration(const ProcedureStmt &proc,
-                                     const AnalysisResult &analysis) {
+                                     const AnalysisResult &analysis,
+                                     bool withInline = true) {
     const ProcedureSignature *signature = procedureSignature(proc.name, analysis);
     bool typed = signature && signature->nativeTyped;
 
@@ -1097,7 +1098,7 @@ std::string emitProcedureDeclaration(const ProcedureStmt &proc,
 
     std::string specifiers;
     if (signature && signature->internalLinkage) specifiers += "static ";
-    if (signature && signature->inlineSpecifier) specifiers += "inline ";
+    if (withInline && signature && signature->inlineSpecifier) specifiers += "inline ";
     if (signature && signature->noreturnSpecifier) specifiers += "_Noreturn ";
 
     if (typed) {
@@ -1145,6 +1146,12 @@ void emitProcedure(const ProcedureStmt &proc, std::ostream &out,
         }
     }
     out << "}\n\n";
+    // C99 inline semantics: a file-scope declaration without `inline` turns the
+    // inline definition into an external definition, so the function can be
+    // called through a pointer or from other translation units.
+    if (signature && signature->inlineSpecifier && !signature->internalLinkage) {
+        out << emitProcedureDeclaration(proc, analysis, false) << ";\n\n";
+    }
 }
 
 } // namespace

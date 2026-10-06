@@ -1,0 +1,5 @@
+Procedure triple takes value as integer returns integer with inline:
+    Return value times 3.
+End procedure.
+Declare callback as pointer to function taking integer returning integer with value Address of triple.
+Say Call through callback with 5 done.
