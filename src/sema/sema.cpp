@@ -3404,5 +3404,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, PragmaStmt>) {
         }
+        else if constexpr (std::is_same_v<T, DiscardStmt>) {
+            inferExpr(node.expr, s->line, diags);
+        }
     }, s->node);
 }

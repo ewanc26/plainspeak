@@ -728,3 +728,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Value-based compile-time conditions
 
 `Compile if NAME is at least 3:` and `Elif NAME is not defined:` extend the defined-ness test. The comparisons are `is defined`, `is not defined`, `is equal to N`, `is not equal to N`, `is less than N`, `is greater than N`, `is at least N` and `is at most N`, where `N` is a whole number (optionally preceded by `minus`). `NAME` takes its value from `--define NAME=VALUE` or the predefined environment; an undefined name compares as 0.
+
+## Discarding values
+
+`Discard expression.` evaluates an expression for its side effects and discards the result, lowering to a C `(void)` cast. For example, `Discard Increment after counter.` or `Discard Call strlen with "text" done.`.

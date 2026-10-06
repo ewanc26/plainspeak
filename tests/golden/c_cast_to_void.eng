@@ -1,0 +1,6 @@
+Import the C function strlen taking a pointer to character, returning a size type, from the header "string.h".
+Declare counter as integer with value 0.
+Discard Increment after counter.
+Discard counter plus 100.
+Discard Call strlen with "ignored" done.
+Say counter.

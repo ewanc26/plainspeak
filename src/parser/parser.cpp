@@ -235,6 +235,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
     if (t.text == "pragma") return parsePragma();
+    if (t.text == "discard") return parseDiscard();
     if (t.text == "embed" && checkWordAt(1, "the")) return parseEmbed();
     if (t.text == "break") {
         int line = peek().line;
@@ -314,6 +315,14 @@ Stmt *Parser::parseEmbed() {
         aggregate.entries.push_back(entry);
     }
     return arena_.makeStmt(NativeDeclStmt{name, std::move(type), nullptr, std::move(aggregate), false, std::nullopt, false, false, false, false, false, "", false}, line);
+}
+
+Stmt *Parser::parseDiscard() {
+    int line = peek().line;
+    advance();
+    Expr *expr = parseExpr();
+    expectDot();
+    return arena_.makeStmt(DiscardStmt{expr}, line);
 }
 
 Stmt *Parser::parsePragma() {
@@ -535,6 +544,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
     if (t.text == "pragma") return parsePragma();
+    if (t.text == "discard") return parseDiscard();
     if (t.text == "embed" && checkWordAt(1, "the")) return parseEmbed();
     if (t.text == "break") {
         int line = peek().line;
