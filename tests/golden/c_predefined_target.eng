@@ -1,0 +1,14 @@
+Compile if __SIZEOF_POINTER__ is equal to 8 and __CHAR_BIT__ is equal to 8:
+    Say "64-bit bytes".
+Elif __SIZEOF_POINTER__ is equal to 4:
+    Say "32-bit".
+End compile if.
+Compile if __SIZEOF_INT__ is at least 4 and __SIZEOF_LONG_LONG__ is at least 8:
+    Say "wide ints".
+End compile if.
+Compile if __linux__ is defined or __APPLE__ is defined or _WIN32 is defined:
+    Say "known host".
+End compile if.
+Compile if __STDC_UTF_16__ is defined and __STDC_UTF_32__ is defined:
+    Say "utf".
+End compile if.

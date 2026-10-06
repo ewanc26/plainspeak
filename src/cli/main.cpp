@@ -1,5 +1,6 @@
 #include <cstdlib>
 #include <cctype>
+#include <climits>
 #include <fstream>
 #include <iomanip>
 #include <iostream>
@@ -38,7 +39,34 @@ int main(int argc, char **argv) {
         {"__STDC__", 1},
         {"__STDC_HOSTED__", 1},
         {"__STDC_VERSION__", 202311},
+        {"__STDC_UTF_16__", 1},
+        {"__STDC_UTF_32__", 1},
+        {"__CHAR_BIT__", CHAR_BIT},
+        {"__SIZEOF_SHORT__", sizeof(short)},
+        {"__SIZEOF_INT__", sizeof(int)},
+        {"__SIZEOF_LONG__", sizeof(long)},
+        {"__SIZEOF_LONG_LONG__", sizeof(long long)},
+        {"__SIZEOF_POINTER__", sizeof(void *)},
+        {"__SIZEOF_FLOAT__", sizeof(float)},
+        {"__SIZEOF_DOUBLE__", sizeof(double)},
+        {"__SIZEOF_LONG_DOUBLE__", sizeof(long double)},
     };
+    // Target environment of the native build (the system C compiler targets the host).
+    if (sizeof(void *) == 8 && sizeof(long) == 8) defines["__LP64__"] = 1;
+#if defined(__linux__)
+    defines["__linux__"] = 1;
+    defines["__unix__"] = 1;
+#elif defined(__APPLE__)
+    defines["__APPLE__"] = 1;
+    defines["__unix__"] = 1;
+#elif defined(_WIN32)
+    defines["_WIN32"] = 1;
+#endif
+#if defined(__x86_64__)
+    defines["__x86_64__"] = 1;
+#elif defined(__aarch64__)
+    defines["__aarch64__"] = 1;
+#endif
     for (int i = 2; i < argc; i++) {
         std::string a = argv[i];
         if (a == "-o" && i + 1 < argc) outPath = argv[++i];
