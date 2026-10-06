@@ -1,0 +1,13 @@
+Embed the file "embed_six.bin" as limited with limit 3.
+Say Size of limited.
+Say Element at 2 in limited.
+Embed the file "embed_six.bin" as wrapped with limit 2 with prefix 1 with suffix 9 10.
+Say Size of wrapped.
+Say Element at 0 in wrapped.
+Say Element at 3 in wrapped.
+Embed the file "embed_empty.bin" as fallback with if empty 7 8.
+Say Size of fallback.
+Say Element at 1 in fallback.
+Embed the file "embed_six.bin" as wide with limit 2 with elements of integer.
+Say Size of wide.
+Say Element at 1 in wide.

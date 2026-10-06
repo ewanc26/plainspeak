@@ -1,0 +1,1 @@
+error: line 2: Embed cannot include the empty file "../embed_empty.bin" without an if empty clause

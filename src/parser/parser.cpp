@@ -383,15 +383,48 @@ Stmt *Parser::parseEmbed() {
     std::string path = advance().text;
     expectWord("as");
     std::string name = expectIdentName();
+    // C23 embed parameters: limit N, prefix/suffix/if empty lists of byte values.
+    std::optional<std::size_t> limit;
+    std::vector<unsigned char> prefix, suffix, ifEmpty;
+    bool hasIfEmpty = false;
+    std::optional<TypeSpec> elementTypeSpec;
+    auto byteList = [&](std::vector<unsigned char> &into) {
+        if (peek().kind != TokKind::Number) error("an Embed byte list needs whole-number byte values");
+        while (peek().kind == TokKind::Number) {
+            long v = advance().num;
+            if (v < 0 || v > 255) error("an Embed byte value must be between 0 and 255");
+            into.push_back(static_cast<unsigned char>(v));
+        }
+    };
+    while (checkWord("with")) {
+        advance();
+        if (checkWord("limit")) {
+            advance();
+            if (peek().kind != TokKind::Number || peek().num < 0) error("an Embed limit needs a non-negative whole number");
+            limit = static_cast<std::size_t>(advance().num);
+        } else if (checkWord("prefix")) { advance(); byteList(prefix); }
+        else if (checkWord("suffix")) { advance(); byteList(suffix); }
+        else if (checkWord("if") && checkWordAt(1, "empty")) { advance(); advance(); byteList(ifEmpty); hasIfEmpty = true; }
+        else if (checkWord("elements") && checkWordAt(1, "of")) { advance(); advance(); elementTypeSpec = parseTypeSpec(); }
+        else error("expected limit, prefix, suffix, if empty, or elements of after Embed with");
+    }
     expectDot();
     std::string full = path;
     if (!path.empty() && path[0] != '/' && !baseDirectory_.empty()) full = baseDirectory_ + "/" + path;
     std::ifstream in(full, std::ios::binary);
     if (!in) error("Embed cannot read file \"" + path + "\"");
     std::vector<unsigned char> bytes((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
-    if (bytes.empty()) error("Embed cannot include the empty file \"" + path + "\"");
+    if (limit && bytes.size() > *limit) bytes.resize(*limit);
+    if (bytes.empty()) {
+        if (!hasIfEmpty) error("Embed cannot include the empty file \"" + path + "\" without an if empty clause");
+        bytes = ifEmpty;
+    } else {
+        bytes.insert(bytes.begin(), prefix.begin(), prefix.end());
+        bytes.insert(bytes.end(), suffix.begin(), suffix.end());
+    }
+    if (bytes.empty()) error("Embed produced no bytes for \"" + path + "\"");
     if (bytes.size() > (1u << 20)) error("Embed file \"" + path + "\" is larger than 1 MiB");
-    TypeSpec element{TypeSpecKind::UnsignedCharacter};
+    TypeSpec element = elementTypeSpec ? *elementTypeSpec : TypeSpec{TypeSpecKind::UnsignedCharacter};
     TypeSpec type{TypeSpecKind::Array, std::make_shared<TypeSpec>(std::move(element))};
     type.arrayBound = bytes.size();
     AggregateInitializer aggregate;
