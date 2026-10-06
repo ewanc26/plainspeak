@@ -1,0 +1,1 @@
+error[E0036]: Next variadic argument cannot request short integer, which C promotes in variadic calls; ask for the promoted type (integer or decimal) instead.

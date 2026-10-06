@@ -1,0 +1,11 @@
+Procedure average takes count as integer and variadic parameters returns decimal:
+    Start variadic arguments after count.
+    Declare total as decimal with value 0.
+    For i from 1 to count:
+        Add Next variadic argument as decimal to total.
+    End for.
+    Finish variadic arguments.
+    Return total divided by count.
+End procedure.
+Declare narrow as float with value 2.5.
+Say Call average with 3, narrow, 5.5, 2.0 done.

@@ -1,0 +1,6 @@
+Procedure total takes count as integer and variadic parameters returns integer:
+    Start variadic arguments after count.
+    Declare small as short integer with value Next variadic argument as short integer.
+    Finish variadic arguments.
+    Return count.
+End procedure.

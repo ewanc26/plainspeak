@@ -1601,6 +1601,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 diags.push_back({36, line, "A variadic argument needs a complete non-array C object type."});
                 return Type::number();
             }
+            if (type.kind == TypeKind::Boolean || (type.kind == TypeKind::Floating && type.floatingRank == FloatingRank::Float) ||
+                (type.kind == TypeKind::Integer && (type.integerRank == IntegerRank::Char || type.integerRank == IntegerRank::Short))) {
+                diags.push_back({36, line, "Next variadic argument cannot request " + typeToString(type) +
+                                           ", which C promotes in variadic calls; ask for the promoted type (integer or decimal) instead."});
+                return Type::number();
+            }
             if (analysis_) analysis_->variadicArgumentTypes[e] = type;
             return type;
         }
