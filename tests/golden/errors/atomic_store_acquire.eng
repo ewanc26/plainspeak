@@ -1,0 +1,2 @@
+Declare x as atomic integer with value 0.
+Atomic store 1 to x with acquire order.

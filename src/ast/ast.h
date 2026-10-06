@@ -112,8 +112,8 @@ struct LimitOfTypeExpr { TypeSpec type; bool maximum; };
 struct OffsetOfExpr { std::string member; TypeSpec type; };
 struct LockFreeExpr { std::string name; };
 struct CheckedArithExpr { std::string operation; Expr *lhs; Expr *rhs; std::string result; };
-struct AtomicExchangeExpr { std::string name; Expr *expr; };
-struct AtomicRmwExpr { std::string operation; std::string name; Expr *expr; };
+struct AtomicExchangeExpr { std::string name; Expr *expr; std::string order{}; };
+struct AtomicRmwExpr { std::string operation; std::string name; Expr *expr; std::string order{}; };
 struct AddressOfExpr   { std::string name; };
 struct DerefExpr       { Expr *pointer; };
 struct CastExpr        { Expr *operand; TypeSpec target; };
@@ -130,7 +130,7 @@ struct GenericSelectionExpr {
 struct ElementExpr     { Expr *index; Expr *base; };
 struct MemberExpr      { std::string name; Expr *base; };
 struct EnumeratorExpr  { std::string name; std::string enumeration; };
-struct MathCallExpr    { std::string func; Expr *arg; };
+struct MathCallExpr    { std::string func; Expr *arg; std::string order{}; };
 struct CallExpr        { std::string name; std::vector<Expr *> args; };
 struct IndirectCallExpr { Expr *callee; std::vector<Expr *> args; };
 struct PowExpr         { Expr *base; Expr *exp; };
@@ -247,8 +247,8 @@ struct StaticAssertStmt {
     std::optional<std::string> message;
 };
 struct RuntimeAssertStmt { Expr *condition; };
-struct AtomicFenceStmt {};
-struct AtomicStoreStmt { std::string name; Expr *expr; };
+struct AtomicFenceStmt { std::string order{}; };
+struct AtomicStoreStmt { std::string name; Expr *expr; std::string order{}; };
 enum class CImportKind { Header, Library };
 struct CImportStmt { CImportKind kind; std::string name; };
 

@@ -1,0 +1,2 @@
+Declare x as atomic integer with value 0.
+Say Atomic load of x with release order.

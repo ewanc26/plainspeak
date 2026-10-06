@@ -78,6 +78,7 @@ private:
     Stmt *parseStaticAssert();
     Stmt *parseRuntimeAssert();
     Stmt *parseAtomicFence();
+    std::string parseOptionalMemoryOrder();
     Stmt *parseAtomicStore();
     Stmt *parseVaStart();
     Stmt *parseVaEnd();

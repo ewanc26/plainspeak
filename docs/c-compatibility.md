@@ -227,3 +227,7 @@ The next milestones are fixed arrays plus subscript/decay/pointer arithmetic, th
 ## Memory model
 
 PlainSpeak adopts the C11 memory model for generated programs. Every atomic operation (`Atomic load`, `Atomic exchange`, `Atomic fetch ...`, atomic stores and atomic fences) is sequentially consistent. A thread's start (`thrd_create`) happens-before the start routine, and a routine's completion happens-before the matching `thrd_join` returns. Two conflicting accesses to the same non-atomic object from different threads without such an ordering are a data race and have undefined behaviour, exactly as in C; PlainSpeak does not currently detect them. `tests/golden/c_memory_model.eng` checks that three threads incrementing one atomic object always total 3000.
+
+## Memory orders
+
+Atomic fences, loads, stores, exchanges and fetch operations accept a trailing `with relaxed order`, `with acquire order`, `with release order`, `with acquire release order` or `with sequentially consistent order` clause (for example `Atomic store 1 to flag with release order.`). Omitting it keeps C11's default sequentially consistent semantics. A load may not be `release` or `acquire release`, and a store may not be `acquire` or `acquire release`.

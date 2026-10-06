@@ -1,0 +1,14 @@
+Declare flag as atomic integer with value 0.
+Declare data as atomic integer with value 0.
+Atomic store 42 to data with relaxed order.
+Atomic fence with release order.
+Atomic store 1 to flag with release order.
+Say Atomic load of flag with acquire order.
+Atomic fence with acquire order.
+Say Atomic load of data with relaxed order.
+Declare previous as integer with value 0.
+Set previous to Atomic exchange 7 with data with acquire release order.
+Say previous.
+Set previous to Atomic fetch add 3 to data with sequentially consistent order.
+Say previous.
+Say Atomic load of data.

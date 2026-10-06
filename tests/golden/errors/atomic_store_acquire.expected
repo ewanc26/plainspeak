@@ -1,0 +1,1 @@
+error[E0024]: An atomic store cannot use an acquire or acquire release order.

@@ -358,11 +358,27 @@ Stmt *Parser::parseRuntimeAssert() {
     return arena_.makeStmt(RuntimeAssertStmt{condition}, line);
 }
 
+// Optional "with <order> order" suffix; returns the C11 memory_order name or "".
+std::string Parser::parseOptionalMemoryOrder() {
+    if (!checkWord("with")) return "";
+    if (checkWordAt(1, "relaxed") && checkWordAt(2, "order")) { advance(); advance(); advance(); return "memory_order_relaxed"; }
+    if (checkWordAt(1, "acquire") && checkWordAt(2, "order")) { advance(); advance(); advance(); return "memory_order_acquire"; }
+    if (checkWordAt(1, "release") && checkWordAt(2, "order")) { advance(); advance(); advance(); return "memory_order_release"; }
+    if (checkWordAt(1, "acquire") && checkWordAt(2, "release") && checkWordAt(3, "order")) {
+        advance(); advance(); advance(); advance(); return "memory_order_acq_rel";
+    }
+    if (checkWordAt(1, "sequentially") && checkWordAt(2, "consistent") && checkWordAt(3, "order")) {
+        advance(); advance(); advance(); advance(); return "memory_order_seq_cst";
+    }
+    return "";
+}
+
 Stmt *Parser::parseAtomicFence() {
     int line = peek().line;
     advance(); advance();
+    std::string order = parseOptionalMemoryOrder();
     expectDot();
-    return arena_.makeStmt(AtomicFenceStmt{}, line);
+    return arena_.makeStmt(AtomicFenceStmt{std::move(order)}, line);
 }
 
 Stmt *Parser::parseAtomicStore() {
@@ -371,8 +387,9 @@ Stmt *Parser::parseAtomicStore() {
     Expr *expr = parseExpr();
     expectWord("to");
     std::string name = expectIdentName();
+    std::string order = parseOptionalMemoryOrder();
     expectDot();
-    return arena_.makeStmt(AtomicStoreStmt{std::move(name), expr}, line);
+    return arena_.makeStmt(AtomicStoreStmt{std::move(name), expr, std::move(order)}, line);
 }
 
 Stmt *Parser::parseVaStart() {
@@ -1923,7 +1940,9 @@ Expr *Parser::parsePrimary() {
     if (checkWord("atomic") && checkWordAt(1, "load") && checkWordAt(2, "of")) {
         int line = peek().line;
         advance(); advance(); advance();
-        return arena_.makeExpr(MathCallExpr{"atomic_load", parsePrimary()}, line);
+        Expr *operand = parsePrimary();
+        std::string order = parseOptionalMemoryOrder();
+        return arena_.makeExpr(MathCallExpr{"atomic_load", operand, std::move(order)}, line);
     }
     if (checkWord("checked") && (checkWordAt(1, "add") || checkWordAt(1, "subtract") || checkWordAt(1, "multiply"))) {
         int line = peek().line;
@@ -1940,7 +1959,9 @@ Expr *Parser::parsePrimary() {
         advance(); advance();
         Expr *value = parseExpr();
         expectWord("with");
-        return arena_.makeExpr(AtomicExchangeExpr{expectIdentName(), value}, line);
+        std::string target = expectIdentName();
+        std::string order = parseOptionalMemoryOrder();
+        return arena_.makeExpr(AtomicExchangeExpr{std::move(target), value, std::move(order)}, line);
     }
     if (checkWord("atomic") && checkWordAt(1, "fetch") &&
         (checkWordAt(2, "add") || checkWordAt(2, "subtract") || checkWordAt(2, "and") ||
@@ -1950,7 +1971,9 @@ Expr *Parser::parsePrimary() {
         std::string operation = advance().text;
         Expr *value = parseExpr();
         expectWord("to");
-        return arena_.makeExpr(AtomicRmwExpr{std::move(operation), expectIdentName(), value}, line);
+        std::string target = expectIdentName();
+        std::string order = parseOptionalMemoryOrder();
+        return arena_.makeExpr(AtomicRmwExpr{std::move(operation), std::move(target), value, std::move(order)}, line);
     }
     if (checkWord("list") && checkWordAt(1, "with")) {
         int line = peek().line;

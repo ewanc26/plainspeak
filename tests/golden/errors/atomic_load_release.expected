@@ -1,0 +1,1 @@
+error[E0024]: An atomic load cannot use a release or acquire release order.

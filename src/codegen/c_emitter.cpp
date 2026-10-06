@@ -438,10 +438,11 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
                                node.operation == "subtract" ? "__builtin_sub_overflow" : "__builtin_mul_overflow") +
                    "(" + emitRawExpr(node.lhs, analysis) + ", " + emitRawExpr(node.rhs, analysis) + ", &" + mangle(node.result) + ")";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
-            return "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
+            return node.order.empty() ? "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")" : "atomic_exchange_explicit(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ", " + node.order + ")";
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
             std::string fn = "atomic_fetch_" + node.operation;
             if (node.operation == "subtract") fn = "atomic_fetch_sub";
+            if (!node.order.empty()) return fn + "_explicit(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ", " + node.order + ")";
             return fn + "(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")";
         } else if constexpr (std::is_same_v<T, IndirectCallExpr>) {
             std::string call = "(" + emitRawExpr(node.callee, analysis) + ")(";
@@ -616,10 +617,11 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
         } else if constexpr (std::is_same_v<T, CheckedArithExpr>) {
             return "ps_int((long)" + emitRawExpr(e, analysis) + ")";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
-            return boxRaw("atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")", exprType(e, analysis));
+            return boxRaw(node.order.empty() ? "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")" : "atomic_exchange_explicit(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ", " + node.order + ")", exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
             std::string fn = "atomic_fetch_" + node.operation;
             if (node.operation == "subtract") fn = "atomic_fetch_sub";
+            if (!node.order.empty()) return boxRaw(fn + "_explicit(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ", " + node.order + ")", exprType(e, analysis));
             return boxRaw(fn + "(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")", exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, MathCallExpr>) {
             static const std::unordered_map<std::string, std::string> mathFn = {
@@ -631,7 +633,12 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             if (node.func == "imaginary") return "ps_double(cimag(" + emitRawExpr(node.arg, analysis) + "))";
             if (node.func == "magnitude") return "ps_double(cabs(" + emitRawExpr(node.arg, analysis) + "))";
             if (node.func == "conjugate") return "conj(" + emitRawExpr(node.arg, analysis) + ")";
-            if (node.func == "atomic_load") return boxRaw("atomic_load(&" + emitRawExpr(node.arg, analysis) + ")", exprType(e, analysis));
+            if (node.func == "atomic_load") {
+                std::string load = node.order.empty()
+                    ? "atomic_load(&" + emitRawExpr(node.arg, analysis) + ")"
+                    : "atomic_load_explicit(&" + emitRawExpr(node.arg, analysis) + ", " + node.order + ")";
+                return boxRaw(load, exprType(e, analysis));
+            }
             if (node.func == "isfinite" || node.func == "isnan" || node.func == "isinf" ||
                 node.func == "isnormal" || node.func == "signbit") {
                 return "ps_int((long)" + node.func + "(ps_as_double(" + emitBoxedExpr(node.arg, analysis) + ")))";
@@ -826,10 +833,15 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
         } else if constexpr (std::is_same_v<T, RuntimeAssertStmt>) {
             out << indent << "assert(" << emitRawExpr(node.condition, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, AtomicFenceStmt>) {
-            out << indent << "atomic_thread_fence(memory_order_seq_cst);\n";
+            out << indent << "atomic_thread_fence(" << (node.order.empty() ? std::string("memory_order_seq_cst") : node.order) << ");\n";
         } else if constexpr (std::is_same_v<T, AtomicStoreStmt>) {
-            out << indent << "atomic_store(&" << mangle(node.name) << ", "
-                << emitRawExpr(node.expr, analysis) << ");\n";
+            if (node.order.empty()) {
+                out << indent << "atomic_store(&" << mangle(node.name) << ", "
+                    << emitRawExpr(node.expr, analysis) << ");\n";
+            } else {
+                out << indent << "atomic_store_explicit(&" << mangle(node.name) << ", "
+                    << emitRawExpr(node.expr, analysis) << ", " << node.order << ");\n";
+            }
         } else if constexpr (std::is_same_v<T, VaStartStmt>) {
             out << indent << "va_start(ps__va_args, " << mangle(node.lastParameter) << ");\n";
         } else if constexpr (std::is_same_v<T, VaEndStmt>) {

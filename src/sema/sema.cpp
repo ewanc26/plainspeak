@@ -2291,6 +2291,8 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, MathCallExpr>) {
             Type arg = inferExpr(node.arg, line, diags);
             if (node.func == "atomic_load") {
+                if (node.order == "memory_order_release" || node.order == "memory_order_acq_rel")
+                    diags.push_back({24, line, "An atomic load cannot use a release or acquire release order."});
                 if (!std::holds_alternative<VarRef>(node.arg->node) || !arg.qualifiers.isAtomic) {
                     diags.push_back({24, line, "Atomic load needs a named atomic native object."});
                 }
@@ -2406,10 +2408,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({3, s->line, "An assertion needs a scalar condition."});
         }
         else if constexpr (std::is_same_v<T, AtomicFenceStmt>) {
-            // This spelling has no operands; lowering supplies C11's default
-            // sequentially consistent fence semantics.
+            // The order, when absent, lowers as C11's default sequentially consistent fence.
         }
         else if constexpr (std::is_same_v<T, AtomicStoreStmt>) {
+            if (node.order == "memory_order_acquire" || node.order == "memory_order_acq_rel")
+                diags.push_back({24, s->line, "An atomic store cannot use an acquire or acquire release order."});
             Type value = inferExpr(node.expr, s->line, diags);
             auto [symbol, found] = lookupVar(node.name, s->line, diags);
             if (!found || !symbol.nativeObject || !symbol.type.qualifiers.isAtomic) {
