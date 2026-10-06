@@ -1,0 +1,5 @@
+Define the macro gone:
+    1
+End macro.
+Undefine the macro gone.
+Say Substitute gone done.

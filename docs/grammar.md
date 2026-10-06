@@ -740,3 +740,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Error directive
 
 `Error "message".` stops compilation with the given message, like C's `#error`. It only fires when its statement is reached in a compile-time-selected branch, so `Compile if FEATURE is not defined: Error "FEATURE is required". End compile if.` checks build configuration.
+
+## Function-like macros
+
+`Define the macro square taking value:` ... `End macro.` defines a macro; `Expand square with 3 done.` splices a statement body and `Substitute square with (2 plus 3) done` splices an expression body, wrapped in parentheses. Arguments are single tokens or parenthesised groups. Inside a body, `stringize param` produces a string literal of the argument and `paste a and b` joins two tokens into one identifier. Macro bodies may use other macros, which expand until none remain (up to 16 rounds). `Undefine the macro NAME.` removes a macro. A macro with no `taking` clause is object-like: `Substitute NAME done`.

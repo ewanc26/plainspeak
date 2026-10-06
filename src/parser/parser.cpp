@@ -107,6 +107,8 @@ bool wordIs(const std::vector<Token> &t, std::size_t i, const char *w) {
 // parameter received at least one token (the __VA_OPT__ capability).
 void Parser::expandMacros(std::vector<Token> &tokens) {
     std::unordered_map<std::string, MacroDef> macros;
+    for (int round = 0; round < 16; ++round) {
+    bool expanded = false;
     std::vector<Token> out;
     for (std::size_t i = 0; i < tokens.size(); ++i) {
         if (wordIs(tokens, i, "define") && wordIs(tokens, i + 1, "the") && wordIs(tokens, i + 2, "macro")) {
@@ -143,26 +145,53 @@ void Parser::expandMacros(std::vector<Token> &tokens) {
             macros[name] = std::move(def);
             continue;
         }
-        if (wordIs(tokens, i, "expand") && i + 1 < tokens.size() && tokens[i + 1].kind == TokKind::Ident) {
+        if (wordIs(tokens, i, "undefine") && wordIs(tokens, i + 1, "the") && wordIs(tokens, i + 2, "macro") &&
+            i + 4 < tokens.size() && tokens[i + 3].kind == TokKind::Ident && tokens[i + 4].kind == TokKind::Dot) {
+            macros.erase(tokens[i + 3].text);
+            i += 4;
+            continue;
+        }
+        const bool statementForm = wordIs(tokens, i, "expand");
+        if ((statementForm || wordIs(tokens, i, "substitute")) && i + 1 < tokens.size() && tokens[i + 1].kind == TokKind::Ident) {
+            if (macros.count(tokens[i + 1].text) == 0)
+                throw ParseError("line " + std::to_string(tokens[i].line) + ": unknown macro \"" + tokens[i + 1].text + "\"");
+            expanded = true;
             int line = tokens[i].line;
             auto found = macros.find(tokens[i + 1].text);
-            if (found == macros.end())
-                throw ParseError("line " + std::to_string(line) + ": unknown macro \"" + tokens[i + 1].text + "\"");
             const MacroDef &def = found->second;
             i += 2;
             if (wordIs(tokens, i, "with")) ++i;
-            std::vector<Token> args;
+            // Each argument is one token, or a parenthesised group of tokens.
+            std::vector<std::vector<Token>> args;
             while (i < tokens.size() && !wordIs(tokens, i, "done")) {
                 if (tokens[i].kind == TokKind::Eof)
                     throw ParseError("line " + std::to_string(line) + ": reached end of file while looking for \"done\"");
-                args.push_back(tokens[i++]);
+                if (tokens[i].kind == TokKind::LParen) {
+                    std::vector<Token> group;
+                    int depth = 0;
+                    for (; i < tokens.size(); ++i) {
+                        if (tokens[i].kind == TokKind::Eof)
+                            throw ParseError("line " + std::to_string(line) + ": unbalanced parentheses in a macro argument");
+                        group.push_back(tokens[i]);
+                        if (tokens[i].kind == TokKind::LParen) ++depth;
+                        if (tokens[i].kind == TokKind::RParen && --depth == 0) { ++i; break; }
+                    }
+                    args.push_back(std::move(group));
+                } else {
+                    args.push_back(std::vector<Token>{tokens[i++]});
+                }
             }
-            if (i + 1 >= tokens.size() || tokens[i + 1].kind != TokKind::Dot)
-                throw ParseError("line " + std::to_string(line) + ": expected \".\" after \"done\"");
-            ++i;
+            if (i >= tokens.size()) throw ParseError("line " + std::to_string(line) + ": reached end of file while looking for \"done\"");
+            if (statementForm) {
+                if (i + 1 >= tokens.size() || tokens[i + 1].kind != TokKind::Dot)
+                    throw ParseError("line " + std::to_string(line) + ": expected \".\" after \"done\"");
+                ++i;
+            }
+            if (!statementForm) out.push_back(Token{TokKind::LParen, "(", "", 0, line});
             if (args.size() < def.params.size() || (def.variadicName.empty() && args.size() != def.params.size()))
                 throw ParseError("line " + std::to_string(line) + ": macro \"" + found->first + "\" received the wrong number of arguments");
-            std::vector<Token> rest(args.begin() + def.params.size(), args.end());
+            std::vector<Token> rest;
+            for (std::size_t k = def.params.size(); k < args.size(); ++k) rest.insert(rest.end(), args[k].begin(), args[k].end());
             for (std::size_t b = 0; b < def.body.size(); ++b) {
                 const Token &bt = def.body[b];
                 if (wordIs(def.body, b, "variadic") && wordIs(def.body, b + 1, "option") &&
@@ -185,10 +214,56 @@ void Parser::expandMacros(std::vector<Token> &tokens) {
                     if (b < def.body.size() && def.body[b].kind == TokKind::Dot) {} else --b;
                     continue;
                 }
+                auto argumentFor = [&](const Token &t, std::vector<Token> &into) -> bool {
+                    if (t.kind != TokKind::Ident) return false;
+                    for (std::size_t p = 0; p < def.params.size(); ++p)
+                        if (t.text == def.params[p]) { into.insert(into.end(), args[p].begin(), args[p].end()); return true; }
+                    if (!def.variadicName.empty() && t.text == def.variadicName) {
+                        into.insert(into.end(), rest.begin(), rest.end());
+                        return true;
+                    }
+                    return false;
+                };
+                auto spelling = [](const Token &t) -> std::string {
+                    switch (t.kind) {
+                        case TokKind::Ident: return t.sourceText.empty() ? t.text : t.sourceText;
+                        case TokKind::Number: return std::to_string(t.num);
+                        case TokKind::Float: { std::string f = std::to_string(t.fval); return f; }
+                        case TokKind::String: return t.text;
+                        default: return t.text;
+                    }
+                };
+                if (wordIs(def.body, b, "stringize") && b + 1 < def.body.size()) {
+                    std::vector<Token> parts;
+                    if (!argumentFor(def.body[b + 1], parts)) parts.push_back(def.body[b + 1]);
+                    std::string text;
+                    for (std::size_t k = 0; k < parts.size(); ++k) {
+                        if (k) text += " ";
+                        text += spelling(parts[k]);
+                    }
+                    Token str{TokKind::String, text, "", 0, line};
+                    out.push_back(str);
+                    ++b;
+                    continue;
+                }
+                if (wordIs(def.body, b, "paste") && b + 3 < def.body.size() && wordIs(def.body, b + 2, "and")) {
+                    std::vector<Token> left, right;
+                    if (!argumentFor(def.body[b + 1], left)) left.push_back(def.body[b + 1]);
+                    if (!argumentFor(def.body[b + 3], right)) right.push_back(def.body[b + 3]);
+                    std::string joined;
+                    for (const Token &t : left) joined += spelling(t);
+                    for (const Token &t : right) joined += spelling(t);
+                    std::string lower = joined;
+                    for (char &c : lower) c = static_cast<char>(std::tolower(static_cast<unsigned char>(c)));
+                    Token ident{TokKind::Ident, lower, joined, 0, line};
+                    out.push_back(ident);
+                    b += 3;
+                    continue;
+                }
                 bool replaced = false;
                 if (bt.kind == TokKind::Ident) {
                     for (std::size_t p = 0; p < def.params.size(); ++p) {
-                        if (bt.text == def.params[p]) { out.push_back(args[p]); replaced = true; break; }
+                        if (bt.text == def.params[p]) { out.insert(out.end(), args[p].begin(), args[p].end()); replaced = true; break; }
                     }
                     if (!replaced && !def.variadicName.empty() && bt.text == def.variadicName) {
                         out.insert(out.end(), rest.begin(), rest.end());
@@ -197,11 +272,14 @@ void Parser::expandMacros(std::vector<Token> &tokens) {
                 }
                 if (!replaced) out.push_back(bt);
             }
+            if (!statementForm) out.push_back(Token{TokKind::RParen, ")", "", 0, line});
             continue;
         }
         out.push_back(tokens[i]);
     }
     tokens = std::move(out);
+    if (!expanded) break;
+    }
 }
 
 std::vector<Stmt *> Parser::parseProgram() {

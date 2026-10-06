@@ -1,0 +1,24 @@
+Define the macro square taking value:
+    value times value
+End macro.
+Define the macro twice taking first:
+    Substitute square with first done plus Substitute square with first done
+End macro.
+Define the macro report taking label and value:
+    Say stringize label.
+    Say value.
+End macro.
+Define the macro variable_named taking prefix and suffix:
+    paste prefix and suffix
+End macro.
+Say Substitute square with 7 done.
+Say Substitute twice with 3 done.
+Expand report with total 12 done.
+Declare paste_demo_one as integer with value 5.
+Say Substitute variable_named with paste_demo_ one done.
+Define the macro answer:
+    42
+End macro.
+Say Substitute answer done.
+Say Substitute square with (2 plus 3) done.
+Undefine the macro answer.

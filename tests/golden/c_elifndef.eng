@@ -1,0 +1,7 @@
+Compile if FEATURE_A is defined:
+    Say "a".
+Elif FEATURE_B is not defined:
+    Say "b missing".
+Otherwise:
+    Say "neither".
+End compile if.
