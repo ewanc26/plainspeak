@@ -110,10 +110,11 @@ struct SizeOfExpr      { Expr *operand; };
 struct AlignOfTypeExpr { TypeSpec type; };
 struct LimitOfTypeExpr { TypeSpec type; bool maximum; };
 struct OffsetOfExpr { std::string member; TypeSpec type; };
-struct LockFreeExpr { std::string name; };
+struct LockFreeExpr { std::string name; std::optional<TypeSpec> type{}; };
 struct ComplexValueExpr { Expr *real; Expr *imaginary; };
 struct DefinedExpr { std::string name; };
 struct CheckedArithExpr { std::string operation; Expr *lhs; Expr *rhs; std::string result; };
+struct AtomicCompareExchangeExpr { std::string name; std::string expected; Expr *desired; std::string order{}; };
 struct AtomicExchangeExpr { std::string name; Expr *expr; std::string order{}; };
 struct AtomicRmwExpr { std::string operation; std::string name; Expr *expr; std::string order{}; };
 struct AddressOfExpr   { std::string name; };
@@ -144,7 +145,7 @@ struct VaArgExpr       { TypeSpec type; std::string source{}; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
-                              AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, DefinedExpr, ComplexValueExpr, CheckedArithExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
+                              AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, DefinedExpr, ComplexValueExpr, CheckedArithExpr, AtomicCompareExchangeExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
                               CompoundLiteralExpr, GenericSelectionExpr, ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr, VaArgExpr>;
 struct Expr { ExprNode node; int line; };
@@ -256,7 +257,7 @@ struct StaticAssertStmt {
     std::optional<std::string> message;
 };
 struct RuntimeAssertStmt { Expr *condition; };
-struct AtomicFenceStmt { std::string order{}; };
+struct AtomicFenceStmt { std::string order{}; bool signal = false; };
 struct AtomicStoreStmt { std::string name; Expr *expr; std::string order{}; };
 enum class CImportKind { Header, Library };
 struct CImportStmt { CImportKind kind; std::string name; };

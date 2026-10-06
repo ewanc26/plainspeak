@@ -1,0 +1,7 @@
+Declare counter as atomic integer with value 5.
+Declare expected as integer with value 5.
+Say Atomic compare exchange counter expecting expected with 9.
+Say Atomic load of counter.
+Say Atomic compare exchange counter expecting expected with 20 with release order.
+Say expected.
+Say Atomic load of counter.

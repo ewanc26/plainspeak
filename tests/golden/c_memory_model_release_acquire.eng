@@ -1,0 +1,17 @@
+Import the C function thrd_create taking a pointer to unsigned long integer and a pointer to function taking pointer to void returning integer and a pointer to void, returning an integer, from the header "threads.h".
+Import the C function thrd_join taking an unsigned long integer and a pointer to integer, returning an integer, from the header "threads.h".
+Declare payload as integer with value 0.
+Declare ready as atomic integer with value 0.
+Procedure producer takes arg as pointer to void returns integer:
+    Set payload to 42.
+    Atomic store 1 to ready with release order.
+    Return 0.
+End procedure.
+Declare worker as unsigned long integer.
+Declare status as integer.
+Set status to Call thrd_create with Address of worker, Address of producer, null pointer done.
+While Atomic load of ready with acquire order is equal to 0:
+    Set status to 0.
+End while.
+Say payload.
+Set status to Call thrd_join with worker, null pointer done.

@@ -2296,6 +2296,15 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             return Type::number();
         }
         else if constexpr (std::is_same_v<T, LockFreeExpr>) {
+            if (node.type) {
+                Type queried = resolveTypeSpec(*node.type);
+                if (analysis_) analysis_->typeOperands[e] = queried;
+                if (!(queried.isInteger() || queried.kind == TypeKind::Boolean || queried.kind == TypeKind::Floating ||
+                      queried.isPointer() || queried.kind == TypeKind::Enumeration)) {
+                    diags.push_back({24, line, "Is lock free type needs an integer, floating, boolean, enumeration or pointer type, not " + typeToString(queried) + "."});
+                }
+                return Type::integer(IntegerRank::Int);
+            }
             auto [symbol, found] = lookupVar(node.name, line, diags);
             if (!found || !symbol.nativeObject || !symbol.type.qualifiers.isAtomic) {
                 diags.push_back({24, line, "Is lock free needs an atomic native object, not \"" + node.name + "\"."});
@@ -2319,6 +2328,24 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             if (!found || !symbol.nativeObject || !symbol.type.isInteger() ||
                 !isModifiableObjectType(symbol.type) || symbol.type.qualifiers.isAtomic)
                 diags.push_back({3, line, "Checked " + node.operation + " needs a modifiable native integer object to store into, not \"" + node.result + "\"."});
+            return Type::integer(IntegerRank::Int);
+        }
+        else if constexpr (std::is_same_v<T, AtomicCompareExchangeExpr>) {
+            Type desired = inferExpr(node.desired, line, diags);
+            auto [atomicSymbol, atomicFound] = lookupVar(node.name, line, diags);
+            auto [expectedSymbol, expectedFound] = lookupVar(node.expected, line, diags);
+            if (!atomicFound || !atomicSymbol.nativeObject || !atomicSymbol.type.qualifiers.isAtomic) {
+                diags.push_back({24, line, "Atomic compare exchange needs a named atomic native object."});
+                return Type::integer(IntegerRank::Int);
+            }
+            Type target = stripTopQualifiers(atomicSymbol.type);
+            if (!expectedFound || !expectedSymbol.nativeObject || expectedSymbol.type.qualifiers.isAtomic ||
+                !isModifiableObjectType(expectedSymbol.type) ||
+                typeToString(stripTopQualifiers(expectedSymbol.type)) != typeToString(target)) {
+                diags.push_back({24, line, "Atomic compare exchange needs a modifiable non-atomic native object of the same type as \"" + node.name + "\" to hold the expected value."});
+            }
+            if (!assignableExprTo(target, desired, node.desired))
+                diags.push_back({3, line, "Atomic compare exchange desired value does not match the type of \"" + node.name + "\"."});
             return Type::integer(IntegerRank::Int);
         }
         else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {

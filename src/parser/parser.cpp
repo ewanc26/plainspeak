@@ -343,14 +343,14 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "procedure") return parseProcedure();
     if (isReturnKeyword(t.text)) return parseReturn();
     if (t.text == "assert") return checkWordAt(1, "that") ? parseStaticAssert() : parseRuntimeAssert();
-    if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
+    if (t.text == "atomic" && (checkWordAt(1, "fence") || (checkWordAt(1, "signal") && checkWordAt(2, "fence")))) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
     if (t.text == "start" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaStart();
     if (t.text == "copy" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaCopy();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments") && checkWordAt(3, "copy")) return parseVaCopyEnd();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaEnd();
     if (t.text == "import" && (checkWordAt(1, "c") || (checkWordAt(1, "the") && checkWordAt(2, "c")))) return parseCImport();
-    if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
+    if (t.text == "atomic" && (checkWordAt(1, "fence") || (checkWordAt(1, "signal") && checkWordAt(2, "fence")))) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
@@ -518,10 +518,13 @@ std::string Parser::parseOptionalMemoryOrder() {
 
 Stmt *Parser::parseAtomicFence() {
     int line = peek().line;
-    advance(); advance();
+    advance();
+    bool signal = false;
+    if (checkWord("signal")) { advance(); signal = true; }
+    advance();
     std::string order = parseOptionalMemoryOrder();
     expectDot();
-    return arena_.makeStmt(AtomicFenceStmt{std::move(order)}, line);
+    return arena_.makeStmt(AtomicFenceStmt{std::move(order), signal}, line);
 }
 
 Stmt *Parser::parseAtomicStore() {
@@ -712,7 +715,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "copy" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaCopy();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments") && checkWordAt(3, "copy")) return parseVaCopyEnd();
     if (t.text == "finish" && checkWordAt(1, "variadic") && checkWordAt(2, "arguments")) return parseVaEnd();
-    if (t.text == "atomic" && checkWordAt(1, "fence")) return parseAtomicFence();
+    if (t.text == "atomic" && (checkWordAt(1, "fence") || (checkWordAt(1, "signal") && checkWordAt(2, "fence")))) return parseAtomicFence();
     if (t.text == "atomic" && checkWordAt(1, "store")) return parseAtomicStore();
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
@@ -2156,6 +2159,10 @@ Expr *Parser::parsePrimary() {
     if (checkWord("is") && checkWordAt(1, "lock") && checkWordAt(2, "free")) {
         int line = peek().line;
         advance(); advance(); advance();
+        if (checkWord("type")) {
+            advance();
+            return arena_.makeExpr(LockFreeExpr{"", parseTypeSpec()}, line);
+        }
         return arena_.makeExpr(LockFreeExpr{expectIdentName()}, line);
     }
     if (checkWord("atomic") && checkWordAt(1, "load") && checkWordAt(2, "of")) {
@@ -2183,6 +2190,17 @@ Expr *Parser::parsePrimary() {
         Expr *rhs = parsePrimary();
         expectWord("into");
         return arena_.makeExpr(CheckedArithExpr{std::move(operation), lhs, rhs, expectIdentName()}, line);
+    }
+    if (checkWord("atomic") && checkWordAt(1, "compare") && checkWordAt(2, "exchange")) {
+        int line = peek().line;
+        advance(); advance(); advance();
+        std::string target = expectIdentName();
+        expectWord("expecting");
+        std::string expected = expectIdentName();
+        expectWord("with");
+        Expr *desired = parsePrimary();
+        std::string order = parseOptionalMemoryOrder();
+        return arena_.makeExpr(AtomicCompareExchangeExpr{std::move(target), std::move(expected), desired, std::move(order)}, line);
     }
     if (checkWord("atomic") && checkWordAt(1, "exchange")) {
         int line = peek().line;

@@ -1,0 +1,3 @@
+Atomic signal fence with acquire order.
+Atomic fence.
+Say "fenced".

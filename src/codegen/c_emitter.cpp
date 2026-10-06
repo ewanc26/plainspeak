@@ -441,6 +441,12 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             return std::string(node.operation == "add" ? "__builtin_add_overflow" :
                                node.operation == "subtract" ? "__builtin_sub_overflow" : "__builtin_mul_overflow") +
                    "(" + emitRawExpr(node.lhs, analysis) + ", " + emitRawExpr(node.rhs, analysis) + ", &" + mangle(node.result) + ")";
+        } else if constexpr (std::is_same_v<T, AtomicCompareExchangeExpr>) {
+            std::string order = node.order.empty() ? "memory_order_seq_cst" : node.order;
+            std::string failure = order == "memory_order_release" ? "memory_order_relaxed" :
+                                  order == "memory_order_acq_rel" ? "memory_order_acquire" : order;
+            return "atomic_compare_exchange_strong_explicit(&" + mangle(node.name) + ", &" + mangle(node.expected) + ", " +
+                   emitRawExpr(node.desired, analysis) + ", " + order + ", " + failure + ")";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return node.order.empty() ? "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")" : "atomic_exchange_explicit(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ", " + node.order + ")";
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
@@ -617,11 +623,18 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             std::string aggregate = type.kind == TypeKind::Union ? "union " : "struct ";
             return "ps_int((long)offsetof(" + aggregate + mangle(type.tag) + ", " + mangle(node.member) + "))";
         } else if constexpr (std::is_same_v<T, LockFreeExpr>) {
+            if (node.type) return "ps_int((long)__atomic_is_lock_free(sizeof(" + emitCType(typeOperand(e, analysis), &analysis) + "), 0))";
             return "ps_int((long)atomic_is_lock_free(&" + mangle(node.name) + "))";
         } else if constexpr (std::is_same_v<T, ComplexValueExpr>) {
             return "__builtin_complex((double)(" + emitRawExpr(node.real, analysis) + "), (double)(" + emitRawExpr(node.imaginary, analysis) + "))";
         } else if constexpr (std::is_same_v<T, CheckedArithExpr>) {
             return "ps_int((long)" + emitRawExpr(e, analysis) + ")";
+        } else if constexpr (std::is_same_v<T, AtomicCompareExchangeExpr>) {
+            std::string order = node.order.empty() ? "memory_order_seq_cst" : node.order;
+            std::string failure = order == "memory_order_release" ? "memory_order_relaxed" :
+                                  order == "memory_order_acq_rel" ? "memory_order_acquire" : order;
+            return "ps_int((long)atomic_compare_exchange_strong_explicit(&" + mangle(node.name) + ", &" + mangle(node.expected) + ", " +
+                   emitRawExpr(node.desired, analysis) + ", " + order + ", " + failure + "))";
         } else if constexpr (std::is_same_v<T, AtomicExchangeExpr>) {
             return boxRaw(node.order.empty() ? "atomic_exchange(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ")" : "atomic_exchange_explicit(&" + mangle(node.name) + ", " + emitRawExpr(node.expr, analysis) + ", " + node.order + ")", exprType(e, analysis));
         } else if constexpr (std::is_same_v<T, AtomicRmwExpr>) {
@@ -839,7 +852,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
         } else if constexpr (std::is_same_v<T, RuntimeAssertStmt>) {
             out << indent << "assert(" << emitRawExpr(node.condition, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, AtomicFenceStmt>) {
-            out << indent << "atomic_thread_fence(" << (node.order.empty() ? std::string("memory_order_seq_cst") : node.order) << ");\n";
+            out << indent << (node.signal ? "atomic_signal_fence(" : "atomic_thread_fence(") << (node.order.empty() ? std::string("memory_order_seq_cst") : node.order) << ");\n";
         } else if constexpr (std::is_same_v<T, AtomicStoreStmt>) {
             if (node.order.empty()) {
                 out << indent << "atomic_store(&" << mangle(node.name) << ", "

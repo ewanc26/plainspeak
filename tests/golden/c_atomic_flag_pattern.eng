@@ -1,0 +1,9 @@
+Declare flag as atomic boolean with value false.
+Declare was_set as integer.
+Set was_set to Atomic exchange 1 with flag.
+Say was_set.
+Set was_set to Atomic exchange 1 with flag.
+Say was_set.
+Atomic store 0 to flag.
+Set was_set to Atomic exchange 1 with flag.
+Say was_set.

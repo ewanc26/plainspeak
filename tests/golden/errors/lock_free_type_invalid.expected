@@ -1,0 +1,1 @@
+error[E0024]: Is lock free type needs an integer, floating, boolean, enumeration or pointer type, not structure missing.

@@ -162,13 +162,13 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 
 | ID | Status |
 |---|---|
-| `concurrency.atomics` | foundation |
-| `concurrency.fences` | planned |
-| `concurrency.lock-free` | planned |
+| `concurrency.atomics` | implemented | Native C11 _Atomic scalar/pointer objects support atomic load, store, exchange, compare-exchange (strong, with an expected-value object) and fetch add/subtract/and/or/xor, increment/decrement RMW, explicit memory orders on every operation and flag-style test-and-set through atomic booleans; invalid orders and mismatched types are rejected. |
+| `concurrency.fences` | implemented | Atomic fence and Atomic signal fence lower to atomic_thread_fence and atomic_signal_fence with C11 seq_cst by default or an explicit relaxed/acquire/release/acquire release/sequentially consistent order clause. |
+| `concurrency.lock-free` | implemented | Named atomic objects (Is lock free NAME) and types (Is lock free type T) can be queried through C11 atomic_is_lock_free and the compiler lock-free builtin. |
 | `concurrency.threads` | implemented | Typed C imports with function-pointer parameters cover the C11 <threads.h> thread lifecycle: thrd_create, thrd_join with the start routine result, thrd_detach, thrd_exit (a no-return import), thrd_current/thrd_equal and sleeping through the runtime ps_sleep_ms helper; threads are plain unsigned-long handles. |
 | `concurrency.thread-local` | implemented | Native declarations can request _Thread_local storage: file-scope thread-local objects are statically initialised from constant initializers so every thread starts with its own initial copy, block-scope thread-local objects require static storage, and non-constant initializers are rejected (E0042); threaded coverage checks per-thread values. |
 | `concurrency.sync` | implemented | The runtime exposes C11 mutex (plain, recursive and timed), condition-variable (including timed waits) and call-once handles over <threads.h> that programs bind with typed imports from plainspeak_runtime.h and use with thrd_create/thrd_join. |
-| `concurrency.memory-model` | foundation | PlainSpeak adopts the C11 memory model (documented in docs/c-compatibility.md): atomic operations are sequentially consistent, unsynchronised conflicting non-atomic accesses are data races, and thread create/join establish happens-before; executable coverage is a three-thread atomic counter. Explicit memory orders, release/acquire fences and race detection remain pending. |
+| `concurrency.memory-model` | implemented | PlainSpeak adopts the C11 memory model (documented in docs/c-compatibility.md): atomic operations default to sequentially consistent with explicit relaxed/acquire/release/acq_rel orders available, thread create/join and release-acquire pairs establish happens-before (covered by a message-passing test), and unsynchronised conflicting non-atomic accesses are data races with undefined behaviour as in C. |
 
 Native `atomic` objects currently lower to real C11 `_Atomic` objects. Ordinary reads, simple assignments and stores through atomic-qualified pointers therefore use the C compiler's native default atomic semantics. This is only a foundation: explicit memory-order selection, the atomic RMW/API families, fences, lock-free queries, thread-local storage, threads/synchronization, and full happens-before/data-race conformance remain pending.
 
@@ -192,7 +192,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.signal` | foundation | Typed C constant and function imports can bind standard `<signal.h>` names such as `SIGTERM`; signal-handler typing and complete signal delivery semantics remain pending. |
 | `lib.stdalign` | foundation | Native `_Alignas` declaration requests are tested; `<stdalign.h>` macro bindings and complete compatibility remain pending. |
 | `lib.stdarg` | foundation | Typed variadic Procedures use `<stdarg.h>` `va_list`, `va_start`, `va_arg`, `va_copy`, and `va_end` through deterministic PlainSpeak operations; default argument promotions, `va_end` control-flow obligations and the remaining header surface remain pending. |
-| `lib.stdatomic` | planned | `<stdatomic.h>` |
+| `lib.stdatomic` | implemented | atomic_load, atomic_store, atomic_exchange, atomic_compare_exchange_strong, atomic_fetch_add/sub/and/or/xor, atomic_thread_fence, atomic_signal_fence and atomic_is_lock_free bindings use <stdatomic.h> with explicit memory orders; atomic_init is the declaration initializer, and atomic_flag test-and-set/clear are the exchange/store forms on atomic booleans. |
 | `lib.stdbool` | foundation | `<stdbool.h>` / C23 boolean spellings |
 | `lib.stddef` | foundation | Native `size type` and `difference type` declarations exist; remaining `<stddef.h>` types/macros and exact ABI bindings remain pending. |
 | `lib.stdint` | foundation | `<stdint.h>` exact-width and least/fast signed and unsigned integer declarations lower to the corresponding `intN_t`/`uintN_t` and `int_leastN_t`/`uint_leastN_t`/`int_fastN_t`/`uint_fastN_t` types; limit macros and the remaining conversion surface remain pending. |
@@ -201,7 +201,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.stdnoreturn` | foundation | `<stdnoreturn.h>` can be imported, and typed Procedures can request the C11/C23 noreturn function specifier with `with no return`; the complete macro compatibility and all declaration contexts remain pending. |
 | `lib.string` | foundation | Typed C imports can bind string.h strlen, strcmp, strncmp, strcpy, strcat, strchr and memset with string-literal and native character-array decay to character pointers, including in-place mutation of native arrays; bounds checking and the remaining string surface remain pending. |
 | `lib.tgmath` | foundation | The <tgmath.h> header can be imported and typed imports can bind its underlying real math functions; type-generic macro dispatch remains pending. |
-| `lib.threads` | foundation | Typed C imports can bind <threads.h> functions such as thrd_current and thrd_equal using thrd_t-compatible integers; thread creation, mutexes, condition variables and call_once remain pending. |
+| `lib.threads` | implemented | Typed C imports bind <threads.h> thread lifecycle functions (thrd_create/join/detach/exit/current/equal), and the runtime wraps mutexes, condition variables, call_once and sleeping as plain integer handles. |
 | `lib.time` | foundation | Typed C imports can bind time.h time with a null output pointer, clock with no arguments and difftime over integer time values; calendar conversion (struct tm), formatting and clock-type aliases remain pending. |
 | `lib.uchar` | foundation | Typed C imports can bind C11/C23 <uchar.h> conversion functions such as c16rtomb with character-pointer and opaque state-pointer arguments; char16_t/char32_t/char8_t types and UTF literals remain pending. |
 | `lib.wchar` | foundation | Typed C imports can bind <wchar.h> conversion functions such as btowc and wctob with wint_t-compatible integers; wide strings, wide stream I/O and mbstate_t objects remain pending. |

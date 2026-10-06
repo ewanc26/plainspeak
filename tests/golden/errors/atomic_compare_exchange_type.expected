@@ -1,0 +1,1 @@
+error[E0024]: Atomic compare exchange needs a modifiable non-atomic native object of the same type as "counter" to hold the expected value.
