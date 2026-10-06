@@ -1,0 +1,4 @@
+Procedure twice takes value as integer returns integer defined elsewhere.
+Procedure twice takes value as integer returns decimal:
+    Return 1.5.
+End procedure.

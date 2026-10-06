@@ -242,6 +242,8 @@ struct ProcedureStmt {
     bool variadic = false;
     bool nodiscard = false;
     std::string nodiscardMessage{};
+    bool externalDefinition = false;
+    bool internalLinkage = false;
 };
 struct ReturnStmt    { Expr *expr; };
 struct CommentStmt   { std::string text; };

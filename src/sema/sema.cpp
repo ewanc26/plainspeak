@@ -1049,14 +1049,21 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         result.enumerations[enumeration->name] = EnumerationInfo{};
     }
 
+    std::unordered_set<std::string> definedProcedures;
     // Register every procedure signature before checking any body. This makes
     // source order irrelevant for calls and gives codegen enough information
     // to emit real C prototypes before definitions.
     for (Stmt *s : program) {
         auto *proc = std::get_if<ProcedureStmt>(&s->node);
         if (!proc) continue;
-        if (procTable_.count(proc->name)) {
+        auto existingSignature = procTable_.find(proc->name);
+        bool hasExisting = existingSignature != procTable_.end();
+        if (hasExisting && !proc->externalDefinition && definedProcedures.count(proc->name)) {
             result.diagnostics.push_back({18, s->line, "Procedure \"" + proc->name + "\" is already defined."});
+            continue;
+        }
+        if (proc->externalDefinition && !proc->returnType) {
+            result.diagnostics.push_back({18, s->line, "A Procedure defined elsewhere needs typed parameters and an explicit return type."});
             continue;
         }
 
@@ -1069,6 +1076,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
         signature.deprecated = proc->deprecated;
         signature.deprecationMessage = proc->deprecationMessage;
         signature.maybeUnused = proc->maybeUnused;
+        signature.internalLinkage = proc->internalLinkage;
         signature.nodiscard = proc->nodiscard;
         signature.nodiscardMessage = proc->nodiscardMessage;
         signature.returnType = typed ? resolveTypeSpec(*proc->returnType) : Type::number();
@@ -1109,6 +1117,20 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             result.diagnostics.push_back({18, s->line, "A typed Procedure cannot return an array directly; return a pointer to the array instead."});
         }
 
+        if (hasExisting) {
+            const ProcedureSignature &old = existingSignature->second;
+            bool compatible = old.nativeTyped == signature.nativeTyped && old.variadic == signature.variadic &&
+                              old.parameterTypes.size() == signature.parameterTypes.size() &&
+                              typeToString(old.returnType) == typeToString(signature.returnType);
+            for (std::size_t k = 0; compatible && k < old.parameterTypes.size(); ++k)
+                compatible = typeToString(old.parameterTypes[k]) == typeToString(signature.parameterTypes[k]);
+            if (!compatible) {
+                result.diagnostics.push_back({18, s->line, "Procedure \"" + proc->name + "\" is declared again with a different signature."});
+                continue;
+            }
+            if (proc->externalDefinition) continue;
+        }
+        if (!proc->externalDefinition) definedProcedures.insert(proc->name);
         procTable_[proc->name] = signature;
         result.procedureSignatures[proc->name] = signature;
     }
@@ -3256,6 +3278,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             --breakableDepth_;
         }
         else if constexpr (std::is_same_v<T, ProcedureStmt>) {
+            if (node.externalDefinition) return;
             auto signatureIt = procTable_.find(node.name);
             if (signatureIt == procTable_.end()) return;
             ProcedureSignature previous = currentProcedure_.value_or(ProcedureSignature{});

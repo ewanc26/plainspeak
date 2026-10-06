@@ -1,0 +1,1 @@
+error[E0041]: line 1: a library unit may only contain Procedures, types, imports and literal-initialized objects; executable statements belong in the entry unit.

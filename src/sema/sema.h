@@ -30,6 +30,7 @@ struct ProcedureSignature {
     bool maybeUnused = false;
     bool nodiscard = false;
     std::string nodiscardMessage;
+    bool internalLinkage = false;
     std::string variadicLastParameter;
 };
 

@@ -8,4 +8,5 @@
 
 std::string emitProgram(const std::vector<Stmt *> &program,
                         const AnalysisResult &analysis,
-                        const std::unordered_map<int, std::string> *sourceLines = nullptr);
+                        const std::unordered_map<int, std::string> *sourceLines = nullptr,
+                        bool emitMain = true);

@@ -1,0 +1,4 @@
+Declare shared_count with external linkage as integer.
+Procedure bump returns integer defined elsewhere.
+Say Call bump done.
+Say shared_count.

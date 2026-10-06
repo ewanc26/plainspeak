@@ -1,0 +1,5 @@
+Declare shared_count with external linkage as integer with value 5.
+Procedure bump returns integer:
+    Set shared_count to shared_count plus 1.
+    Return shared_count.
+End procedure.

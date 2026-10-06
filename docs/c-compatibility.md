@@ -88,7 +88,7 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 |---|---|
 | `decl.explicit-declarations` | foundation |
 | `decl.storage-duration` | foundation |
-| `decl.linkage` | foundation | Native declarations can request internal or external linkage in generated C; cross-translation-unit and redeclaration compatibility remain pending. |
+| `decl.linkage` | implemented | Native objects and Procedures can request internal (static) or external linkage; external objects declared without an initializer become extern declarations that resolve across separately compiled translation units, and conflicting Procedure redeclarations are rejected. |
 | `decl.storage-specifiers` | foundation | Plain-English `static storage`, `internal linkage`, and `external linkage` clauses lower to C specifiers alongside thread-local storage; inline and full interaction rules remain pending. |
 | `decl.initializers` | foundation |
 | `decl.designated-initializers` | foundation |
@@ -129,9 +129,9 @@ PlainSpeak's `For each` is a language extension and is not counted as a replacem
 | ID | Status |
 |---|---|
 | `func.typed-signatures` | foundation |
-| `func.prototypes` | foundation |
+| `func.prototypes` | implemented | Sema pre-registers signatures and generated C emits prototypes before definitions, enabling forward/mutual calls; Procedure NAME takes ... returns T defined elsewhere. gives a declaration-only prototype (compatible later definitions are accepted, conflicting ones rejected) that links across translation units. |
 | `func.variadic` | foundation |
-| `func.recursion` | foundation |
+| `func.recursion` | implemented | Pre-registered signatures plus generated prototypes (and declaration-only Procedures defined elsewhere) support direct, forward, mutual and cross-unit recursive Procedures. |
 | `func.inline` | foundation |
 | `func.noreturn` | foundation |
 
@@ -145,7 +145,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 
 | ID | Status |
 |---|---|
-| `pp.translation-units` | foundation | Include the file "path". splices another PlainSpeak source file into the program at that point (paths relative to the including file, nested up to 16 deep, each file included once so cycles and repeats are harmless), giving multi-file programs; separately compiled units with per-unit linkage, header/implementation separation and incremental builds remain pending. |
+| `pp.translation-units` | implemented | Several PlainSpeak sources compile as separate translation units in one command (entry unit first, then library units holding Procedures, types, imports and literal-initialized objects) and link into one program; Procedure NAME takes ... returns T defined elsewhere. declares a cross-unit Procedure, objects are shared with external linkage, shared declarations use Include, and conflicting redeclarations are rejected. |
 | `pp.header-interop` | foundation |
 | `pp.conditional-compilation` | implemented | Compile if / Elif accept the simple predicates (NAME is defined, not defined, equal to, at least ...) or a full compile-time expression over --define/predefined macro values with arithmetic, shifts, bitwise, comparison (including at least/at most), and/or/not, conditional and NAME is defined (an undefined name is 0, like #if); only the selected branch is analysed and lowered. Non-evaluable conditions are rejected (E0040). |
 | `pp.macros` | implemented | Typed imports of object-like C constants expose header macros with original spelling, and PlainSpeak token macros (Define the macro NAME taking a and b: ... End macro.) provide object-like and function-like macros with one-token or parenthesised-group arguments, Expand (statement) and Substitute (expression) uses, nested expansion, stringize and paste operators and Undefine the macro. |

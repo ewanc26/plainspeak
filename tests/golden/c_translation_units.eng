@@ -1,0 +1,4 @@
+Include the file "units/shared.eng".
+Declare p as structure pair with values 3 followed by 4 done.
+Say Call add_pair with p done.
+Say Call scale with 5 done.

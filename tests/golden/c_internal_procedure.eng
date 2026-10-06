@@ -1,0 +1,7 @@
+Procedure helper takes value as integer returns integer with internal linkage:
+    Return value times 3.
+End procedure.
+Procedure api takes value as integer returns integer:
+    Return Call helper with value done plus 1.
+End procedure.
+Say Call api with 4 done.

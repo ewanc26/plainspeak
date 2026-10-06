@@ -1521,9 +1521,13 @@ Stmt *Parser::parseProcedure() {
     bool maybeUnused = false;
     bool nodiscard = false;
     std::string nodiscardMessage;
+    bool procedureInternalLinkage = false;
     while (checkWord("with")) {
         advance();
-        if (checkWord("nodiscard")) {
+        if (checkWord("internal") && checkWordAt(1, "linkage")) {
+            advance(); advance();
+            procedureInternalLinkage = true;
+        } else if (checkWord("nodiscard")) {
             advance();
             nodiscard = true;
             if (peek().kind == TokKind::String) nodiscardMessage = advance().text;
@@ -1541,13 +1545,19 @@ Stmt *Parser::parseProcedure() {
             advance(); advance();
             maybeUnused = true;
         } else {
-            error("expected \"inline\", \"no return\", \"deprecated\", \"nodiscard\", or \"maybe unused\" after Procedure with");
+            error("expected \"inline\", \"no return\", \"deprecated\", \"nodiscard\", \"internal linkage\", or \"maybe unused\" after Procedure with");
         }
     }
 
+    if (checkWord("defined") && checkWordAt(1, "elsewhere")) {
+        // Declaration-only form: the definition lives in another translation unit.
+        advance(); advance();
+        expectDot();
+        return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), {}, inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused, variadic, nodiscard, std::move(nodiscardMessage), true, procedureInternalLinkage}, line);
+    }
     expectColon();
     auto body = parseBlockUntil("end", "procedure");
-    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused, variadic, nodiscard, std::move(nodiscardMessage)}, line);
+    return arena_.makeStmt(ProcedureStmt{name, std::move(params), std::move(returnType), std::move(body), inlineSpecifier, noreturnSpecifier, deprecated, std::move(deprecationMessage), maybeUnused, variadic, nodiscard, std::move(nodiscardMessage), false, procedureInternalLinkage}, line);
 }
 
 std::vector<Stmt *> Parser::parseBlockUntil(const std::string &w1, const std::string &w2) {

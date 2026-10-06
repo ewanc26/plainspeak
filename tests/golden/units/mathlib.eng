@@ -1,0 +1,8 @@
+Include the file "shared.eng".
+Declare calls as integer with value 0.
+Procedure add_pair takes p as structure pair returns integer:
+    Return Member first of p plus Member second of p.
+End procedure.
+Procedure scale takes value as integer returns integer:
+    Return value times 10.
+End procedure.

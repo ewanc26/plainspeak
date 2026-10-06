@@ -17,12 +17,20 @@ for src in "$DIR"/tests/golden/*.eng; do
 
     out_bin="$TMP/$name"
     define_file="$DIR/tests/golden/$name.defines"
+    units_file="$DIR/tests/golden/$name.units"
+    extra_units=""
+    if [ -f "$units_file" ]; then
+        # One additional translation unit per line, relative to tests/golden.
+        while IFS= read -r unit; do
+            [ -n "$unit" ] && extra_units="$extra_units $DIR/tests/golden/$unit"
+        done < "$units_file"
+    fi
     compile_status=0
     if [ -f "$define_file" ]; then
         define_value="$(sed -n '1p' "$define_file")"
-        "$BIN" "$src" --define "$define_value" -o "$out_bin" > "$TMP/$name.compile.log" 2>&1 || compile_status=$?
+        "$BIN" "$src" $extra_units --define "$define_value" -o "$out_bin" > "$TMP/$name.compile.log" 2>&1 || compile_status=$?
     else
-        "$BIN" "$src" -o "$out_bin" > "$TMP/$name.compile.log" 2>&1 || compile_status=$?
+        "$BIN" "$src" $extra_units -o "$out_bin" > "$TMP/$name.compile.log" 2>&1 || compile_status=$?
     fi
     if [ "$compile_status" -ne 0 ]; then
         echo "FAIL $name: did not compile"
@@ -60,7 +68,13 @@ for src in "$DIR"/tests/golden/errors/*.eng; do
     expected="$DIR/tests/golden/errors/$name.expected"
     [ -f "$expected" ] || { echo "SKIP $name (no .expected file)"; continue; }
 
-    if "$BIN" "$src" -o "$TMP/$name" > "$TMP/$name.actual" 2>&1; then
+    err_units=""
+    if [ -f "$DIR/tests/golden/errors/$name.units" ]; then
+        while IFS= read -r unit; do
+            [ -n "$unit" ] && err_units="$err_units $DIR/tests/golden/errors/$unit"
+        done < "$DIR/tests/golden/errors/$name.units"
+    fi
+    if "$BIN" "$src" $err_units -o "$TMP/$name" > "$TMP/$name.actual" 2>&1; then
         echo "FAIL $name: expected compile error but succeeded"
         fail=1
         continue

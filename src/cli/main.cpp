@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdlib>
 #include <cctype>
 #include <climits>
@@ -34,6 +35,7 @@ int main(int argc, char **argv) {
     bool lintOnly = false;
     bool printAstOnly = false;
     // Deterministic predefined environment; --define may override any entry.
+    std::vector<std::string> extraSources;
     std::unordered_map<std::string, long> defines = {
         {"PLAINSPEAK", 1},
         {"__STDC__", 1},
@@ -101,80 +103,125 @@ int main(int argc, char **argv) {
         } else if (a == "--define") {
             std::cerr << "error: --define needs NAME or NAME=VALUE\n";
             return 1;
+        } else if (!a.empty() && a[0] != '-') {
+            extraSources.push_back(a);
         }
     }
 
-    std::ifstream in(srcPath);
-    if (!in) {
-        std::cerr << "error: cannot open \"" << srcPath << "\"\n";
-        return 1;
-    }
-    std::ostringstream ss;
-    ss << in.rdbuf();
-    std::string source = ss.str();
+    // Translation units: the first source is the entry unit (it defines main); every
+    // further source is a library unit holding only declarations and definitions.
+    std::vector<std::string> sources{srcPath};
+    sources.insert(sources.end(), extraSources.begin(), extraSources.end());
 
-    std::unordered_map<int, std::string> sourceLines;
-    {
-        std::istringstream lineStream(source);
-        std::string line;
-        int lineNum = 1;
-        while (std::getline(lineStream, line)) sourceLines[lineNum++] = line;
-    }
+    std::vector<std::string> generatedFiles;
+    std::vector<std::string> cLibrariesAll;
 
-    std::vector<Token> tokens;
-    try {
-        Tokenizer tokenizer(source);
-        tokens = tokenizer.tokenize();
-    } catch (const std::exception &e) {
-        std::cerr << "error: " << e.what() << "\n";
-        return 1;
-    }
+    for (std::size_t unit = 0; unit < sources.size(); ++unit) {
+        const std::string &unitPath = sources[unit];
+        const bool entryUnit = unit == 0;
 
-    Arena arena;
-    std::vector<Stmt *> program;
-    try {
-        Parser parser(tokens, arena);
+        std::ifstream in(unitPath);
+        if (!in) {
+            std::cerr << "error: cannot open \"" << unitPath << "\"\n";
+            return 1;
+        }
+        std::ostringstream ss;
+        ss << in.rdbuf();
+        std::string source = ss.str();
+
+        std::unordered_map<int, std::string> sourceLines;
         {
-            std::size_t slash = srcPath.find_last_of('/');
-            parser.setBaseDirectory(slash == std::string::npos ? std::string(".") : srcPath.substr(0, slash));
+            std::istringstream lineStream(source);
+            std::string line;
+            int lineNum = 1;
+            while (std::getline(lineStream, line)) sourceLines[lineNum++] = line;
         }
-        program = parser.parseProgram();
-    } catch (const ParseError &e) {
-        std::cerr << "error: " << e.what() << "\n";
-        return 1;
-    }
 
-    Sema sema(std::move(defines));
-    AnalysisResult analysis = sema.analyze(program);
-    bool hasErrors = false;
-    for (const auto &d : analysis.diagnostics) {
-        std::cerr << (d.severity == DiagSeverity::Warning ? "warning" : "error")
-                  << "[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
-        if (d.severity == DiagSeverity::Error) hasErrors = true;
-    }
-    if (hasErrors) return 1;
+        std::vector<Token> tokens;
+        try {
+            Tokenizer tokenizer(source);
+            tokens = tokenizer.tokenize();
+        } catch (const std::exception &e) {
+            std::cerr << "error: " << e.what() << "\n";
+            return 1;
+        }
 
-    if (printAstOnly) {
-        std::cout << printAST(program);
-        return 0;
-    }
+        Arena arena;
+        std::vector<Stmt *> program;
+        try {
+            Parser parser(tokens, arena);
+            {
+                std::size_t slash = unitPath.find_last_of('/');
+                parser.setBaseDirectory(slash == std::string::npos ? std::string(".") : unitPath.substr(0, slash));
+            }
+            program = parser.parseProgram();
+        } catch (const ParseError &e) {
+            std::cerr << "error: " << e.what() << "\n";
+            return 1;
+        }
 
-    if (lintOnly) {
-        std::cout << "No lint issues found.\n";
-        return 0;
-    }
+        Sema sema(defines);
+        AnalysisResult analysis = sema.analyze(program);
+        bool hasErrors = false;
+        for (const auto &d : analysis.diagnostics) {
+            std::cerr << (d.severity == DiagSeverity::Warning ? "warning" : "error")
+                      << "[E" << std::setfill('0') << std::setw(4) << d.code << "]: " << d.message << "\n";
+            if (d.severity == DiagSeverity::Error) hasErrors = true;
+        }
+        if (hasErrors) return 1;
 
-    std::string cSource = emitProgram(program, analysis, &sourceLines);
+        if (!entryUnit) {
+            for (const Stmt *top : program) {
+                bool allowed = std::holds_alternative<ProcedureStmt>(top->node) ||
+                               std::holds_alternative<StructureStmt>(top->node) ||
+                               std::holds_alternative<UnionStmt>(top->node) ||
+                               std::holds_alternative<EnumerationStmt>(top->node) ||
+                               std::holds_alternative<CommentStmt>(top->node) ||
+                               std::holds_alternative<CImportStmt>(top->node) ||
+                               std::holds_alternative<CFunctionImportStmt>(top->node) ||
+                               std::holds_alternative<CObjectImportStmt>(top->node) ||
+                               std::holds_alternative<CConstantImportStmt>(top->node) ||
+                               std::holds_alternative<WarningStmt>(top->node) ||
+                               std::holds_alternative<PragmaStmt>(top->node);
+                if (auto *decl = std::get_if<NativeDeclStmt>(&top->node)) {
+                    allowed = !decl->aggregateInitializer || decl->aggregateInitializer->kind == AggregateInitKind::Empty;
+                    if (decl->initializer && !(std::holds_alternative<IntLit>(decl->initializer->node) ||
+                                               std::holds_alternative<FloatLit>(decl->initializer->node) ||
+                                               std::holds_alternative<BoolLit>(decl->initializer->node)))
+                        allowed = false;
+                }
+                if (!allowed) {
+                    std::cerr << "error[E0041]: line " << top->line << ": a library unit may only contain Procedures, types, imports and literal-initialized objects; "
+                                 "executable statements belong in the entry unit.\n";
+                    return 1;
+                }
+            }
+        }
 
-    if (emitCOnly) {
-        std::cout << cSource;
-        return 0;
-    }
+        if (entryUnit && printAstOnly) {
+            std::cout << printAST(program);
+            return 0;
+        }
 
-    std::string tmpC = outPath + ".gen.c";
-    {
-        std::ofstream out(tmpC);
-        out << cSource;
+        if (entryUnit && lintOnly) {
+            std::cout << "No lint issues found.\n";
+            return 0;
+        }
+
+        std::string cSource = emitProgram(program, analysis, &sourceLines, entryUnit);
+
+        if (entryUnit && emitCOnly) {
+            std::cout << cSource;
+            return 0;
+        }
+
+        std::string tmpC = entryUnit ? outPath + ".gen.c" : outPath + ".unit" + std::to_string(unit) + ".gen.c";
+        {
+            std::ofstream out(tmpC);
+            out << cSource;
+        }
+        generatedFiles.push_back(tmpC);
+        for (const auto &library : analysis.cLibraries) cLibrariesAll.push_back(library);
     }
 
     // C11 is the first backend dialect needed beyond the C99 baseline: it
@@ -184,14 +231,20 @@ int main(int argc, char **argv) {
     // PlainSpeak source via PLAINSPEAK_CC.
     const char *configuredCompiler = std::getenv("PLAINSPEAK_CC");
     std::string compiler = configuredCompiler && *configuredCompiler ? configuredCompiler : "cc";
-    std::string cmd = compiler + " -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR
-                       " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm";
-    for (const auto &library : analysis.cLibraries) cmd += " -l" + library;
+    std::string cmd = compiler + " -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR;
+    for (const auto &generated : generatedFiles) cmd += " \"" + generated + "\"";
+    cmd += " \"" PLAINSPEAK_RUNTIME_C "\" -lm";
+    std::vector<std::string> seenLibraries;
+    for (const auto &library : cLibrariesAll) {
+        if (std::find(seenLibraries.begin(), seenLibraries.end(), library) != seenLibraries.end()) continue;
+        seenLibraries.push_back(library);
+        cmd += " -l" + library;
+    }
     cmd += " -o \"" + outPath + "\"";
     int rc = std::system(cmd.c_str());
     if (rc != 0) {
         std::cerr << "error: generated C failed to compile (this is a plainspeak bug, "
-                     "not a mistake in your program) — see " << tmpC << "\n";
+                     "not a mistake in your program) — see " << generatedFiles.front() << "\n";
         return 1;
     }
     return 0;

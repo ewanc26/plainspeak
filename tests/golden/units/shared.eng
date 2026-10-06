@@ -1,0 +1,6 @@
+Structure pair:
+    Field first as integer.
+    Field second as integer.
+End structure.
+Procedure add_pair takes p as structure pair returns integer defined elsewhere.
+Procedure scale takes value as integer returns integer defined elsewhere.

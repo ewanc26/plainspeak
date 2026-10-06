@@ -748,3 +748,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Expression conditions
 
 `Compile if` and `Elif` also accept a full expression over macro values: `Compile if VERSION is at least 3 and LEVEL plus 1 is equal to 3:`. The operators are arithmetic, shifts, bitwise, `is greater than`/`is less than`/`is equal to`/`is not equal to`/`is at least`/`is at most`, `and`, `or`, `not`, and `NAME is defined` / `NAME is not defined`. Macro names take their values from `--define NAME=VALUE` and the predefined environment; an undefined name is 0.
+
+## Translation units
+
+`plainspeak main.eng helper.eng -o program` compiles each source as its own translation unit and links them. The first source is the entry unit and defines the program's top-level statements; later sources are library units that may contain only Procedures, structure/union/enumeration types, C imports and objects initialised with literals. Declare a Procedure that another unit defines with `Procedure name takes value as integer returns integer defined elsewhere.`; a later definition with the same signature is accepted, a different signature is an error. Share types and prototypes through a common file pulled in with `Include the file "shared.eng".`. Share objects with `Declare name with external linkage as integer.` (no initializer, so it is only a declaration) in one unit and a defining `Declare` in another, and hide a Procedure with `with internal linkage`.
