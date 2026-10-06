@@ -1,0 +1,16 @@
+Import the C object stdout as a pointer to void from the header "stdio.h".
+Import the C function fputs taking a pointer to character and a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function fopen taking a pointer to character and a pointer to character, returning a pointer to void, from the header "stdio.h".
+Import the C function fprintf taking a pointer to void and a pointer to character and variadic parameters, returning an integer, from the header "stdio.h".
+Import the C function fclose taking a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function fgets taking a pointer to character and an integer and a pointer to void, returning a pointer to character, from the header "stdio.h".
+Import the C function remove taking a pointer to character, returning an integer, from the header "stdio.h".
+Declare out as pointer to void with value Call fopen with "/tmp/plainspeak_io.txt", "w" done.
+Declare n as integer with value Call fprintf with out, "value=%d name=%s\n", Convert 42 to type integer, "plain" done.
+Set n to Call fclose with out done.
+Declare input as pointer to void with value Call fopen with "/tmp/plainspeak_io.txt", "r" done.
+Declare buffer as array of character with length 64.
+Declare got as pointer to character with value Call fgets with buffer, 64, input done.
+Declare status as integer with value Call fputs with buffer, stdout done.
+Set n to Call fclose with input done.
+Set n to Call remove with "/tmp/plainspeak_io.txt" done.
