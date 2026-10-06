@@ -145,7 +145,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 
 | ID | Status |
 |---|---|
-| `pp.translation-units` | planned |
+| `pp.translation-units` | foundation | Include the file "path". splices another PlainSpeak source file into the program at that point (paths relative to the including file, nested up to 16 deep, each file included once so cycles and repeats are harmless), giving multi-file programs; separately compiled units with per-unit linkage, header/implementation separation and incremental builds remain pending. |
 | `pp.header-interop` | foundation |
 | `pp.conditional-compilation` | foundation |
 | `pp.macros` | foundation |

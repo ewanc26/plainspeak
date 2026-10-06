@@ -1,0 +1,3 @@
+Procedure greet takes name:
+    Say name.
+End procedure.

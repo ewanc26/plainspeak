@@ -1,5 +1,7 @@
 #include "parser.h"
 #include "../lexer/alias_table.h"
+#include <algorithm>
+#include <filesystem>
 #include <fstream>
 #include <iterator>
 #include <cctype>
@@ -49,7 +51,43 @@ void Parser::error(const std::string &msg) const {
     throw ParseError("line " + std::to_string(peek().line) + ": " + msg);
 }
 
+void Parser::expandIncludes(std::vector<Token> &tokens, const std::string &directory, int depth) {
+    std::vector<Token> out;
+    for (std::size_t i = 0; i < tokens.size(); ++i) {
+        const Token &t = tokens[i];
+        bool isInclude = t.kind == TokKind::Ident && t.text == "include" && i + 4 < tokens.size() &&
+                         tokens[i + 1].kind == TokKind::Ident && tokens[i + 1].text == "the" &&
+                         tokens[i + 2].kind == TokKind::Ident && tokens[i + 2].text == "file" &&
+                         tokens[i + 3].kind == TokKind::String && tokens[i + 4].kind == TokKind::Dot;
+        if (!isInclude) { out.push_back(t); continue; }
+        int line = t.line;
+        std::string path = tokens[i + 3].text;
+        i += 4;
+        if (depth >= 16) throw ParseError("line " + std::to_string(line) + ": Include nesting is too deep");
+        std::string full = path;
+        if (!path.empty() && path[0] != '/' && !directory.empty()) full = directory + "/" + path;
+        std::ifstream in(full, std::ios::binary);
+        if (!in) throw ParseError("line " + std::to_string(line) + ": Include cannot read file \"" + path + "\"");
+        std::string canonical = full;
+        {
+            std::error_code ec;
+            auto resolved = std::filesystem::weakly_canonical(full, ec);
+            if (!ec) canonical = resolved.string();
+        }
+        if (std::find(includedFiles_.begin(), includedFiles_.end(), canonical) != includedFiles_.end()) continue;
+        includedFiles_.push_back(canonical);
+        std::string source((std::istreambuf_iterator<char>(in)), std::istreambuf_iterator<char>());
+        std::vector<Token> included = Tokenizer(source).tokenize();
+        if (!included.empty() && included.back().kind == TokKind::Eof) included.pop_back();
+        std::size_t slash = full.find_last_of('/');
+        expandIncludes(included, slash == std::string::npos ? std::string(".") : full.substr(0, slash), depth + 1);
+        out.insert(out.end(), included.begin(), included.end());
+    }
+    tokens = std::move(out);
+}
+
 std::vector<Stmt *> Parser::parseProgram() {
+    expandIncludes(tokens_, baseDirectory_.empty() ? std::string(".") : baseDirectory_, 0);
     std::vector<Stmt *> stmts;
     while (peek().kind != TokKind::Eof) stmts.push_back(parseTopLevelStmt());
     return stmts;

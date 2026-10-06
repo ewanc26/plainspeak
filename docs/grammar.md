@@ -716,3 +716,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Checked integer arithmetic
 
 `Checked add A and B into result`, `Checked subtract A and B into result` and `Checked multiply A and B into result` are expressions equivalent to C23 `ckd_add`, `ckd_sub` and `ckd_mul`. `result` must be a modifiable native integer object; it receives the wrapped mathematical result and the expression yields 1 on overflow and 0 otherwise.
+
+## Including other source files
+
+`Include the file "other.eng".` splices the tokens of another PlainSpeak file into the program at that point. Relative paths resolve against the directory of the including file. A file already included is skipped, so repeated or circular includes are harmless; nesting deeper than 16 files is an error.
