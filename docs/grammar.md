@@ -735,4 +735,4 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 
 ## Complex values
 
-`Complex with real A and imaginary B` builds a `complex decimal` from two real arithmetic expressions (lowering to C11 `CMPLX`). Use parentheses around compound components, for example `Complex with real (0 minus 4) and imaginary 0`.
+`Complex with real A and imaginary B` builds a `complex decimal` from two real arithmetic expressions (lowering to the `__builtin_complex` compiler builtin behind C11 `CMPLX`). Use parentheses around compound components, for example `Complex with real (0 minus 4) and imaginary 0`.
