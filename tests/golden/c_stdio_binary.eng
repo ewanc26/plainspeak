@@ -1,0 +1,36 @@
+Import the C function fopen taking a pointer to character and a pointer to character, returning a pointer to void, from the header "stdio.h".
+Import the C function fclose taking a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function fwrite taking a pointer to void and a size type and a size type and a pointer to void, returning a size type, from the header "stdio.h".
+Import the C function fread taking a pointer to void and a size type and a size type and a pointer to void, returning a size type, from the header "stdio.h".
+Import the C function fseek taking a pointer to void and a long integer and an integer, returning an integer, from the header "stdio.h".
+Import the C function ftell taking a pointer to void, returning a long integer, from the header "stdio.h".
+Import the C function rewind taking a pointer to void, returning void, from the header "stdio.h".
+Import the C function fgetc taking a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function ungetc taking an integer and a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function feof taking a pointer to void, returning an integer, from the header "stdio.h".
+Import the C function setvbuf taking a pointer to void and a pointer to character and an integer and a size type, returning an integer, from the header "stdio.h".
+Import the C function remove taking a pointer to character, returning an integer, from the header "stdio.h".
+Import the C constant SEEK_SET as integer from the header "stdio.h".
+Import the C constant SEEK_END as integer from the header "stdio.h".
+Import the C constant _IOFBF as integer from the header "stdio.h".
+Declare source as array of integer with length 4 with values 10 followed by 20 followed by 30 followed by 40 done.
+Declare target as array of integer with length 4.
+Declare out as pointer to void with value Call fopen with "/tmp/plainspeak_binary.dat", "wb" done.
+Declare status as integer with value Call setvbuf with out, null pointer, _IOFBF, 4096 done.
+Declare count as size type with value Call fwrite with source, Size of type integer, 4, out done.
+Say count.
+Set status to Call fclose with out done.
+Declare input as pointer to void with value Call fopen with "/tmp/plainspeak_binary.dat", "rb" done.
+Set status to Call fseek with input, 0, SEEK_END done.
+Say Call ftell with input done.
+Call rewind with input done.
+Set count to Call fread with target, Size of type integer, 4, input done.
+Say count.
+Say Element at 2 in target.
+Set status to Call fseek with input, 4, SEEK_SET done.
+Declare second as integer with value Call fgetc with input done.
+Say second.
+Set status to Call ungetc with second, input done.
+Say Call feof with input done.
+Set status to Call fclose with input done.
+Set status to Call remove with "/tmp/plainspeak_binary.dat" done.

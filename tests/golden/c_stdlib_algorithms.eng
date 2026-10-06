@@ -1,0 +1,37 @@
+Import the C function qsort taking a pointer to void and a size type and a size type and a pointer to function taking pointer to constant void and pointer to constant void returning integer, returning void, from the header "stdlib.h".
+Import the C function bsearch taking a pointer to constant void and a pointer to constant void and a size type and a size type and a pointer to function taking pointer to constant void and pointer to constant void returning integer, returning a pointer to void, from the header "stdlib.h".
+Import the C function abs taking an integer, returning an integer, from the header "stdlib.h".
+Procedure compare takes left as pointer to constant void right as pointer to constant void returns integer:
+    Declare a as integer with value Value at Convert left to type pointer to constant integer.
+    Declare b as integer with value Value at Convert right to type pointer to constant integer.
+    If a is less than b then:
+        Return 0 minus 1.
+    End if.
+    If a is greater than b then:
+        Return 1.
+    End if.
+    Return 0.
+End procedure.
+Declare numbers as array of integer with length 5 with values 42 followed by 7 followed by 19 followed by 3 followed by 25 done.
+Call qsort with numbers, 5, Size of type integer, Address of compare done.
+Say Element at 0 in numbers.
+Say Element at 1 in numbers.
+Say Element at 4 in numbers.
+Declare key as integer with value 19.
+Declare found as pointer to void with value Call bsearch with Address of key, numbers, 5, Size of type integer, Address of compare done.
+Declare index as pointer to integer with value Convert found to type pointer to integer.
+Say Value at index.
+Import the C function srand taking an unsigned integer, returning void, from the header "stdlib.h".
+Import the C function rand taking no parameters, returning an integer, from the header "stdlib.h".
+Import the C function getenv taking a pointer to character, returning a pointer to character, from the header "stdlib.h".
+Import the C function atexit taking a pointer to function taking no parameters returning void, returning an integer, from the header "stdlib.h".
+Procedure goodbye returns void:
+    Say "exit handler ran".
+End procedure.
+Call srand with 7 done.
+Declare first as integer with value Call rand done.
+Call srand with 7 done.
+Say first is equal to Call rand done.
+Say Call getenv with "PLAINSPEAK_SURELY_UNSET" done is equal to null pointer.
+Declare registered as integer with value Call atexit with Address of goodbye done.
+Say registered.

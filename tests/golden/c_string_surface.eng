@@ -1,0 +1,28 @@
+Import the C function memcpy taking a pointer to void and a pointer to constant void and a size type, returning a pointer to void, from the header "string.h".
+Import the C function memmove taking a pointer to void and a pointer to constant void and a size type, returning a pointer to void, from the header "string.h".
+Import the C function memcmp taking a pointer to constant void and a pointer to constant void and a size type, returning an integer, from the header "string.h".
+Import the C function strncpy taking a pointer to character and a pointer to constant character and a size type, returning a pointer to character, from the header "string.h".
+Import the C function strstr taking a pointer to constant character and a pointer to constant character, returning a pointer to character, from the header "string.h".
+Import the C function strrchr taking a pointer to constant character and an integer, returning a pointer to character, from the header "string.h".
+Import the C function strspn taking a pointer to constant character and a pointer to constant character, returning a size type, from the header "string.h".
+Import the C function strcspn taking a pointer to constant character and a pointer to constant character, returning a size type, from the header "string.h".
+Import the C function strpbrk taking a pointer to constant character and a pointer to constant character, returning a pointer to character, from the header "string.h".
+Import the C function strlen taking a pointer to constant character, returning a size type, from the header "string.h".
+Declare source as array of integer with length 4 with values 1 followed by 2 followed by 3 followed by 4 done.
+Declare copy as array of integer with length 4.
+Declare unused as pointer to void with value Call memcpy with copy, source, Size of source done.
+Say Call memcmp with copy, source, Size of source done.
+Declare shifted as pointer to integer with value copy plus 1.
+Set unused to Call memmove with shifted, copy, 12 done.
+Say Element at 1 in copy.
+Say Element at 3 in copy.
+Declare text as array of character with length 32.
+Declare piece as pointer to character with value Call strncpy with text, "hello wonderful world", 31 done.
+Declare found as pointer to character with value Call strstr with text, "wonder" done.
+Say Call strlen with found done.
+Set found to Call strrchr with text, 111 done.
+Say Call strlen with found done.
+Say Call strspn with "aabbcc", "ab" done.
+Say Call strcspn with "aabbcc", "c" done.
+Set found to Call strpbrk with text, "xw" done.
+Say Call strlen with found done.
