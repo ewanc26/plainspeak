@@ -149,7 +149,7 @@ PlainSpeak does not need to copy C's token-oriented preprocessor syntax, but it 
 | `pp.header-interop` | foundation |
 | `pp.conditional-compilation` | foundation |
 | `pp.macros` | foundation |
-| `pp.variadic-vaopt` | planned |
+| `pp.variadic-vaopt` | foundation | Token-level macros (Define the macro NAME taking a and variadic rest: ... End macro. / Expand NAME with tokens done.) substitute one token per named parameter and all remaining tokens for the variadic parameter, and a Variadic option rest: ... End variadic option. region is kept only when variadic arguments were supplied (the __VA_OPT__ capability); arguments are single tokens, and hygiene, stringizing/pasting and function-like expression macros remain pending. |
 | `pp.elifdef` | foundation |
 | `pp.warning` | foundation |
 | `pp.embed` | foundation | Embed the file "path" as NAME. reads a non-empty file (up to 1 MiB, path relative to the source file) at compile time and declares a native unsigned-character array initialised with its bytes; C23 embed parameters (limit, prefix, suffix, if_empty) and non-byte element types remain pending. |

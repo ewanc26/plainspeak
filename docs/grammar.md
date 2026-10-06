@@ -720,3 +720,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Including other source files
 
 `Include the file "other.eng".` splices the tokens of another PlainSpeak file into the program at that point. Relative paths resolve against the directory of the including file. A file already included is skipped, so repeated or circular includes are harmless; nesting deeper than 16 files is an error.
+
+## Macros
+
+`Define the macro show taking label and variadic extras:` ... `End macro.` defines a token-level macro, and `Expand show with "title" 3 4 done.` replaces the sentence with the body. Each named parameter takes exactly one argument token; the variadic parameter takes every remaining token (possibly none). A body region `Variadic option extras:` ... `End variadic option.` is kept only when the variadic parameter received at least one token, like C23 `__VA_OPT__`. Macros must be defined before they are expanded.

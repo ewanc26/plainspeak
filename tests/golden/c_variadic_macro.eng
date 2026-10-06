@@ -1,0 +1,9 @@
+Define the macro show taking label and variadic extras:
+    Say label.
+    Variadic option extras:
+        Say Call sum with extras done.
+    End variadic option.
+End macro.
+Procedure sum takes a as integer b as integer returns integer: Return a plus b. End procedure.
+Expand show with "with extras" 3 4 done.
+Expand show with "no extras" done.

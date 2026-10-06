@@ -24,6 +24,7 @@ private:
     size_t pos_ = 0;
     std::string baseDirectory_;
     std::vector<std::string> includedFiles_;
+    void expandMacros(std::vector<Token> &tokens);
     void expandIncludes(std::vector<Token> &tokens, const std::string &directory, int depth);
 
     const Token &peek(int ahead = 0) const;

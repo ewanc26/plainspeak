@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <filesystem>
 #include <fstream>
+#include <unordered_map>
 #include <iterator>
 #include <cctype>
 
@@ -86,8 +87,126 @@ void Parser::expandIncludes(std::vector<Token> &tokens, const std::string &direc
     tokens = std::move(out);
 }
 
+namespace {
+struct MacroDef {
+    std::vector<std::string> params;
+    std::string variadicName;
+    std::vector<Token> body;
+};
+
+bool wordIs(const std::vector<Token> &t, std::size_t i, const char *w) {
+    return i < t.size() && t[i].kind == TokKind::Ident && t[i].text == w;
+}
+}
+
+// Token-level macros. "Define the macro NAME taking a and b and variadic rest:"
+// ... "End macro." registers a macro; "Expand NAME with t1 t2 ... done." replaces
+// the sentence with the body, substituting one token per named parameter and all
+// remaining tokens for the variadic parameter. A body region written
+// "Variadic option rest: ... End variadic option." is kept only when the variadic
+// parameter received at least one token (the __VA_OPT__ capability).
+void Parser::expandMacros(std::vector<Token> &tokens) {
+    std::unordered_map<std::string, MacroDef> macros;
+    std::vector<Token> out;
+    for (std::size_t i = 0; i < tokens.size(); ++i) {
+        if (wordIs(tokens, i, "define") && wordIs(tokens, i + 1, "the") && wordIs(tokens, i + 2, "macro")) {
+            int line = tokens[i].line;
+            i += 3;
+            if (i >= tokens.size() || tokens[i].kind != TokKind::Ident)
+                throw ParseError("line " + std::to_string(line) + ": a macro needs a name");
+            std::string name = tokens[i++].text;
+            MacroDef def;
+            if (wordIs(tokens, i, "taking")) {
+                ++i;
+                while (i < tokens.size() && tokens[i].kind == TokKind::Ident) {
+                    if (tokens[i].text == "variadic") {
+                        ++i;
+                        if (i >= tokens.size() || tokens[i].kind != TokKind::Ident)
+                            throw ParseError("line " + std::to_string(line) + ": a variadic macro parameter needs a name");
+                        def.variadicName = tokens[i++].text;
+                        break;
+                    }
+                    def.params.push_back(tokens[i++].text);
+                    if (wordIs(tokens, i, "and")) ++i; else break;
+                }
+            }
+            if (i >= tokens.size() || tokens[i].kind != TokKind::Colon)
+                throw ParseError("line " + std::to_string(line) + ": expected \":\" after the macro header");
+            ++i;
+            bool closed = false;
+            for (; i < tokens.size(); ++i) {
+                if (wordIs(tokens, i, "end") && wordIs(tokens, i + 1, "macro") && i + 2 < tokens.size() &&
+                    tokens[i + 2].kind == TokKind::Dot) { i += 2; closed = true; break; }
+                def.body.push_back(tokens[i]);
+            }
+            if (!closed) throw ParseError("line " + std::to_string(line) + ": reached end of file while looking for \"End macro.\"");
+            macros[name] = std::move(def);
+            continue;
+        }
+        if (wordIs(tokens, i, "expand") && i + 1 < tokens.size() && tokens[i + 1].kind == TokKind::Ident) {
+            int line = tokens[i].line;
+            auto found = macros.find(tokens[i + 1].text);
+            if (found == macros.end())
+                throw ParseError("line " + std::to_string(line) + ": unknown macro \"" + tokens[i + 1].text + "\"");
+            const MacroDef &def = found->second;
+            i += 2;
+            if (wordIs(tokens, i, "with")) ++i;
+            std::vector<Token> args;
+            while (i < tokens.size() && !wordIs(tokens, i, "done")) {
+                if (tokens[i].kind == TokKind::Eof)
+                    throw ParseError("line " + std::to_string(line) + ": reached end of file while looking for \"done\"");
+                args.push_back(tokens[i++]);
+            }
+            if (i + 1 >= tokens.size() || tokens[i + 1].kind != TokKind::Dot)
+                throw ParseError("line " + std::to_string(line) + ": expected \".\" after \"done\"");
+            ++i;
+            if (args.size() < def.params.size() || (def.variadicName.empty() && args.size() != def.params.size()))
+                throw ParseError("line " + std::to_string(line) + ": macro \"" + found->first + "\" received the wrong number of arguments");
+            std::vector<Token> rest(args.begin() + def.params.size(), args.end());
+            for (std::size_t b = 0; b < def.body.size(); ++b) {
+                const Token &bt = def.body[b];
+                if (wordIs(def.body, b, "variadic") && wordIs(def.body, b + 1, "option") &&
+                    b + 2 < def.body.size() && def.body[b + 2].text == def.variadicName) {
+                    std::size_t start = b + 3;
+                    if (start < def.body.size() && def.body[start].kind == TokKind::Colon) ++start;
+                    std::size_t end = start;
+                    while (end < def.body.size() && !(wordIs(def.body, end, "end") && wordIs(def.body, end + 1, "variadic") &&
+                                                      wordIs(def.body, end + 2, "option"))) ++end;
+                    if (end >= def.body.size())
+                        throw ParseError("line " + std::to_string(line) + ": a variadic option needs \"End variadic option.\"");
+                    if (!rest.empty()) {
+                        for (std::size_t k = start; k < end; ++k) {
+                            if (def.body[k].kind == TokKind::Ident && def.body[k].text == def.variadicName)
+                                out.insert(out.end(), rest.begin(), rest.end());
+                            else out.push_back(def.body[k]);
+                        }
+                    }
+                    b = end + 3;
+                    if (b < def.body.size() && def.body[b].kind == TokKind::Dot) {} else --b;
+                    continue;
+                }
+                bool replaced = false;
+                if (bt.kind == TokKind::Ident) {
+                    for (std::size_t p = 0; p < def.params.size(); ++p) {
+                        if (bt.text == def.params[p]) { out.push_back(args[p]); replaced = true; break; }
+                    }
+                    if (!replaced && !def.variadicName.empty() && bt.text == def.variadicName) {
+                        out.insert(out.end(), rest.begin(), rest.end());
+                        replaced = true;
+                    }
+                }
+                if (!replaced) out.push_back(bt);
+            }
+            continue;
+        }
+        out.push_back(tokens[i]);
+    }
+    tokens = std::move(out);
+}
+
 std::vector<Stmt *> Parser::parseProgram() {
     expandIncludes(tokens_, baseDirectory_.empty() ? std::string(".") : baseDirectory_, 0);
+    expandMacros(tokens_);
     std::vector<Stmt *> stmts;
     while (peek().kind != TokKind::Eof) stmts.push_back(parseTopLevelStmt());
     return stmts;
