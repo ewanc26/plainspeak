@@ -330,6 +330,7 @@ std::string printStmt(const Stmt *s) {
         else if constexpr (std::is_same_v<T, RemoveItemStmt>) return "Remove item at " + printExpr(node.index) + " from " + node.varName + ". ";
         else if constexpr (std::is_same_v<T, CommentStmt>) return "(" + node.text + ") ";
         else if constexpr (std::is_same_v<T, WarningStmt>) return "Warning \"" + node.message + "\". ";
+        else if constexpr (std::is_same_v<T, ErrorDirectiveStmt>) return "Error \"" + node.message + "\". ";
         else if constexpr (std::is_same_v<T, DiscardStmt>) return "Discard " + printExpr(node.expr) + ". ";
         else if constexpr (std::is_same_v<T, PragmaStmt>) return "Pragma \"" + node.text + "\". ";
         else if constexpr (std::is_same_v<T, BreakStmt>) return "Break. ";

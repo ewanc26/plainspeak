@@ -234,6 +234,7 @@ Stmt *Parser::parseTopLevelStmt() {
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
+    if (t.text == "error" && peek(1).kind == TokKind::String) return parseErrorDirective();
     if (t.text == "pragma") return parsePragma();
     if (t.text == "discard") return parseDiscard();
     if (t.text == "embed" && checkWordAt(1, "the")) return parseEmbed();
@@ -276,6 +277,14 @@ Stmt *Parser::parseTopLevelStmt() {
 
     error("I don't know the verb \"" + t.text + "\" — expected one of: "
           "say/set/let/make, declare/create, add, subtract, increase, decrease, read, append, replace, remove, warn, break, continue, repeat, if/unless, while/until, do, for, switch, go, label, call, procedure, return (see docs/grammar.md)");
+}
+
+Stmt *Parser::parseErrorDirective() {
+    int line = peek().line;
+    advance();
+    std::string message = advance().text;
+    expectDot();
+    return arena_.makeStmt(ErrorDirectiveStmt{std::move(message)}, line);
 }
 
 Stmt *Parser::parseWarning() {
@@ -543,6 +552,7 @@ Stmt *Parser::parseStmt() {
     if (t.text == "replace") return parseReplaceItem();
     if (t.text == "remove") return parseRemoveItem();
     if (t.text == "warn" || t.text == "warning") return parseWarning();
+    if (t.text == "error" && peek(1).kind == TokKind::String) return parseErrorDirective();
     if (t.text == "pragma") return parsePragma();
     if (t.text == "discard") return parseDiscard();
     if (t.text == "embed" && checkWordAt(1, "the")) return parseEmbed();

@@ -40,6 +40,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0033 | `Warning` directive emitted as a non-fatal compile-time warning |
 | E0034 | Native object is read or modified more than once without a C sequence point |
 | E0035 | Use of a declaration marked deprecated |
+| E0039 | `Error "message".` directive reached in a selected branch (fatal) |
 | E0038 | Discarded result of a Procedure marked nodiscard (warning) |
 | E0036 | Invalid variadic argument operation or variadic Procedure declaration |
 | E0037 | Invalid or failed compile-time static assertion |

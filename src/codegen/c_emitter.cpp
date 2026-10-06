@@ -941,6 +941,8 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << indent << "/* " << node.text << " */\n";
         } else if constexpr (std::is_same_v<T, WarningStmt>) {
             // Warning is a frontend-only diagnostic and emits no C statement.
+        } else if constexpr (std::is_same_v<T, ErrorDirectiveStmt>) {
+            // Error directives are frontend-only fatal diagnostics.
         } else if constexpr (std::is_same_v<T, DiscardStmt>) {
             out << indent << "(void)(" << emitBoxedExpr(node.expr, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, PragmaStmt>) {

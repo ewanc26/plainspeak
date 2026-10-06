@@ -3504,6 +3504,9 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, WarningStmt>) {
             diags.push_back({33, s->line, node.message, DiagSeverity::Warning});
         }
+        else if constexpr (std::is_same_v<T, ErrorDirectiveStmt>) {
+            diags.push_back({39, s->line, node.message});
+        }
         else if constexpr (std::is_same_v<T, PragmaStmt>) {
         }
         else if constexpr (std::is_same_v<T, DiscardStmt>) {

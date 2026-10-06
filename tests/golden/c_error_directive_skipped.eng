@@ -1,0 +1,5 @@
+Compile if NO_SUPPORT is defined:
+    Error "this branch is not selected".
+Otherwise:
+    Say "ok".
+End compile if.

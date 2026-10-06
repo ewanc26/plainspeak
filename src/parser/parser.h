@@ -57,6 +57,7 @@ private:
     Stmt *parseRemoveItem();
     Stmt *parseComment();
     Stmt *parseWarning();
+    Stmt *parseErrorDirective();
     Stmt *parsePragma();
     Stmt *parseDiscard();
     Stmt *parseEmbed();
