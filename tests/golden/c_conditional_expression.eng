@@ -1,1 +1,18 @@
-Say Choose 10 when 1 otherwise 20. Say Choose 10 when 0 otherwise 20. Declare x as integer with value 7. Declare p as pointer to integer with value Address of x. Say Choose 1 when p otherwise 2. Declare cp as pointer to constant integer with value p. Declare selected as pointer to constant integer with value Choose p when 1 otherwise cp. Say Value at selected. Declare vp as pointer to void with value Convert p to type pointer to void. Declare selectedVoid as pointer to void with value Choose p when 0 otherwise vp. Say Convert selectedVoid to type boolean. Structure point: Field x as integer. End structure. Declare a as structure point with members x as 3 done. Declare b as structure point with members x as 4 done. Declare c as structure point with value Choose a when 1 otherwise b. Say Member x of c.
+Compile if VERSION is at least 3 and VERSION plus 1 is equal to 5:
+    Say "both".
+End compile if.
+Compile if VERSION is greater than 10 or MISSING is not defined:
+    Say "or branch".
+End compile if.
+Compile if FLAG is defined and VERSION times 2 is greater than 5:
+    Say "unreachable".
+Elif (VERSION shifted left by 1) is equal to 8 and __STDC_VERSION__ is at least 202311:
+    Say "elif expression".
+Otherwise:
+    Say "none".
+End compile if.
+Compile if not (VERSION is equal to 4):
+    Say "not four".
+Otherwise:
+    Say "four".
+End compile if.

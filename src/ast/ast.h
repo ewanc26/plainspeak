@@ -112,6 +112,7 @@ struct LimitOfTypeExpr { TypeSpec type; bool maximum; };
 struct OffsetOfExpr { std::string member; TypeSpec type; };
 struct LockFreeExpr { std::string name; };
 struct ComplexValueExpr { Expr *real; Expr *imaginary; };
+struct DefinedExpr { std::string name; };
 struct CheckedArithExpr { std::string operation; Expr *lhs; Expr *rhs; std::string result; };
 struct AtomicExchangeExpr { std::string name; Expr *expr; std::string order{}; };
 struct AtomicRmwExpr { std::string operation; std::string name; Expr *expr; std::string order{}; };
@@ -143,7 +144,7 @@ struct VaArgExpr       { TypeSpec type; std::string source{}; };
 
 using ExprNode = std::variant<IntLit, BoolLit, FloatLit, StringLit, NullptrLit, VarRef,
                               LengthExpr, SizeOfTypeExpr, SizeOfExpr,
-                              AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, ComplexValueExpr, CheckedArithExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
+                              AlignOfTypeExpr, LimitOfTypeExpr, OffsetOfExpr, LockFreeExpr, DefinedExpr, ComplexValueExpr, CheckedArithExpr, AtomicExchangeExpr, AtomicRmwExpr, AddressOfExpr, DerefExpr, CastExpr, IncDecExpr, ConditionalExpr,
                               CompoundLiteralExpr, GenericSelectionExpr, ElementExpr, MemberExpr, EnumeratorExpr, MathCallExpr, CallExpr, IndirectCallExpr, PowExpr, BinaryExpr,
                               UnaryExpr, ListExpr, EmptyListExpr, ItemExpr, VaArgExpr>;
 struct Expr { ExprNode node; int line; };
@@ -193,8 +194,8 @@ struct RepeatStmt    { Expr *count; std::vector<Stmt *> body; };
 struct IfStmt        { Expr *cond; std::vector<Stmt *> thenBody; std::vector<Stmt *> elseBody; };
 enum class CompilePredicateKind { Defined, NotDefined, Equal, NotEqual, Less, LessEqual, Greater, GreaterEqual };
 struct CompilePredicate { CompilePredicateKind kind = CompilePredicateKind::Defined; long value = 0; };
-struct CompileElifBranch { std::string macroName; std::vector<Stmt *> body; CompilePredicate predicate{}; };
-struct CompileIfStmt { std::string macroName; std::vector<Stmt *> thenBody; std::vector<CompileElifBranch> elifBranches; std::vector<Stmt *> elseBody; CompilePredicate predicate{}; };
+struct CompileElifBranch { std::string macroName; std::vector<Stmt *> body; CompilePredicate predicate{}; Expr *condition = nullptr; };
+struct CompileIfStmt { std::string macroName; std::vector<Stmt *> thenBody; std::vector<CompileElifBranch> elifBranches; std::vector<Stmt *> elseBody; CompilePredicate predicate{}; Expr *condition = nullptr; };
 struct WhileStmt     { Expr *cond; std::vector<Stmt *> body; };
 struct DoWhileStmt   { std::vector<Stmt *> body; Expr *cond; };
 struct ForEachStmt   { std::string itemName; Expr *list; std::vector<Stmt *> body; };

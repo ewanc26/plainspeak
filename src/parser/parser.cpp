@@ -1123,14 +1123,40 @@ CompilePredicate Parser::parseCompilePredicate() {
     return predicate;
 }
 
+// A compile-time condition is either the simple predicate forms ("NAME is defined",
+// "NAME is at least 3", ...) or a full expression over macro values using arithmetic,
+// comparisons, and/or/not and "NAME is defined".
+Parser::CompileCondition Parser::parseCompileCondition() {
+    CompileCondition result;
+    std::size_t save = pos_;
+    try {
+        if (peek().kind != TokKind::Ident) throw ParseError("not a simple predicate");
+        const Token &nameToken = peek();
+        result.macroName = nameToken.sourceText.empty() ? nameToken.text : nameToken.sourceText;
+        advance();
+        result.predicate = parseCompilePredicate();
+        if (peek().kind == TokKind::Colon) return result;
+    } catch (const ParseError &) {
+    }
+    pos_ = save;
+    result = CompileCondition{};
+    compileCondition_ = true;
+    try {
+        result.expr = parseExpr();
+    } catch (...) {
+        compileCondition_ = false;
+        throw;
+    }
+    compileCondition_ = false;
+    return result;
+}
+
 Stmt *Parser::parseCompileIf() {
     int line = peek().line;
     advance(); advance();
-    if (peek().kind != TokKind::Ident) error("Compile if needs a macro name");
-    const Token &macroToken = peek();
-    std::string macroName = macroToken.sourceText.empty() ? macroToken.text : macroToken.sourceText;
-    advance();
-    CompilePredicate predicate = parseCompilePredicate();
+    CompileCondition condition = parseCompileCondition();
+    std::string macroName = condition.macroName;
+    CompilePredicate predicate = condition.predicate;
     expectColon();
 
     auto atEndOrBranch = [&]() -> bool {
@@ -1149,11 +1175,9 @@ Stmt *Parser::parseCompileIf() {
     std::vector<CompileElifBranch> elifBranches;
     while (checkWord("elif")) {
         advance();
-        if (peek().kind != TokKind::Ident) error("Elif needs a macro name");
-        const Token &elifToken = peek();
-        std::string elifName = elifToken.sourceText.empty() ? elifToken.text : elifToken.sourceText;
-        advance();
-        CompilePredicate elifPredicate = parseCompilePredicate();
+        CompileCondition elifCondition = parseCompileCondition();
+        std::string elifName = elifCondition.macroName;
+        CompilePredicate elifPredicate = elifCondition.predicate;
         expectColon();
 
         std::vector<Stmt *> elifBody;
@@ -1161,7 +1185,7 @@ Stmt *Parser::parseCompileIf() {
             if (peek().kind == TokKind::Eof) error("reached end of file while looking for \"End compile if.\"");
             elifBody.push_back(parseStmt());
         }
-        elifBranches.push_back(CompileElifBranch{std::move(elifName), std::move(elifBody), elifPredicate});
+        elifBranches.push_back(CompileElifBranch{std::move(elifName), std::move(elifBody), elifPredicate, elifCondition.expr});
     }
 
     std::vector<Stmt *> elseBody;
@@ -1177,7 +1201,7 @@ Stmt *Parser::parseCompileIf() {
     expectWord("compile");
     expectWord("if");
     expectDot();
-    return arena_.makeStmt(CompileIfStmt{std::move(macroName), std::move(thenBody), std::move(elifBranches), std::move(elseBody), predicate}, line);
+    return arena_.makeStmt(CompileIfStmt{std::move(macroName), std::move(thenBody), std::move(elifBranches), std::move(elseBody), predicate, condition.expr}, line);
 }
 
 Stmt *Parser::parseUnless() {
@@ -1791,7 +1815,21 @@ Expr *Parser::parseComparison() {
         int line = peek().line;
         advance();
         BinOp op;
-        if (checkWord("greater") && checkWordAt(1, "than") && checkWordAt(2, "or") && checkWordAt(3, "equal") && checkWordAt(4, "to")) { op = BinOp::Ge; advance(); advance(); advance(); advance(); advance(); }
+        if (compileCondition_ && checkWord("defined")) {
+            advance();
+            auto *ref = std::get_if<VarRef>(&lhs->node);
+            if (!ref) error("\"defined\" needs a macro name");
+            return arena_.makeExpr(DefinedExpr{ref->name}, line);
+        }
+        if (compileCondition_ && checkWord("not") && checkWordAt(1, "defined")) {
+            advance(); advance();
+            auto *ref = std::get_if<VarRef>(&lhs->node);
+            if (!ref) error("\"defined\" needs a macro name");
+            return arena_.makeExpr(UnaryExpr{UnaryOp::Not, arena_.makeExpr(DefinedExpr{ref->name}, line)}, line);
+        }
+        if (checkWord("at") && checkWordAt(1, "least")) { op = BinOp::Ge; advance(); advance(); }
+        else if (checkWord("at") && checkWordAt(1, "most")) { op = BinOp::Le; advance(); advance(); }
+        else if (checkWord("greater") && checkWordAt(1, "than") && checkWordAt(2, "or") && checkWordAt(3, "equal") && checkWordAt(4, "to")) { op = BinOp::Ge; advance(); advance(); advance(); advance(); advance(); }
         else if (checkWord("less") && checkWordAt(1, "than") && checkWordAt(2, "or") && checkWordAt(3, "equal") && checkWordAt(4, "to")) { op = BinOp::Le; advance(); advance(); advance(); advance(); advance(); }
         else if (checkWord("greater") && checkWordAt(1, "than")) { op = BinOp::Gt; advance(); advance(); }
         else if (checkWord("less") && checkWordAt(1, "than")) { op = BinOp::Lt; advance(); advance(); }
@@ -2241,7 +2279,10 @@ Expr *Parser::parsePrimary() {
         expectWord("done");
         return arena_.makeExpr(CallExpr{name, std::move(args)}, line);
     }
-    if (t.kind == TokKind::Ident) { advance(); return arena_.makeExpr(VarRef{t.text}, t.line); }
+    if (t.kind == TokKind::Ident) {
+        advance();
+        return arena_.makeExpr(VarRef{compileCondition_ && !t.sourceText.empty() ? t.sourceText : t.text}, t.line);
+    }
     error("expected a number, a decimal, a string, a name, true, false, null pointer, minus, Choose, Compound value, Select by type, Increment/Decrement before/after, Convert, Address of, Value at, Length of, Size of, Alignment of type, List with, Empty list of, Item at, or a math function here");
 }
 

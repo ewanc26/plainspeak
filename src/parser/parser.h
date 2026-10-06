@@ -62,6 +62,9 @@ private:
     Stmt *parseDiscard();
     Stmt *parseEmbed();
     CompilePredicate parseCompilePredicate();
+    struct CompileCondition { std::string macroName; CompilePredicate predicate; Expr *expr = nullptr; };
+    CompileCondition parseCompileCondition();
+    bool compileCondition_ = false;
     Stmt *parseRepeat();
     Stmt *parseIf();
     Stmt *parseCompileIf();

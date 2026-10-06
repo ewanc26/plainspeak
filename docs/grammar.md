@@ -744,3 +744,7 @@ Extend the grammar by following the checklist in `AGENTS.md`; grammar, AST, pars
 ## Function-like macros
 
 `Define the macro square taking value:` ... `End macro.` defines a macro; `Expand square with 3 done.` splices a statement body and `Substitute square with (2 plus 3) done` splices an expression body, wrapped in parentheses. Arguments are single tokens or parenthesised groups. Inside a body, `stringize param` produces a string literal of the argument and `paste a and b` joins two tokens into one identifier. Macro bodies may use other macros, which expand until none remain (up to 16 rounds). `Undefine the macro NAME.` removes a macro. A macro with no `taking` clause is object-like: `Substitute NAME done`.
+
+## Expression conditions
+
+`Compile if` and `Elif` also accept a full expression over macro values: `Compile if VERSION is at least 3 and LEVEL plus 1 is equal to 3:`. The operators are arithmetic, shifts, bitwise, `is greater than`/`is less than`/`is equal to`/`is not equal to`/`is at least`/`is at most`, `and`, `or`, `not`, and `NAME is defined` / `NAME is not defined`. Macro names take their values from `--define NAME=VALUE` and the predefined environment; an undefined name is 0.

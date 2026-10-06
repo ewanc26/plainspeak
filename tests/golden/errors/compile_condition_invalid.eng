@@ -1,0 +1,3 @@
+Compile if VERSION plus is defined:
+    Say "x".
+End compile if.

@@ -3312,6 +3312,61 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, CompileIfStmt>) {
             const std::vector<Stmt *> *selectedBody = nullptr;
+            std::function<std::optional<long>(const Expr *)> evalCondition = [&](const Expr *expr) -> std::optional<long> {
+                if (!expr) return std::nullopt;
+                if (auto *lit = std::get_if<IntLit>(&expr->node)) return lit->value;
+                if (auto *lit = std::get_if<BoolLit>(&expr->node)) return lit->value ? 1L : 0L;
+                if (auto *def = std::get_if<DefinedExpr>(&expr->node)) return defines_.count(def->name) != 0 ? 1L : 0L;
+                if (auto *ref = std::get_if<VarRef>(&expr->node)) {
+                    auto found = defines_.find(ref->name);
+                    return found == defines_.end() ? 0L : found->second;
+                }
+                if (auto *un = std::get_if<UnaryExpr>(&expr->node)) {
+                    auto v = evalCondition(un->rhs);
+                    if (!v) return std::nullopt;
+                    if (un->op == UnaryOp::Not) return *v == 0 ? 1L : 0L;
+                    if (un->op == UnaryOp::BitNot) return ~*v;
+                    return -*v;
+                }
+                if (auto *cond = std::get_if<ConditionalExpr>(&expr->node)) {
+                    auto c = evalCondition(cond->condition);
+                    if (!c) return std::nullopt;
+                    return evalCondition(*c != 0 ? cond->whenTrue : cond->whenFalse);
+                }
+                if (auto *bin = std::get_if<BinaryExpr>(&expr->node)) {
+                    auto l = evalCondition(bin->lhs);
+                    if (!l) return std::nullopt;
+                    if (bin->op == BinOp::And && *l == 0) return 0L;
+                    if (bin->op == BinOp::Or && *l != 0) return 1L;
+                    auto r = evalCondition(bin->rhs);
+                    if (!r) return std::nullopt;
+                    switch (bin->op) {
+                        case BinOp::Add: return *l + *r;
+                        case BinOp::Sub: return *l - *r;
+                        case BinOp::Mul: return *l * *r;
+                        case BinOp::Div: return *r == 0 ? std::nullopt : std::optional<long>(*l / *r);
+                        case BinOp::Mod: return *r == 0 ? std::nullopt : std::optional<long>(*l % *r);
+                        case BinOp::ShiftLeft: return (*r < 0 || *r >= 63) ? std::nullopt : std::optional<long>(*l << *r);
+                        case BinOp::ShiftRight: return (*r < 0 || *r >= 63) ? std::nullopt : std::optional<long>(*l >> *r);
+                        case BinOp::Gt: return *l > *r ? 1L : 0L;
+                        case BinOp::Lt: return *l < *r ? 1L : 0L;
+                        case BinOp::Eq: return *l == *r ? 1L : 0L;
+                        case BinOp::Ne: return *l != *r ? 1L : 0L;
+                        case BinOp::Ge: return *l >= *r ? 1L : 0L;
+                        case BinOp::Le: return *l <= *r ? 1L : 0L;
+                        case BinOp::BitAnd: return *l & *r;
+                        case BinOp::BitXor: return *l ^ *r;
+                        case BinOp::BitOr: return *l | *r;
+                        case BinOp::And: case BinOp::Or: return *r != 0 ? 1L : 0L;
+                    }
+                }
+                return std::nullopt;
+            };
+            auto conditionHolds = [&](const Expr *expr) {
+                auto value = evalCondition(expr);
+                if (!value) diags.push_back({40, s->line, "A compile-time condition must be built from whole numbers, macro names, \"NAME is defined\" and arithmetic, comparison and logical operators."});
+                return value && *value != 0;
+            };
             auto holds = [&](const std::string &name, const CompilePredicate &predicate) {
                 auto found = defines_.find(name);
                 const bool isDefined = found != defines_.end();
@@ -3328,11 +3383,11 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
                 return false;
             };
-            if (holds(node.macroName, node.predicate)) {
+            if (node.condition ? conditionHolds(node.condition) : holds(node.macroName, node.predicate)) {
                 selectedBody = &node.thenBody;
             } else {
                 for (const auto &elif : node.elifBranches) {
-                    if (holds(elif.macroName, elif.predicate)) {
+                    if (elif.condition ? conditionHolds(elif.condition) : holds(elif.macroName, elif.predicate)) {
                         selectedBody = &elif.body;
                         break;
                     }
