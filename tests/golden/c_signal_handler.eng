@@ -1,0 +1,10 @@
+Import the C constant SIGUSR1 as integer from the header "signal.h".
+Import the C function signal taking an integer and a pointer to function taking integer returning void, returning a pointer to function taking integer returning void, from the header "signal.h".
+Import the C function raise taking an integer, returning an integer, from the header "signal.h".
+Declare seen as atomic integer with value 0.
+Procedure on_signal takes number as integer returns void:
+    Atomic store number to seen.
+End procedure.
+Declare previous as pointer to function taking integer returning void with value Call signal with SIGUSR1, Address of on_signal done.
+Declare status as integer with value Call raise with SIGUSR1 done.
+Say Atomic load of seen is equal to SIGUSR1.

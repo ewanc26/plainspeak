@@ -1,0 +1,26 @@
+Import the C function fmod taking a decimal and a decimal, returning a decimal, from the header "math.h".
+Import the C function hypot taking a decimal and a decimal, returning a decimal, from the header "math.h".
+Import the C function cbrt taking a decimal, returning a decimal, from the header "math.h".
+Import the C function copysign taking a decimal and a decimal, returning a decimal, from the header "math.h".
+Import the C function fmax taking a decimal and a decimal, returning a decimal, from the header "math.h".
+Import the C function lround taking a decimal, returning a long integer, from the header "math.h".
+Import the C function ldexp taking a decimal and an integer, returning a decimal, from the header "math.h".
+Import the C function atan2 taking a decimal and a decimal, returning a decimal, from the header "math.h".
+Import the C function erf taking a decimal, returning a decimal, from the header "math.h".
+Import the C function tgamma taking a decimal, returning a decimal, from the header "math.h".
+Import the C function expm1 taking a decimal, returning a decimal, from the header "math.h".
+Import the C function fabsf taking a float, returning a float, from the header "math.h".
+Import the C function sqrtl taking a long decimal, returning a long decimal, from the header "math.h".
+Say Call fmod with 7.5, 2 done.
+Say Call hypot with 3, 4 done.
+Say Call cbrt with 27 done.
+Say Call copysign with 3, 0 minus 1 done.
+Say Call fmax with 2.5, 9 done.
+Say Call lround with 2.5 done.
+Say Call ldexp with 1.5, 3 done.
+Say Call atan2 with 0, 1 done.
+Say Call erf with 0 done.
+Say Call tgamma with 5 done.
+Say Call expm1 with 0 done.
+Say Call fabsf with Convert (0 minus 2.5) to type float done.
+Say Call sqrtl with Convert 16 to type long decimal done.

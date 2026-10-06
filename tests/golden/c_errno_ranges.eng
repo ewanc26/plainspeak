@@ -1,0 +1,13 @@
+Import the C object errno as integer from the header "errno.h".
+Import the C constant ERANGE as integer from the header "errno.h".
+Import the C constant EDOM as integer from the header "errno.h".
+Import the C function strtol taking a pointer to character and a pointer to pointer to character and an integer, returning a long integer, from the header "stdlib.h".
+Import the C function sqrt taking a decimal, returning a decimal, from the header "math.h".
+Set errno to 0.
+Declare big as long integer with value Call strtol with "99999999999999999999999", null pointer, 10 done.
+Say errno is equal to ERANGE.
+Set errno to 0.
+Declare root as decimal with value Call sqrt with 0 minus 1 done.
+Say errno is equal to EDOM.
+Set errno to 0.
+Say errno.

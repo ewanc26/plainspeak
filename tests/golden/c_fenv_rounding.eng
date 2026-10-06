@@ -1,0 +1,18 @@
+Import the C function fegetround taking no parameters, returning an integer, from the header "fenv.h".
+Import the C function fesetround taking an integer, returning an integer, from the header "fenv.h".
+Import the C function feclearexcept taking an integer, returning an integer, from the header "fenv.h".
+Import the C function fetestexcept taking an integer, returning an integer, from the header "fenv.h".
+Import the C function feraiseexcept taking an integer, returning an integer, from the header "fenv.h".
+Import the C constant FE_TONEAREST as integer from the header "fenv.h".
+Import the C constant FE_UPWARD as integer from the header "fenv.h".
+Import the C constant FE_DIVBYZERO as integer from the header "fenv.h".
+Import the C constant FE_ALL_EXCEPT as integer from the header "fenv.h".
+Declare status as integer.
+Set status to Call fesetround with FE_UPWARD done.
+Say Call fegetround done is equal to FE_UPWARD.
+Set status to Call fesetround with FE_TONEAREST done.
+Say Call fegetround done is equal to FE_TONEAREST.
+Set status to Call feclearexcept with FE_ALL_EXCEPT done.
+Say Call fetestexcept with FE_DIVBYZERO done.
+Set status to Call feraiseexcept with FE_DIVBYZERO done.
+Say Call fetestexcept with FE_DIVBYZERO done is equal to FE_DIVBYZERO.
