@@ -1,0 +1,8 @@
+Import the C constant EOF as integer from the header "stdio.h".
+Say isalpha of EOF.
+Say isdigit of 53.
+Say toupper of 97.
+Say isspace of 32.
+Say ispunct of 33.
+Say isxdigit of 70.
+Say tolower of EOF.

@@ -1,0 +1,17 @@
+Import the C function ps_time_field taking a long integer and an integer, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_time_make taking a long integer and a long integer and a long integer and a long integer and a long integer and a long integer, returning a long integer, from the header "plainspeak_runtime.h".
+Import the C function ps_time_format taking a long integer and a pointer to character and a pointer to character and an unsigned long integer, returning an integer, from the header "plainspeak_runtime.h".
+Import the C function fputs taking a pointer to character and a pointer to void, returning an integer, from the header "stdio.h".
+Import the C object stdout as a pointer to void from the header "stdio.h".
+Declare moment as long integer with value Call ps_time_make with 2024, 2, 29, 13, 45, 30 done.
+Say moment.
+Say Call ps_time_field with moment, 0 done.
+Say Call ps_time_field with moment, 1 done.
+Say Call ps_time_field with moment, 2 done.
+Say Call ps_time_field with moment, 6 done.
+Say Call ps_time_field with moment, 7 done.
+Declare text as array of character with length 32.
+Declare written as integer with value Call ps_time_format with moment, "%Y-%m-%d %H:%M:%S", text, 32 done.
+Declare status as integer with value Call fputs with text, stdout done.
+Declare newline as integer with value Call fputs with "\n", stdout done.
+Say written.

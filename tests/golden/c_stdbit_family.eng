@@ -1,0 +1,18 @@
+Import the C function stdc_first_leading_one_ui taking an unsigned integer, returning an unsigned integer, from the header "stdbit.h".
+Import the C function stdc_trailing_zeros_ul taking an unsigned long integer, returning an unsigned integer, from the header "stdbit.h".
+Import the C function stdc_has_single_bit_ui taking an unsigned integer, returning a boolean, from the header "stdbit.h".
+Import the C function stdc_bit_ceil_ui taking an unsigned integer, returning an unsigned integer, from the header "stdbit.h".
+Import the C function stdc_bit_floor_ull taking an unsigned long long integer, returning an unsigned long long integer, from the header "stdbit.h".
+Import the C function stdc_count_zeros_us taking an unsigned short integer, returning an unsigned integer, from the header "stdbit.h".
+Import the C function stdc_leading_ones_uc taking an unsigned character, returning an unsigned integer, from the header "stdbit.h".
+Import the C constant __STDC_ENDIAN_LITTLE__ as integer from the header "stdbit.h".
+Import the C constant __STDC_ENDIAN_NATIVE__ as integer from the header "stdbit.h".
+Say Call stdc_first_leading_one_ui with 40 done.
+Say Call stdc_trailing_zeros_ul with 96 done.
+Say Call stdc_has_single_bit_ui with 64 done.
+Say Call stdc_has_single_bit_ui with 65 done.
+Say Call stdc_bit_ceil_ui with 65 done.
+Say Call stdc_bit_floor_ull with 1000 done.
+Say Call stdc_count_zeros_us with 255 done.
+Say Call stdc_leading_ones_uc with 240 done.
+Say __STDC_ENDIAN_NATIVE__ is equal to __STDC_ENDIAN_LITTLE__.

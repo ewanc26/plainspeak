@@ -1,0 +1,14 @@
+Declare small as unsigned character.
+Declare wide as long integer.
+Declare overflowed as integer.
+Set overflowed to Checked add 200 and 100 into small.
+Say overflowed.
+Say small.
+Set overflowed to Checked subtract 0 and 1 into small.
+Say overflowed.
+Say small.
+Set overflowed to Checked multiply 3000000000 and 4 into wide.
+Say overflowed.
+Say wide.
+Set overflowed to Checked multiply 3000000000 and 4000000000 into wide.
+Say overflowed.

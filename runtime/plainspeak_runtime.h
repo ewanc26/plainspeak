@@ -1,5 +1,6 @@
 #pragma once
 #include <stddef.h>
+#include <stdio.h>
 #include <setjmp.h>
 
 typedef enum { PS_INT, PS_DOUBLE, PS_STRING, PS_LIST } PsType;
@@ -110,3 +111,12 @@ int ps_mutex_lock_ms(long handle, long milliseconds);
 int ps_cond_wait_ms(long cond, long mutex, long milliseconds);
 long ps_once_create(void);
 int ps_once_run(long handle, void (*routine)(void));
+
+/* <time.h> calendar helpers over UTC. Field numbers: 0 year, 1 month (1-12),
+ * 2 day of month, 3 hour, 4 minute, 5 second, 6 weekday (0 = Sunday), 7 day of year (1-366). */
+long ps_time_field(long timestamp, int field);
+long ps_time_make(long year, long month, long day, long hour, long minute, long second);
+int ps_time_format(long timestamp, const char *format, char *buffer, unsigned long size);
+
+/* <ctype.h> arguments must be an unsigned char value or EOF; EOF passes through unchanged. */
+static inline int ps_ctype_arg(long value) { return value == EOF ? EOF : (unsigned char)value; }

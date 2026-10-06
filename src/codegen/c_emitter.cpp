@@ -681,11 +681,11 @@ std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis) {
             };
             if (ctypeFns.count(node.func)) {
                 if (node.func.rfind("is", 0) == 0) {
-                    return "ps_int((long)(" + node.func + "((unsigned char)ps_as_int(" +
-                           emitBoxedExpr(node.arg, analysis) + ")) != 0))";
+                    return "ps_int((long)(" + node.func + "(ps_ctype_arg(ps_as_int(" +
+                           emitBoxedExpr(node.arg, analysis) + "))) != 0))";
                 }
-                return "ps_int((long)" + node.func + "((unsigned char)ps_as_int(" +
-                       emitBoxedExpr(node.arg, analysis) + ")))";
+                return "ps_int((long)" + node.func + "(ps_ctype_arg(ps_as_int(" +
+                       emitBoxedExpr(node.arg, analysis) + "))))";
             }
             auto it = mathFn.find(node.func);
             std::string fn = it != mathFn.end() ? it->second : "ps_" + node.func;

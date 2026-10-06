@@ -180,7 +180,7 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 |---|---|---|
 | `lib.assert` | implemented | Runtime `Assert` uses the conforming `<assert.h>` facility for scalar conditions. |
 | `lib.complex` | foundation | Real, imaginary, magnitude and conjugate queries use the platform <complex.h> functions, construction uses __builtin_complex, and typed imports can bind functions such as csqrt over complex decimal values; the remaining complex library surface and complex float/long-double variants remain pending. |
-| `lib.ctype` | planned | `<ctype.h>` |
+| `lib.ctype` | implemented | Character classification and tolower/toupper bind to <ctype.h> with C semantics: arguments are normalised to unsigned char values while EOF passes through unchanged, so isalpha(EOF) is 0 and tolower(EOF) is EOF. |
 | `lib.errno` | implemented | errno is a typed object import that programs can clear, assign and compare with typed ERANGE/EDOM constant imports after library calls such as strtol and sqrt. |
 | `lib.fenv` | implemented | Typed imports bind fenv.h functions (fegetround, fesetround, feclearexcept, fetestexcept, feraiseexcept) and the FE_* constants, with Pragma "STDC FENV_ACCESS ON" available for the pragma interaction. |
 | `lib.float` | implemented | Minimum/maximum queries bind to <float.h>, and every other <float.h> macro (DBL_EPSILON, FLT_RADIX, DBL_DIG, DBL_MANT_DIG, FLT_MAX_EXP, DECIMAL_DIG ...) is available as a typed constant import with its original spelling. |
@@ -202,12 +202,12 @@ Each header row ultimately expands into per-facility entries as bindings are imp
 | `lib.string` | foundation | Typed C imports can bind string.h strlen, strcmp, strncmp, strcpy, strcat, strchr and memset with string-literal and native character-array decay to character pointers, including in-place mutation of native arrays; bounds checking and the remaining string surface remain pending. |
 | `lib.tgmath` | foundation | The <tgmath.h> header can be imported and typed imports can bind its underlying real math functions; type-generic macro dispatch remains pending. |
 | `lib.threads` | implemented | Typed C imports bind <threads.h> thread lifecycle functions (thrd_create/join/detach/exit/current/equal), and the runtime wraps mutexes, condition variables, call_once and sleeping as plain integer handles. |
-| `lib.time` | foundation | Typed C imports can bind time.h time with a null output pointer, clock with no arguments and difftime over integer time values; calendar conversion (struct tm), formatting and clock-type aliases remain pending. |
+| `lib.time` | implemented | time, clock and difftime bind to <time.h> through typed imports, and UTC calendar conversion, construction and strftime formatting (the struct tm facilities) are provided by ps_time_field, ps_time_make and ps_time_format in the runtime. |
 | `lib.uchar` | foundation | Typed C imports can bind C11/C23 <uchar.h> conversion functions such as c16rtomb with character-pointer and opaque state-pointer arguments; char16_t/char32_t/char8_t types and UTF literals remain pending. |
 | `lib.wchar` | foundation | Typed C imports can bind <wchar.h> conversion functions such as btowc and wctob with wint_t-compatible integers; wide strings, wide stream I/O and mbstate_t objects remain pending. |
 | `lib.wctype` | foundation | Typed C imports can bind <wctype.h> classification functions such as iswalpha and iswdigit with wint_t-compatible integer arguments; wctype_t/wctrans_t handles and wide-character literals remain pending. |
-| `lib.stdbit` | foundation | Typed C imports can bind C23 <stdbit.h> unsigned-integer bit-query functions such as stdc_leading_zeros_ui, stdc_count_ones_ui and stdc_bit_width_ui; the type-generic stdc_* macros and endian macros remain pending. |
-| `lib.stdckdint` | foundation | Checked add/subtract/multiply A and B into NAME expressions lower to the compiler overflow builtins behind C23 ckd_add/ckd_sub/ckd_mul, store the wrapped result in a modifiable native integer object and yield the overflow flag; mixed-signedness operand-type rules and non-integer result types remain pending. |
+| `lib.stdbit` | implemented | Typed C imports bind the full C23 <stdbit.h> function family across the uc/us/ui/ul/ull widths (leading/trailing zeros and ones, first leading/trailing one, count, single-bit, width, floor/ceil) and the endian macros are typed constant imports. |
+| `lib.stdckdint` | implemented | Checked add/subtract/multiply A and B into NAME expressions lower to the compiler overflow builtins behind C23 ckd_add/ckd_sub/ckd_mul, store the wrapped result in any modifiable native integer object (including narrower and unsigned results) and yield the overflow flag. |
 
 ## Conformance rules
 

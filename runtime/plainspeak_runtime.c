@@ -1,3 +1,4 @@
+#define _DEFAULT_SOURCE 1
 #include "plainspeak_runtime.h"
 #include <limits.h>
 #include <math.h>
@@ -381,4 +382,42 @@ long ps_once_create(void) {
 int ps_once_run(long h, void (*routine)(void)) {
     call_once((once_flag *)(intptr_t)h, routine);
     return PS_THRD_SUCCESS;
+}
+
+#include <time.h>
+
+long ps_time_field(long timestamp, int field) {
+    time_t t = (time_t)timestamp;
+    struct tm parts;
+    if (!gmtime_r(&t, &parts)) return -1;
+    switch (field) {
+        case 0: return parts.tm_year + 1900L;
+        case 1: return parts.tm_mon + 1L;
+        case 2: return parts.tm_mday;
+        case 3: return parts.tm_hour;
+        case 4: return parts.tm_min;
+        case 5: return parts.tm_sec;
+        case 6: return parts.tm_wday;
+        case 7: return parts.tm_yday + 1L;
+        default: return -1;
+    }
+}
+
+long ps_time_make(long year, long month, long day, long hour, long minute, long second) {
+    struct tm parts;
+    memset(&parts, 0, sizeof parts);
+    parts.tm_year = (int)(year - 1900);
+    parts.tm_mon = (int)(month - 1);
+    parts.tm_mday = (int)day;
+    parts.tm_hour = (int)hour;
+    parts.tm_min = (int)minute;
+    parts.tm_sec = (int)second;
+    return (long)timegm(&parts);
+}
+
+int ps_time_format(long timestamp, const char *format, char *buffer, unsigned long size) {
+    time_t t = (time_t)timestamp;
+    struct tm parts;
+    if (!gmtime_r(&t, &parts)) return 0;
+    return (int)strftime(buffer, size, format, &parts);
 }
