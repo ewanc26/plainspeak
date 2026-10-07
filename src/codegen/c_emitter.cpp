@@ -1116,24 +1116,6 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
     }, s->node);
 }
 
-// Initializers that are translation-time constants can initialise a file-scope
-// object statically, which also gives every thread its own initial copy of a
-// _Thread_local object.
-bool isStaticConstantInitializer(const Expr *e) {
-    if (!e) return false;
-    if (std::holds_alternative<IntLit>(e->node) || std::holds_alternative<FloatLit>(e->node) ||
-        std::holds_alternative<BoolLit>(e->node)) return true;
-    if (auto *unary = std::get_if<UnaryExpr>(&e->node)) return isStaticConstantInitializer(unary->rhs);
-    if (auto *binary = std::get_if<BinaryExpr>(&e->node)) {
-        switch (binary->op) {
-            case BinOp::Add: case BinOp::Sub: case BinOp::Mul:
-                return isStaticConstantInitializer(binary->lhs) && isStaticConstantInitializer(binary->rhs);
-            default: return false;
-        }
-    }
-    return false;
-}
-
 std::string emitProcedureDeclaration(const ProcedureStmt &proc,
                                      const AnalysisResult &analysis,
                                      bool withInline = true) {
@@ -1297,7 +1279,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             if (decl->threadLocal) out << "_Thread_local ";
             if (decl->constexprObject) out << "const ";
             out << emitCDeclaration(analysis.declarationTypes.at(s), mangle(decl->name));
-            if ((decl->constexprObject || !emitMain || isStaticConstantInitializer(decl->initializer)) && decl->initializer)
+            if ((decl->constexprObject || !emitMain || analysis.staticInitDecls.count(s)) && decl->initializer)
                 out << " = " << emitRawExpr(decl->initializer, analysis);
             else if (decl->constexprObject && decl->aggregateInitializer)
                 out << " = " << emitInitializerList(*decl->aggregateInitializer, analysis);
@@ -1335,7 +1317,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             std::holds_alternative<UnionStmt>(s->node) ||
             std::holds_alternative<EnumerationStmt>(s->node)) continue;
         if (auto *decl = std::get_if<NativeDeclStmt>(&s->node)) {
-            if (decl->initializer && !decl->constexprObject && !isStaticConstantInitializer(decl->initializer)) {
+            if (decl->initializer && !decl->constexprObject && !analysis.staticInitDecls.count(s)) {
                 out << "    " << mangle(decl->name) << " = "
                     << emitRawExpr(decl->initializer, analysis) << ";\n";
             } else if (decl->aggregateInitializer && !decl->constexprObject) {

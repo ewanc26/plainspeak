@@ -1,0 +1,4 @@
+Declare x as constant integer with value 1.
+Declare y as constant decimal with value 2.5.
+Say x plus 1.
+Say y.

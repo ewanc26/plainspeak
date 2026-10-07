@@ -1,1 +1,2 @@
-Declare x as constant integer with value 1.
+Declare base as integer with value 1.
+Declare x as constant integer with value base plus 1.

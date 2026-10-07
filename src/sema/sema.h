@@ -70,6 +70,9 @@ struct AnalysisResult {
     std::unordered_map<const Stmt *, std::vector<std::pair<std::string, long>>> enumerationValues;
     std::unordered_set<const Expr *> nativeObjectRefs;
     std::unordered_set<const Expr *> bitFieldExprs;
+    // File-scope declarations whose initializer is a translation-time constant and is
+    // emitted as a static C initializer.
+    std::unordered_set<const Stmt *> staticInitDecls;
     // Mangled anonymous-member prefix (e.g. "anonymous_member_0.") for member accesses
     // that reach their field through anonymous structure/union members.
     std::unordered_map<const void *, std::string> memberPaths;

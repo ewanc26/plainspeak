@@ -1,0 +1,13 @@
+Declare fixed as constant integer with value 5.
+Declare table as array of integer with length 4 with values 1 followed by 2 followed by 3 followed by 4 done.
+Declare same_table as type of table.
+Declare mutable as type of unqualified fixed.
+Declare shadow as type of fixed with value 5.
+Set mutable to 9.
+Say mutable.
+Say Size of same_table.
+Procedure triple takes value as integer returns integer:
+    Return value times 3.
+End procedure.
+Declare callback as pointer to type of triple with value Address of triple.
+Say Call through callback with 4 done.

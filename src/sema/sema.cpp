@@ -1434,9 +1434,21 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
                 auto found = analysis_->exprTypes.find(spec.typeOfExpr);
                 if (found != analysis_->exprTypes.end()) result = found->second;
             } else {
+                bool foundObject = false;
                 for (auto it = scopes_.rbegin(); it != scopes_.rend(); ++it) {
                     auto found = it->find(spec.typeOfName);
-                    if (found != it->end()) { result = found->second.type; break; }
+                    if (found != it->end()) { result = found->second.type; foundObject = true; break; }
+                }
+                if (!foundObject) {
+                    // C23 typeof also accepts a function designator.
+                    const ProcedureSignature *signature = nullptr;
+                    auto proc = procTable_.find(spec.typeOfName);
+                    if (proc != procTable_.end() && proc->second.nativeTyped) signature = &proc->second;
+                    else if (analysis_) {
+                        auto imported = analysis_->cFunctionSignatures.find(spec.typeOfName);
+                        if (imported != analysis_->cFunctionSignatures.end()) signature = &imported->second;
+                    }
+                    if (signature) result = Type::function(signature->returnType, signature->parameterTypes, signature->variadic);
                 }
             }
             if (spec.kind == TypeSpecKind::TypeOfUnqual) result.qualifiers = {};
@@ -3027,7 +3039,18 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 if (Symbol *declaredSymbol = findVar(node.name))
                     declaredSymbol->constantValue = integerConstantValue(node.initializer);
             }
-            if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer && !node.constexprObject) {
+            if (scopes_.size() == 1 && node.initializer) {
+                auto isConstantInit = [&](const Expr *expr) {
+                    if (integerConstantValue(expr)) return true;
+                    if (std::holds_alternative<FloatLit>(expr->node)) return true;
+                    if (auto *unary = std::get_if<UnaryExpr>(&expr->node))
+                        return unary->op == UnaryOp::Neg && std::holds_alternative<FloatLit>(unary->rhs->node);
+                    return false;
+                };
+                if (analysis_ && isConstantInit(node.initializer)) analysis_->staticInitDecls.insert(s);
+            }
+            if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer && !node.constexprObject &&
+                !(analysis_ && analysis_->staticInitDecls.count(s))) {
                 diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
                 return;
             }
