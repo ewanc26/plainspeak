@@ -44,7 +44,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 
 | ID | Status |
 |---|---|
-| `expr.integer-constant-expressions` | foundation |
+| `expr.integer-constant-expressions` | implemented | Translation-time evaluation covers integer/boolean literals, unary, binary and conditional operators with checked arithmetic and short-circuit semantics, enumerator references, constexpr names, sizeof/alignof of types, integer casts (with wrap-around) and float-literal-to-integer casts; constant array bounds and Enumerator values accept these expressions. |
 | `expr.integer-promotions` | foundation |
 | `expr.value-categories` | foundation |
 | `expr.arithmetic` | foundation |

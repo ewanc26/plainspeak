@@ -1,0 +1,16 @@
+Enumeration color:
+    Enumerator red.
+    Enumerator green.
+    Enumerator blue.
+End enumeration.
+Declare width as constexpr integer with value 3.
+Declare table as array of integer with length (width plus 2).
+Declare by_enum as array of integer with length (Enumerator blue of color plus 1).
+Declare by_size as array of character with length (Size of type integer times 2).
+Say Size of table.
+Say Size of by_enum.
+Say Size of by_size.
+Assert that Size of type long integer is equal to Size of type pointer to integer.
+Assert that Enumerator green of color plus width is equal to 4.
+Assert that Convert 300 to type unsigned character is equal to 44.
+Assert that Convert 200 to type character is less than 0.

@@ -1,0 +1,17 @@
+Enumeration base:
+    Enumerator first as 4.
+End enumeration.
+Enumeration flags:
+    Enumerator none as 0.
+    Enumerator read as 1.
+    Enumerator write as (Enumerator read of flags shifted left by 1).
+    Enumerator both as (Enumerator read of flags bitwise or Enumerator write of flags).
+    Enumerator wide as (Enumerator first of base times 10 plus Size of type integer).
+    Enumerator cast as Convert 300 to type unsigned character.
+    Enumerator next.
+End enumeration.
+Say Enumerator write of flags.
+Say Enumerator both of flags.
+Say Enumerator wide of flags.
+Say Enumerator cast of flags.
+Say Enumerator next of flags.

@@ -215,6 +215,11 @@ bool checkedMulLong(long lhs, long rhs, long &out) {
     return true;
 }
 
+// Optional extension used while a Sema run is active: resolves the constant forms
+// that need symbol/type context (enumerators, sizeof/alignof, integer casts,
+// constexpr names).
+static const std::function<std::optional<long>(const Expr *)> *gConstantHook = nullptr;
+
 std::optional<long> integerConstantValue(const Expr *expr) {
     if (!expr) return std::nullopt;
 
@@ -288,6 +293,7 @@ std::optional<long> integerConstantValue(const Expr *expr) {
             if (!cond) return std::nullopt;
             return integerConstantValue(*cond != 0 ? node.whenTrue : node.whenFalse);
         }
+        if (gConstantHook) return (*gConstantHook)(expr);
         return std::nullopt;
     }, expr->node);
 }
@@ -974,6 +980,79 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
     breakableDepth_ = 0;
     scopes_.emplace_back();
     analysis_ = &result;
+    constantHook_ = [this](const Expr *expr) -> std::optional<long> {
+        auto sizeOf = [&](const Type &type, auto &&self) -> std::optional<long> {
+            switch (type.kind) {
+                case TypeKind::Boolean: return 1;
+                case TypeKind::Integer:
+                    switch (type.integerRank) {
+                        case IntegerRank::Char: return 1;
+                        case IntegerRank::Short: return static_cast<long>(sizeof(short));
+                        case IntegerRank::Int: return static_cast<long>(sizeof(int));
+                        case IntegerRank::Long: return static_cast<long>(sizeof(long));
+                        case IntegerRank::LongLong: return static_cast<long>(sizeof(long long));
+                    }
+                    return std::nullopt;
+                case TypeKind::Floating:
+                    return type.floatingRank == FloatingRank::Float ? static_cast<long>(sizeof(float))
+                         : type.floatingRank == FloatingRank::Double ? static_cast<long>(sizeof(double))
+                         : static_cast<long>(sizeof(long double));
+                case TypeKind::Pointer: return static_cast<long>(sizeof(void *));
+                case TypeKind::Enumeration: return static_cast<long>(sizeof(int));
+                case TypeKind::Array:
+                    if (type.arrayBound && type.elementType) {
+                        auto element = self(*type.elementType, self);
+                        if (element) return *element * static_cast<long>(*type.arrayBound);
+                    }
+                    return std::nullopt;
+                default: return std::nullopt;
+            }
+        };
+        auto alignOf = [&](const Type &type, auto &&self) -> std::optional<long> {
+            if (type.kind == TypeKind::Array && type.elementType) return self(*type.elementType, self);
+            auto size = sizeOf(type, sizeOf);
+            if (!size) return std::nullopt;
+            return *size > 16 ? 16 : *size;
+        };
+        if (auto *enumerator = std::get_if<EnumeratorExpr>(&expr->node)) {
+            auto found = enumerationTable_.find(enumerator->enumeration);
+            if (found == enumerationTable_.end()) return std::nullopt;
+            for (const auto &item : found->second.enumerators)
+                if (item.first == enumerator->name) return item.second;
+            return std::nullopt;
+        }
+        if (auto *size = std::get_if<SizeOfTypeExpr>(&expr->node)) return sizeOf(resolveTypeSpec(size->type), sizeOf);
+        if (auto *align = std::get_if<AlignOfTypeExpr>(&expr->node)) return alignOf(resolveTypeSpec(align->type), alignOf);
+        if (auto *cast = std::get_if<CastExpr>(&expr->node)) {
+            Type target = resolveTypeSpec(cast->target);
+            auto value = integerConstantValue(cast->operand);
+            if (!value) {
+                // A floating literal may be converted to an integer inside an integer constant expression.
+                auto *literal = std::get_if<FloatLit>(&cast->operand->node);
+                if (!literal || literal->value != literal->value || literal->value > 9.2e18 || literal->value < -9.2e18) return std::nullopt;
+                value = static_cast<long>(literal->value);
+            }
+            if (target.kind == TypeKind::Boolean) return *value != 0 ? 1L : 0L;
+            if (target.kind != TypeKind::Integer && target.kind != TypeKind::Enumeration) return std::nullopt;
+            auto width = target.kind == TypeKind::Enumeration ? std::optional<long>(sizeof(int)) : sizeOf(target, sizeOf);
+            if (!width || *width >= static_cast<long>(sizeof(long))) return value;
+            const unsigned bits = static_cast<unsigned>(*width) * 8;
+            unsigned long mask = (1UL << bits) - 1;
+            unsigned long wrapped = static_cast<unsigned long>(*value) & mask;
+            if (target.kind == TypeKind::Integer && target.isUnsigned) return static_cast<long>(wrapped);
+            if (wrapped & (1UL << (bits - 1))) return static_cast<long>(wrapped) - static_cast<long>(1UL << bits);
+            return static_cast<long>(wrapped);
+        }
+        if (auto *ref = std::get_if<VarRef>(&expr->node)) {
+            if (Symbol *symbol = findVar(ref->name)) return symbol->constantValue;
+        }
+        return std::nullopt;
+    };
+    struct ConstantHookScope {
+        explicit ConstantHookScope(const std::function<std::optional<long>(const Expr *)> *hook) { previous = gConstantHook; gConstantHook = hook; }
+        ~ConstantHookScope() { gConstantHook = previous; }
+        const std::function<std::optional<long>(const Expr *)> *previous;
+    } constantHookScope(&constantHook_);
 
     for (Stmt *s : program) {
         if (auto *alias = std::get_if<TypeAliasStmt>(&s->node)) {
@@ -1192,7 +1271,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             continue;
         }
         result.cObjectTypes[import->name] = type;
-        scopes_.front()[import->name] = Symbol{type, true, false, {}, false};
+        scopes_.front()[import->name] = Symbol{type, true, false, {}, false, std::nullopt};
         if (std::find(result.cHeaders.begin(), result.cHeaders.end(), import->header) == result.cHeaders.end())
             result.cHeaders.push_back(import->header);
     }
@@ -1280,7 +1359,7 @@ std::pair<Sema::Symbol, bool> Sema::lookupVar(const std::string &name, int line,
     if (Symbol *symbol = findVar(name)) return {*symbol, true};
     diags.push_back({1, line, "I don't know what to do with \"" + name +
                               "\" — it is used here but never declared. Use Set or Declare to create it first."});
-    return {Symbol{Type::number(), false, false, {}, false}, false};
+    return {Symbol{Type::number(), false, false, {}, false, std::nullopt}, false};
 }
 
 bool Sema::declareVar(const std::string &name, Type type, bool nativeObject,
@@ -1293,7 +1372,7 @@ bool Sema::declareVar(const std::string &name, Type type, bool nativeObject,
         return false;
     }
     current[name] = Symbol{std::move(type), nativeObject, deprecated,
-                           std::move(deprecationMessage), maybeUnused};
+                           std::move(deprecationMessage), maybeUnused, std::nullopt};
     return true;
 }
 
@@ -1331,7 +1410,11 @@ Type Sema::resolveTypeSpec(const TypeSpec &spec) const {
             result = Type::pointerTo(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType());
             break;
         case TypeSpecKind::Array:
-            if (spec.arrayLengthExpr) {
+            if (spec.arrayLengthExpr && integerConstantValue(spec.arrayLengthExpr).value_or(0) > 0) {
+                // A constant bound (arithmetic, enumerators, sizeof, constexpr names) is a fixed array.
+                result = Type::arrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
+                                       static_cast<std::size_t>(*integerConstantValue(spec.arrayLengthExpr)));
+            } else if (spec.arrayLengthExpr) {
                 result = Type::variableArrayOf(spec.pointee ? resolveTypeSpec(*spec.pointee) : Type::voidType(),
                                                spec.arrayLengthExpr);
             } else {
@@ -2786,7 +2869,25 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 }
 
                 long value = 0;
-                if (enumerator.explicitValue) {
+                if (enumerator.valueExpr) {
+                    // Earlier enumerators of this enumeration are visible to constant expressions.
+                    found->second.enumerators = values;
+                    auto constant = integerConstantValue(enumerator.valueExpr);
+                    found->second.enumerators.clear();
+                    if (!constant) {
+                        diags.push_back({22, s->line, "Enumerator \"" + enumerator.name + "\" needs an integer constant expression value."});
+                        valid = false;
+                        values.emplace_back(enumerator.name, previous + 1);
+                        continue;
+                    }
+                    value = *constant;
+                    if (value < minInt || value > maxInt) {
+                        diags.push_back({22, s->line, "Enumerator \"" + enumerator.name + "\" value " +
+                                                  std::to_string(value) +
+                                                  " is outside the C99-C17 int range supported by this backend tranche."});
+                        valid = false;
+                    }
+                } else if (enumerator.explicitValue) {
                     value = *enumerator.explicitValue;
                     if (value < minInt || value > maxInt) {
                         diags.push_back({22, s->line, "Enumerator \"" + enumerator.name + "\" value " +
@@ -2899,6 +3000,10 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
             bool created = declareVar(node.name, declared, true, s->line, diags,
                                       node.deprecated, node.deprecationMessage, node.maybeUnused);
+            if (created && node.constexprObject && node.initializer) {
+                if (Symbol *declaredSymbol = findVar(node.name))
+                    declaredSymbol->constantValue = integerConstantValue(node.initializer);
+            }
             if (scopes_.size() == 1 && hasConstSubobject(declared) && node.initializer && !node.constexprObject) {
                 diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
                 return;

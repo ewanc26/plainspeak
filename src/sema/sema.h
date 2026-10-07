@@ -1,4 +1,5 @@
 #pragma once
+#include <functional>
 #include <optional>
 #include <string>
 #include <unordered_map>
@@ -110,8 +111,10 @@ private:
         bool deprecated = false;
         std::string deprecationMessage;
         bool maybeUnused = false;
+        std::optional<long> constantValue;
     };
 
+    std::function<std::optional<long>(const Expr *)> constantHook_;
     std::vector<std::unordered_map<std::string, Symbol>> scopes_;
     std::unordered_map<std::string, ProcedureSignature> procTable_;
     std::unordered_set<std::string> noreturnNames_;

@@ -1021,21 +1021,27 @@ Stmt *Parser::parseEnumeration() {
         expectWord("enumerator");
         std::string enumeratorName = expectIdentName();
         std::optional<long> explicitValue;
+        Expr *valueExpr = nullptr;
         if (checkWord("as")) {
             advance();
-            bool negative = false;
-            if (checkWord("minus")) {
-                negative = true;
-                advance();
+            // A plain signed literal keeps its literal form; anything else is an integer constant expression.
+            std::size_t literalLength = checkWord("minus") ? 1 : 0;
+            bool simple = peek(static_cast<int>(literalLength)).kind == TokKind::Number &&
+                          peek(static_cast<int>(literalLength) + 1).kind == TokKind::Dot;
+            if (simple) {
+                bool negative = false;
+                if (checkWord("minus")) {
+                    negative = true;
+                    advance();
+                }
+                long value = advance().num;
+                explicitValue = negative ? -value : value;
+            } else {
+                valueExpr = parseExpr();
             }
-            if (peek().kind != TokKind::Number) {
-                error("an Enumerator explicit value must be a whole-number literal");
-            }
-            long value = advance().num;
-            explicitValue = negative ? -value : value;
         }
         expectDot();
-        enumerators.push_back(EnumeratorDef{std::move(enumeratorName), explicitValue});
+        enumerators.push_back(EnumeratorDef{std::move(enumeratorName), explicitValue, valueExpr});
     }
     advance(); advance();
     expectDot();

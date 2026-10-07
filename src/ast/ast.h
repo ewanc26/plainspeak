@@ -179,7 +179,7 @@ struct StructureField {
 };
 struct StructureStmt { std::string name; std::vector<StructureField> fields; };
 struct UnionStmt { std::string name; std::vector<StructureField> fields; };
-struct EnumeratorDef { std::string name; std::optional<long> explicitValue; };
+struct EnumeratorDef { std::string name; std::optional<long> explicitValue; Expr *valueExpr = nullptr; };
 struct EnumerationStmt { std::string name; std::vector<EnumeratorDef> enumerators; };
 struct TypeAliasStmt { std::string name; TypeSpec target; };
 struct AddStmt       { Expr *expr; std::string varName; };

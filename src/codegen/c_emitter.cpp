@@ -428,6 +428,10 @@ std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis) {
             auto path = analysis.memberPaths.find(e);
             return "((" + emitRawExpr(node.base, analysis) + ")" + op +
                    (path == analysis.memberPaths.end() ? std::string() : path->second) + mangle(node.name) + ")";
+        } else if constexpr (std::is_same_v<T, SizeOfTypeExpr> || std::is_same_v<T, SizeOfExpr>) {
+            return "((long)sizeof(" + emitCType(typeOperand(e, analysis), &analysis) + "))";
+        } else if constexpr (std::is_same_v<T, AlignOfTypeExpr>) {
+            return "((long)_Alignof(" + emitCType(typeOperand(e, analysis), &analysis) + "))";
         } else if constexpr (std::is_same_v<T, EnumeratorExpr>) {
             return mangleEnumerator(node.enumeration, node.name);
         } else if constexpr (std::is_same_v<T, VarRef>) {
