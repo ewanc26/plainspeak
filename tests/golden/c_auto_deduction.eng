@@ -1,0 +1,24 @@
+Structure point:
+    Field x as integer.
+End structure.
+Procedure make returns structure point:
+    Declare p as structure point with members x as 9 done.
+    Return p.
+End procedure.
+Declare numbers as array of integer with length 3 with values 4 followed by 5 followed by 6 done.
+Declare whole as auto with value 7.
+Declare ratio as auto with value 2.5.
+Declare first as auto with value Element at 1 in numbers.
+Declare pointer as auto with value Address of whole.
+Declare decayed as auto with value numbers.
+Declare copy as auto with value Call make done.
+Declare flag as auto with value whole is greater than 3.
+Say whole.
+Say ratio.
+Say first.
+Say Value at pointer.
+Say Element at 2 in decayed.
+Say Member x of copy.
+Say flag.
+Say Size of whole.
+Say Size of decayed.

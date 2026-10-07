@@ -1,0 +1,1 @@
+error[E0013]: C23 auto cannot be deduced from an initializer list; give the object a type or use a single value.

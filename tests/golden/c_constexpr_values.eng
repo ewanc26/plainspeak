@@ -1,0 +1,17 @@
+Structure point:
+    Field x as integer.
+    Field y as decimal.
+End structure.
+Declare pi as constexpr decimal with value 3.25.
+Declare primes as constexpr array of integer with length 4 with values 2 followed by 3 followed by 5 followed by 7 done.
+Declare origin as constexpr structure point with members x as 3 followed by y as 0.5 done.
+Say pi.
+Say Element at 2 in primes.
+Say Member x of origin.
+Say Member y of origin.
+Procedure local returns decimal:
+    Declare scale as constexpr decimal with value 1.5.
+    Declare table as constexpr array of integer with length 2 with values 10 followed by 20 done.
+    Return scale times Element at 1 in table.
+End procedure.
+Say Call local done.

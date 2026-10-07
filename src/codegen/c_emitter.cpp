@@ -227,6 +227,23 @@ void emitAggregateStores(const std::string &name, const Type &declared,
     }
 }
 
+// Brace initializer list for constexpr aggregates (a static initializer, not a compound literal).
+std::string emitInitializerList(const AggregateInitializer &initializer, const AnalysisResult &analysis) {
+    std::string result = "{";
+    if (initializer.kind == AggregateInitKind::Empty) {
+        result += "0";
+    } else {
+        for (std::size_t i = 0; i < initializer.entries.size(); ++i) {
+            if (i) result += ", ";
+            const auto &entry = initializer.entries[i];
+            if (initializer.kind == AggregateInitKind::Members) result += "." + mangle(entry.memberName) + " = ";
+            else if (initializer.kind == AggregateInitKind::Elements) result += "[" + std::to_string(entry.elementIndex) + "] = ";
+            result += emitRawExpr(entry.expr, analysis);
+        }
+    }
+    return result + "}";
+}
+
 std::string emitCompoundLiteral(const Type &type, const AggregateInitializer &initializer,
                                 const AnalysisResult &analysis) {
     std::string result = "((" + emitCType(type) + "){";
@@ -904,6 +921,8 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 << emitCDeclaration(type, mangle(node.name), &analysis);
             if (node.initializer) {
                 out << " = " << emitRawExpr(node.initializer, analysis);
+            } else if (node.aggregateInitializer && node.constexprObject) {
+                out << " = " << emitInitializerList(*node.aggregateInitializer, analysis);
             } else if (node.aggregateInitializer) {
                 out << " = {0}";
             } else if (type.kind == TypeKind::Nullptr) {
@@ -913,7 +932,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 out << " = 0";
             }
             out << ";\n";
-            if (node.aggregateInitializer) {
+            if (node.aggregateInitializer && !node.constexprObject) {
                 emitAggregateStores(mangle(node.name), type, *node.aggregateInitializer,
                                     out, indent, analysis);
             }
@@ -1280,6 +1299,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             out << emitCDeclaration(analysis.declarationTypes.at(s), mangle(decl->name));
             if ((decl->constexprObject || !emitMain || isStaticConstantInitializer(decl->initializer)) && decl->initializer)
                 out << " = " << emitRawExpr(decl->initializer, analysis);
+            else if (decl->constexprObject && decl->aggregateInitializer)
+                out << " = " << emitInitializerList(*decl->aggregateInitializer, analysis);
             out << ";\n";
         }
     }
@@ -1317,7 +1338,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             if (decl->initializer && !decl->constexprObject && !isStaticConstantInitializer(decl->initializer)) {
                 out << "    " << mangle(decl->name) << " = "
                     << emitRawExpr(decl->initializer, analysis) << ";\n";
-            } else if (decl->aggregateInitializer) {
+            } else if (decl->aggregateInitializer && !decl->constexprObject) {
                 emitAggregateStores(mangle(decl->name), analysis.declarationTypes.at(s),
                                     *decl->aggregateInitializer, out, "    ", analysis);
             }

@@ -1,0 +1,2 @@
+Declare runtime as integer with value 4.
+Declare bad as constexpr decimal with value runtime.

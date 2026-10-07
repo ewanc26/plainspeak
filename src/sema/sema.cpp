@@ -2932,6 +2932,10 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({24, s->line, "A native declaration cannot request both internal and external linkage."});
             }
             if (node.type.kind == TypeSpecKind::Auto) {
+                if (node.aggregateInitializer) {
+                    diags.push_back({13, s->line, "C23 auto cannot be deduced from an initializer list; give the object a type or use a single value."});
+                    return;
+                }
                 if (!node.initializer) {
                     diags.push_back({13, s->line, "A native auto declaration needs an initializer to infer its type."});
                     return;
@@ -2941,10 +2945,29 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                     diags.push_back({13, s->line, "C23 auto inference needs a native object type, not " + typeToString(declared) + "."});
                     return;
                 }
+                // C23 deduces from the value after lvalue conversion: arrays decay and qualifiers drop.
+                declared = stripTopQualifiers(decayArray(declared));
             }
             if (node.constexprObject) {
-                if (!node.initializer || !integerConstantValue(node.initializer)) {
-                    diags.push_back({24, s->line, "A constexpr native object needs an integer constant initializer."});
+                auto constantEntry = [&](const Expr *expr) {
+                    if (!expr) return false;
+                    if (integerConstantValue(expr)) return true;
+                    if (std::holds_alternative<FloatLit>(expr->node)) return true;
+                    if (auto *unary = std::get_if<UnaryExpr>(&expr->node))
+                        return unary->op == UnaryOp::Neg && std::holds_alternative<FloatLit>(unary->rhs->node);
+                    return false;
+                };
+                bool constant = false;
+                if (node.aggregateInitializer) {
+                    constant = true;
+                    for (const auto &entry : node.aggregateInitializer->entries)
+                        if (!constantEntry(entry.expr)) constant = false;
+                } else if (node.initializer) {
+                    constant = declared.kind == TypeKind::Floating ? constantEntry(node.initializer)
+                             : static_cast<bool>(integerConstantValue(node.initializer));
+                }
+                if (!constant) {
+                    diags.push_back({24, s->line, "A constexpr native object needs a constant initializer (integer constant expressions, or floating literals for decimals and aggregate members)."});
                     return;
                 }
                 declared.qualifiers.isConst = true;
@@ -3008,7 +3031,7 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
                 return;
             }
-            if (node.aggregateInitializer &&
+            if (node.aggregateInitializer && !node.constexprObject &&
                 (hasConstSubobject(declared) || declared.qualifiers.isAtomic)) {
                 diags.push_back({24, s->line, "This aggregate initializer requires post-declaration member stores, which are not valid for constant subobjects or atomic aggregate objects."});
                 return;
