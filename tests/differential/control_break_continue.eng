@@ -1,0 +1,21 @@
+Set x to 0.
+While x is less than 6:
+    Add 1 to x.
+    If x is equal to 2 then:
+        Continue.
+    End if.
+    Say x.
+    If x is equal to 4 then:
+        Break.
+    End if.
+End while.
+Say x.
+For n from 1 to 5:
+    If n is equal to 3 then:
+        Continue.
+    End if.
+    If n is equal to 5 then:
+        Break.
+    End if.
+    Say n.
+End for.

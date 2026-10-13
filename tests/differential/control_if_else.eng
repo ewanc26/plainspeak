@@ -1,0 +1,12 @@
+Set x to 2.
+If x is less than 3 then:
+    Say "small".
+Else:
+    Say "large".
+End if.
+Set x to 7.
+If x is less than 3 then:
+    Say "small".
+Else:
+    Say "large".
+End if.

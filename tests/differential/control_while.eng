@@ -1,0 +1,5 @@
+Set x to 0.
+While x is less than 3:
+    Say x.
+    Set x to x plus 1.
+End while.
