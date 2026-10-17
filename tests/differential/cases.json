@@ -1,0 +1,12 @@
+{
+  "schema": 1,
+  "cases": [
+    {"name": "control_while", "features": ["control.while"]},
+    {"name": "control_do_while", "features": ["control.do-while", "control.continue"]},
+    {"name": "control_for", "features": ["control.for"]},
+    {"name": "control_switch", "features": ["control.switch", "control.break"]},
+    {"name": "control_break_continue", "features": ["control.break", "control.continue", "control.while", "control.for"]},
+    {"name": "control_if_else", "features": ["control.if"]},
+    {"name": "control_goto", "features": ["control.goto-labels"]}
+  ]
+}

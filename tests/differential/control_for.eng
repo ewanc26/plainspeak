@@ -1,0 +1,6 @@
+For i from 1 to 5:
+    Say i.
+End for.
+For m from 4 down to 1:
+    Say m.
+End for.

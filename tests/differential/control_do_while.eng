@@ -1,0 +1,9 @@
+Set x to 0.
+Do:
+    Add 1 to x.
+    If x is less than 3 then:
+        Continue.
+    End if.
+    Say x.
+End do while x is less than 4.
+Say x.

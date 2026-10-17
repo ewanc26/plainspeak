@@ -1,0 +1,11 @@
+Set attempts to 0.
+Label try_again.
+Add 1 to attempts.
+If attempts is less than 3 then:
+    Go to try_again.
+End if.
+Say attempts.
+Go to wrapped_up.
+Say "never printed".
+Label wrapped_up.
+Say "done".
