@@ -9,6 +9,7 @@
     {"name": "control_if_else", "features": ["control.if"]},
     {"name": "control_goto", "features": ["control.goto-labels"]},
     {"name": "types_aliases", "features": ["types.aliases"]},
-    {"name": "assert_static_runtime", "features": ["decl.static-assert", "lib.assert"]}
+    {"name": "assert_static_runtime", "features": ["decl.static-assert", "lib.assert"]},
+    {"name": "return_paths", "features": ["types.function-types", "control.return"]}
   ]
 }
