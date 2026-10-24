@@ -2291,7 +2291,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                        node.func == "iscntrl" || node.func == "isdigit" || node.func == "isgraph" ||
                        node.func == "islower" || node.func == "isprint" || node.func == "ispunct" ||
                        node.func == "isspace" || node.func == "isupper" || node.func == "isxdigit" ||
-                       node.func == "tolower" || node.func == "toupper") {
+                       node.func == "tolower" || node.func == "toupper" ||
+                       node.func == "iswalpha" || node.func == "iswalnum" || node.func == "iswblank" ||
+                       node.func == "iswcntrl" || node.func == "iswdigit" || node.func == "iswgraph" ||
+                       node.func == "iswlower" || node.func == "iswprint" || node.func == "iswpunct" ||
+                       node.func == "iswspace" || node.func == "iswupper" || node.func == "iswxdigit" ||
+                       node.func == "towlower" || node.func == "towupper") {
                 if (!isIntegralType(arg))
                     diags.push_back({2, line, node.func + " needs an integer character code, not a " + typeToString(arg) + "."});
             } else if (!isNumeric(arg)) diags.push_back({2, line, "I can't apply " + node.func + " to a " + typeToString(arg) + "."});
