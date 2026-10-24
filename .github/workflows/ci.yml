@@ -28,6 +28,8 @@ jobs:
             catch2-v3.5.0-${{ runner.os }}-
       - name: Validate C99-C23 capability matrix
         run: python3 scripts/check_c_conformance.py
+      - name: Validate shared capability matrix
+        run: python3 scripts/check_capabilities.py --language plainspeak --require-complete
       - name: Configure
         run: cmake -S . -B build -DCMAKE_BUILD_TYPE=Debug
       - name: Build

@@ -118,6 +118,10 @@
     {"id":"lib.wchar","revision":"C99","area":"library","status":"planned","tests":[],"note":"<wchar.h> parity pending."},
     {"id":"lib.wctype","revision":"C99","area":"library","status":"planned","tests":[],"note":"<wctype.h> parity pending."},
     {"id":"lib.stdbit","revision":"C23","area":"library","status":"planned","tests":[],"note":"C23 <stdbit.h> parity pending."},
-    {"id":"lib.stdckdint","revision":"C23","area":"library","status":"planned","tests":[],"note":"C23 <stdckdint.h> checked integer arithmetic parity pending."}
+    {"id":"lib.stdckdint","revision":"C23","area":"library","status":"planned","tests":[],"note":"C23 <stdckdint.h> checked integer arithmetic parity pending."},
+    {"id":"expr.integer-operators","revision":"C99","area":"language","status":"implemented","tests":["tests/differential/operators_integer.eng"],"note":"Integer arithmetic (+, -, *, /, modulo), bitwise and, or, xor, complement, left and right shifts, comparisons, and logical and/or/not match C in a differential test. Undefined and implementation-defined edge cases remain under expr.arithmetic and expr.shifts."},
+    {"id":"types.fixed-arrays","revision":"C99","area":"language","status":"implemented","tests":["tests/differential/fixed_arrays.eng"],"note":"Positive fixed-length native arrays with positional initializers, zero-based element reads and writes, and loop traversal match C in a differential test. Incomplete declarations and whole-array assignment remain under types.arrays."},
+    {"id":"types.strings","revision":"C99","area":"language","status":"implemented","tests":["tests/differential/strings.eng"],"note":"String literals with quote escapes, Say output, concatenation with plus, and equality match C in a differential test. Mutable character storage and the wider string library remain under lib.string."},
+    {"id":"ffi.call-c","revision":"C99","area":"language","status":"implemented","tests":["tests/differential/ffi_call.eng"],"note":"Typed C function imports from a header are called from PlainSpeak and match a C call in a differential test. Imports of user-supplied C source files are not yet supported."}
   ]
 }

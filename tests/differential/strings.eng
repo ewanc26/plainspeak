@@ -1,0 +1,5 @@
+Set greeting to "Hello".
+Say greeting.
+Say "a \"quoted\" word".
+Say greeting plus ", world".
+Say greeting is equal to "Hello".

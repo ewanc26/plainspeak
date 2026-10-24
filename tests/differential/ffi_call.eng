@@ -1,0 +1,2 @@
+Import the C function labs taking a long integer, returning a long integer, from the header "stdlib.h".
+Say Call labs with minus 7 done.
