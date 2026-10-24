@@ -19,8 +19,10 @@
           ]
         },
         "numlang": {
-          "status": "partial",
-          "note": "all values are doubles; comparisons and logic yield 1.0/0.0, no integer type"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/integer_boolean.num"
+          ]
         },
         "selenium": {
           "status": "implemented",
@@ -30,8 +32,11 @@
           ]
         },
         "sigi": {
-          "status": "partial",
-          "note": "all values are doubles; no boolean type"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/integer_division.si",
+            "tests/differential/logical.si"
+          ]
         }
       }
     },
@@ -62,8 +67,13 @@
           ]
         },
         "sigi": {
-          "status": "missing",
-          "note": "no bitwise, shift, or && / || operators"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/arithmetic.si",
+            "tests/differential/bitwise.si",
+            "tests/differential/logical.si",
+            "tests/differential/comparison.si"
+          ]
         }
       }
     },
@@ -90,8 +100,10 @@
           ]
         },
         "sigi": {
-          "status": "partial",
-          "note": "numbered and named variables; no differential test"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/variables.si"
+          ]
         }
       }
     },
@@ -118,8 +130,10 @@
           ]
         },
         "sigi": {
-          "status": "partial",
-          "note": "{then ; else}; no differential test"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/if_else.si"
+          ]
         }
       }
     },
@@ -149,8 +163,11 @@
           ]
         },
         "sigi": {
-          "status": "missing",
-          "note": "WHILE only; no for loop"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/while_loop.si",
+            "tests/differential/for_loop.si"
+          ]
         }
       }
     },
@@ -177,8 +194,10 @@
           ]
         },
         "sigi": {
-          "status": "partial",
-          "note": "numbered and named functions via the stack; no differential test"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/functions.si"
+          ]
         }
       }
     },
@@ -193,16 +212,23 @@
           ]
         },
         "numlang": {
-          "status": "missing",
-          "note": "no array type"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/arrays.num"
+          ]
         },
         "selenium": {
-          "status": "missing",
-          "note": "no array type"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/arrays.sel"
+          ]
         },
         "sigi": {
-          "status": "partial",
-          "note": "AINIT/ALOAD/ASTORE; no differential test"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/arrays.si",
+            "tests/differential/array_bounds.si"
+          ]
         }
       }
     },
@@ -229,8 +255,10 @@
           ]
         },
         "sigi": {
-          "status": "partial",
-          "note": "string literals print; no differential test"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/strings.si"
+          ]
         }
       }
     },
@@ -257,8 +285,10 @@
           ]
         },
         "sigi": {
-          "status": "partial",
-          "note": "PRINT and PRINTC; no differential test"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/console_output.si"
+          ]
         }
       }
     },
@@ -273,16 +303,22 @@
           ]
         },
         "numlang": {
-          "status": "missing",
-          "note": "no C interop"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/ffi_call.num"
+          ]
         },
         "selenium": {
-          "status": "missing",
-          "note": "no C interop"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/ffi_call.sel"
+          ]
         },
         "sigi": {
-          "status": "missing",
-          "note": "no C interop"
+          "status": "implemented",
+          "tests": [
+            "tests/differential/ffi_call.si"
+          ]
         }
       }
     },
