@@ -17,7 +17,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 
 | ID | Status | Scope |
 |---|---|---|
-| `types.integer-model` | foundation | Structural integer ranks/signedness and the ordinary C integer promotions/usual signed-unsigned conversions are executable; C23 `_BitInt` rank interactions and remaining conversion edge cases are incomplete. |
+| `types.integer-model` | implemented | Signed and unsigned char, short, int and long integer objects, with ordinary promotions and conversions, match C in differential tests. `_BitInt` rank interactions and the remaining conversion edge cases are pending. |
 | `types.bitint` | foundation | C23 bit-precise integer type is structurally representable. |
 | `types.floating-model` | foundation | Float/double/long-double ranks are structurally represented and native objects can use all three; the full C floating environment/model is still incomplete. |
 | `types.complex` | foundation | Native complex decimal object representation exists; complete arithmetic and library parity remain pending. |
@@ -31,6 +31,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; incomplete source declarations and whole-array initialization remain pending. |
 | `types.fixed-arrays` | implemented | Positive fixed-length native arrays with positional initializers, zero-based element reads and writes, and loop traversal match C in differential tests. |
 | `types.strings` | implemented | String literals with quote escapes, `Say` output, concatenation with `plus`, and equality match C in differential tests. |
+| `io.console-output` | implemented | `Say` output of integer, boolean and string values matches C `printf` output in differential tests. Floating and aggregate output formatting and stream APIs remain under `lib.stdio`. |
 | `types.vla` | foundation | Block-scope variable-length native arrays accept native integral bounds, lower to C99 VLAs, support subscripting and runtime sizeof, and reject file-scope, aggregate-member, invalid-bound, and initializer cases; variably modified pointer/function shapes remain pending. |
 | `types.structures` | foundation | Tagged structures have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access, bit-fields and flexible-array tails; anonymous members remain pending. |
 | `types.bit-fields` | foundation | Named/unnamed native C bit-fields support width checks, width-0 unnamed separators, member access/store and initialization, with completed enums required before layout; C23 _BitInt source types and exhaustive implementation-defined base/enum-representation detection remain pending. |
@@ -53,7 +54,7 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.bitwise` | foundation |
 | `expr.shifts` | foundation |
 | `expr.integer-operators` | implemented |
-| `expr.assignment` | foundation |
+| `expr.assignment` | implemented | Assignment to declared scalar objects and fixed-array elements matches C in differential tests. Struct, union and pointer assignment and assignment-expression edge cases remain pending. |
 | `expr.increment-decrement` | foundation |
 | `expr.address-indirection` | foundation |
 | `expr.subscript-member` | foundation |
