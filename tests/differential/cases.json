@@ -12,7 +12,7 @@
     {"name": "types_boolean", "features": ["types.boolean"]},
     {"name": "assert_static_runtime", "features": ["decl.static-assert", "lib.assert"]},
     {"name": "return_paths", "features": ["types.function-types", "control.return"]},
-    {"name": "operators_integer", "features": ["expr.integer-operators"]},
+    {"name": "operators_integer", "features": ["expr.integer-operators", "expr.arithmetic", "expr.bitwise", "expr.shifts"]},
     {"name": "fixed_arrays", "features": ["types.fixed-arrays"]},
     {"name": "strings", "features": ["types.strings"]},
     {"name": "ffi_call", "features": ["ffi.call-c"]},
