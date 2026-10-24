@@ -7,6 +7,8 @@
     {"name": "control_switch", "features": ["control.switch", "control.break"]},
     {"name": "control_break_continue", "features": ["control.break", "control.continue", "control.while", "control.for"]},
     {"name": "control_if_else", "features": ["control.if"]},
-    {"name": "control_goto", "features": ["control.goto-labels"]}
+    {"name": "control_goto", "features": ["control.goto-labels"]},
+    {"name": "types_aliases", "features": ["types.aliases"]},
+    {"name": "assert_static_runtime", "features": ["decl.static-assert", "lib.assert"]}
   ]
 }
