@@ -1,0 +1,8 @@
+Declare values as array of integer with length 4 with values 3 followed by 1 followed by 4 followed by 1 done.
+Declare total as integer with value 0.
+For i from 0 to 3: Set total to total plus Element at i in values. End for.
+Set element at 2 in values to 9.
+Say total.
+Say Element at 2 in values.
+Declare flags as array of boolean with length 2 with values true followed by false done.
+Say Element at 1 in flags.

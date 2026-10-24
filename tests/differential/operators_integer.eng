@@ -1,0 +1,19 @@
+Declare a as integer with value 13.
+Declare b as integer with value 4.
+Say a plus b.
+Say a minus b.
+Say a times b.
+Say a divided by b.
+Say a modulo b.
+Say a bitwise and b.
+Say a bitwise or b.
+Say a bitwise xor b.
+Say bitwise not a.
+Say a shifted left by 2.
+Say a shifted right by 1.
+Say a is greater than b.
+Say a is equal to 13.
+Say a is less than b.
+Say (a is greater than b) and (b is less than a).
+Say not (a is equal to b).
+Say minus a plus b.
