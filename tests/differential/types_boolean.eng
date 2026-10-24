@@ -1,0 +1,8 @@
+Declare flag as boolean with value true.
+Declare other as boolean with value false.
+Say flag.
+Say other.
+Say flag and other.
+Say flag or other.
+Declare big as boolean with value 5.
+Say big.
