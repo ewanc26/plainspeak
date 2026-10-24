@@ -18,6 +18,10 @@ struct Diag {
     DiagSeverity severity = DiagSeverity::Error;
 };
 
+inline bool isCSourceHeader(const std::string &header) {
+    return header.size() >= 2 && header.compare(header.size() - 2, 2, ".c") == 0;
+}
+
 struct ProcedureSignature {
     std::vector<Type> parameterTypes;
     Type returnType = Type::number();
@@ -68,6 +72,7 @@ struct AnalysisResult {
     std::vector<std::string> cHeaders;
     std::vector<std::string> cLibraries;
     std::unordered_map<std::string, ProcedureSignature> cFunctionSignatures;
+    std::unordered_map<std::string, std::string> cFunctionHeaders;
     std::unordered_map<std::string, Type> cObjectTypes;
     std::unordered_map<std::string, Type> cConstantTypes;
     std::unordered_map<std::string, std::string> cConstantNames;

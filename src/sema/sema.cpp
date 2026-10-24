@@ -1136,6 +1136,7 @@ AnalysisResult Sema::analyze(const std::vector<Stmt *> &program) {
             result.diagnostics.push_back({18, s->line, "An imported C function cannot return an array directly."});
         }
         result.cFunctionSignatures[import->name] = std::move(signature);
+        result.cFunctionHeaders[import->name] = import->header;
         if (std::find(result.cHeaders.begin(), result.cHeaders.end(), import->header) == result.cHeaders.end())
             result.cHeaders.push_back(import->header);
     }

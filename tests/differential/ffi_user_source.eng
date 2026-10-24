@@ -1,0 +1,2 @@
+Import the C function scale_by taking a long integer and a long integer, returning a long integer, from the header "ffi_user_helper.c".
+Say Call scale_by with 3, 4 done.

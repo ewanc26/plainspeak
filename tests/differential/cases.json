@@ -15,6 +15,7 @@
     {"name": "operators_integer", "features": ["expr.integer-operators"]},
     {"name": "fixed_arrays", "features": ["types.fixed-arrays"]},
     {"name": "strings", "features": ["types.strings"]},
-    {"name": "ffi_call", "features": ["ffi.call-c"]}
+    {"name": "ffi_call", "features": ["ffi.call-c"]},
+    {"name": "ffi_user_source", "features": ["ffi.call-c"]}
   ]
 }
