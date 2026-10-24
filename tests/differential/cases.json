@@ -10,11 +10,12 @@
     {"name": "control_goto", "features": ["control.goto-labels"]},
     {"name": "types_aliases", "features": ["types.aliases"]},
     {"name": "types_boolean", "features": ["types.boolean"]},
+    {"name": "types_sized_integers", "features": ["types.integer-model"]},
     {"name": "assert_static_runtime", "features": ["decl.static-assert", "lib.assert"]},
     {"name": "return_paths", "features": ["types.function-types", "control.return"]},
     {"name": "operators_integer", "features": ["expr.integer-operators", "expr.arithmetic", "expr.bitwise", "expr.shifts"]},
     {"name": "fixed_arrays", "features": ["types.fixed-arrays"]},
-    {"name": "strings", "features": ["types.strings"]},
+    {"name": "strings", "features": ["types.strings", "io.console-output"]},
     {"name": "ffi_call", "features": ["ffi.call-c"]},
     {"name": "ffi_user_source", "features": ["ffi.call-c"]}
   ]

@@ -1,0 +1,10 @@
+Declare c as character with value 65.
+Declare s as signed character with value 100.
+Declare u as unsigned character with value 200.
+Declare h as short integer with value 30000.
+Declare w as unsigned integer with value 4000000000.
+Say c.
+Say s plus 27.
+Say u plus 100.
+Say h plus h.
+Say w.
