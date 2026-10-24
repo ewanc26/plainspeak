@@ -1800,7 +1800,11 @@ Expr *Parser::parsePrimary() {
         static const char *mathFns[] = {"sine", "cosine", "tangent", "sqrt", "log", "abs", "floor", "ceil",
                                         "isalpha", "isalnum", "isblank", "iscntrl", "isdigit", "isgraph",
                                         "islower", "isprint", "ispunct", "isspace", "isupper", "isxdigit",
-                                        "tolower", "toupper", "isfinite", "isnan", "isinf", "isnormal",
+                                        "tolower", "toupper",
+                                        "iswalpha", "iswalnum", "iswblank", "iswcntrl", "iswdigit", "iswgraph",
+                                        "iswlower", "iswprint", "iswpunct", "iswspace", "iswupper", "iswxdigit",
+                                        "towlower", "towupper",
+                                        "isfinite", "isnan", "isinf", "isnormal",
                                         "signbit", "round", "trunc", "exp", "log10", "log2", "cbrt",
                                         "expm1", "log1p"};
         for (const char *fn : mathFns) {
