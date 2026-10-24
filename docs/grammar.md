@@ -211,7 +211,7 @@ Label finish.
 
 `Import C header "name.h".` adds a validated quoted header to generated C. `Import C library "name".` adds the corresponding `-lname` linker option. Imports are deterministic and do not declare PlainSpeak symbols by themselves; typed C declarations/calls are a separate interop layer.
 
-`Import the C function name taking a C type [and another C type ...], returning a C type, from the header "name.h".` declares a typed external C function (the articles, commas, and `type` words are optional). Use `no parameters` for a zero-argument function. Calls use the ordinary `Call name ... done` expression and preserve the imported C symbol spelling rather than PlainSpeak mangling it.
+`Import the C function name taking a C type [and another C type ...], returning a C type, from the header "name.h".` declares a typed external C function (the articles, commas, and `type` words are optional). Use `no parameters` for a zero-argument function. A header ending in `.c` is a user C source: it is compiled and linked from the directory of the `.eng` file, and the generated code declares the function with the imported C types. Calls use the ordinary `Call name ... done` expression and preserve the imported C symbol spelling rather than PlainSpeak mangling it.
 
 `Import the C object name as a C type from the header "name.h".` declares a typed external C object. Reads and assignment-compatible writes use the ordinary object name and preserve the symbol spelling; C `const` qualification remains enforced by sema.
 

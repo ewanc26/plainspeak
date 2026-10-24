@@ -1,4 +1,5 @@
 #include <cstdlib>
+#include <filesystem>
 #include <cctype>
 #include <fstream>
 #include <iomanip>
@@ -148,6 +149,9 @@ int main(int argc, char **argv) {
     std::string compiler = configuredCompiler && *configuredCompiler ? configuredCompiler : "cc";
     std::string cmd = compiler + " -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR
                        " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm";
+    const std::filesystem::path sourceDir = std::filesystem::path(srcPath).parent_path();
+    for (const auto &header : analysis.cHeaders)
+        if (isCSourceHeader(header)) cmd += " \"" + (sourceDir / header).string() + "\"";
     for (const auto &library : analysis.cLibraries) cmd += " -l" + library;
     cmd += " -o \"" + outPath + "\"";
     int rc = std::system(cmd.c_str());
