@@ -1,0 +1,24 @@
+Structure record: Field id as integer. Field score as integer. End structure.
+
+Procedure show takes row as structure record returns void:
+    Say "Student " plus Member id of row plus " scored " plus Member score of row.
+End procedure.
+
+Declare table as array of structure record with length 4 with values with values 101 followed by 72 done followed by with values 102 followed by 95 done followed by with values 103 followed by 88 done followed by with values 104 followed by 60 done done.
+
+(Selection sort: move the highest score to the front of the table.)
+For i from 0 to 2:
+    Declare best as integer with value i.
+    For j from i plus 1 to 3:
+        If Member score of Element at j in table is greater than Member score of Element at best in table then:
+            Set best to j.
+        End if.
+    End for.
+    Declare hold as structure record with value Element at i in table.
+    Set element at i in table to Element at best in table.
+    Set element at best in table to hold.
+End for.
+
+For k from 0 to 3:
+    Call show with Element at k in table done.
+End for.

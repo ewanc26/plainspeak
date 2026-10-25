@@ -36,6 +36,9 @@
     {"name": "literals_char", "features": ["types.char-literals"]},
     {"name": "literals_numeric", "features": ["literals.numeric"]},
     {"name": "types_multidim_arrays", "features": ["types.arrays"]},
-    {"name": "types_multidim_initializers", "features": ["types.arrays", "decl.initializers"]}
+    {"name": "types_multidim_initializers", "features": ["types.arrays", "decl.initializers"]},
+    {"name": "program_record_sort", "features": ["types.structures", "types.arrays", "decl.initializers", "types.function-types", "control.for", "control.if", "expr.integer-operators", "io.console-output", "types.strings"]},
+    {"name": "program_tokenizer", "features": ["types.char-literals", "types.fixed-arrays", "control.switch", "control.break", "control.for", "control.if", "expr.integer-operators", "expr.compound-assign", "types.function-types", "io.console-output", "types.strings"]},
+    {"name": "program_dispatch_calculator", "features": ["func.pointers", "types.function-types", "types.arrays", "control.for", "control.if", "expr.integer-operators", "io.console-output", "types.strings"]}
   ]
 }

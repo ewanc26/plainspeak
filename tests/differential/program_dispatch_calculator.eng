@@ -1,0 +1,41 @@
+Procedure add takes a as integer, b as integer returns integer:
+    Return a plus b.
+End procedure.
+
+Procedure subtract takes a as integer, b as integer returns integer:
+    Return a minus b.
+End procedure.
+
+Procedure multiply takes a as integer, b as integer returns integer:
+    Return a times b.
+End procedure.
+
+Procedure divide takes a as integer, b as integer returns integer:
+    Return a divided by b.
+End procedure.
+
+(Operation codes 0 to 3 select a function through this dispatch table.)
+Declare ops as array of pointer to function taking integer and integer returning integer with length 4 with values Address of add followed by Address of subtract followed by Address of multiply followed by Address of divide done.
+
+Declare codes as array of integer with length 5 with values 0 followed by 3 followed by 2 followed by 3 followed by 7 done.
+Declare lefts as array of integer with length 5 with values 12 followed by 84 followed by 6 followed by 9 followed by 1 done.
+Declare rights as array of integer with length 5 with values 4 followed by 0 followed by 7 followed by 3 followed by 1 done.
+
+Declare failures as integer with value 0.
+
+For i from 0 to 4:
+    Declare code as integer with value Element at i in codes.
+    If code is less than 0 or code is greater than 3 then:
+        Say "Error: unknown operation " plus code plus ".".
+        Add 1 to failures.
+    Else:
+        If code is equal to 3 and Element at i in rights is equal to 0 then:
+            Say "Error: division by zero.".
+            Add 1 to failures.
+        Else:
+            Say "Result: " plus Call through (Element at code in ops) with Element at i in lefts, Element at i in rights done.
+        End if.
+    End if.
+End for.
+
+Say "Failures: " plus failures.
