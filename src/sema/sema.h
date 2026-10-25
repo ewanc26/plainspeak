@@ -60,6 +60,9 @@ struct AnalysisResult {
     std::unordered_map<const Expr *, Type> exprTypes;
     std::unordered_map<const Expr *, Type> typeOperands;
     std::unordered_map<const Stmt *, Type> declarationTypes;
+    // Aggregate declarations whose const or atomic subobjects are initialized
+    // by a C brace initializer instead of post-declaration member stores.
+    std::unordered_set<const Stmt *> braceInitializedAggregates;
     std::unordered_map<std::string, ProcedureSignature> procedureSignatures;
     std::unordered_map<std::string, StructureInfo> structures;
     std::unordered_map<std::string, StructureInfo> unions;

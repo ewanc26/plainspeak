@@ -231,7 +231,7 @@ The C23 spellings `type of name`, `type of unqualified name`, `type of (expressi
 
 `least integer with at least N bits`, `unsigned least integer with at least N bits`, `fast integer with at least N bits`, and `unsigned fast integer with at least N bits` spell the C99 `<stdint.h>` `int_leastN_t`, `uint_leastN_t`, `int_fastN_t`, and `uint_fastN_t` families. The requested width must be positive; the selected target C implementation chooses the concrete representation.
 
-`Compound value of type CType with value expression done` creates a scalar C99 compound literal. `with values expression followed by expression done` creates a positional array, structure, or union literal; `with members name as expression followed by name as expression done` uses C99 member designators; and `with elements at index as expression followed by at index as expression done` uses C99 array designators. `with empty braces done` supplies the C23 empty initializer form. Compound values have their native C type and lvalue semantics, and the type must be complete.
+`Compound value of type CType with value expression done` creates a scalar C99 compound literal. `with values expression followed by expression done` creates a positional array, structure, or union literal; `with members name as expression followed by name as expression done` uses C99 member designators; and `with elements at index as expression followed by at index as expression done` uses C99 array designators. `with empty braces done` supplies the C23 empty initializer form. Compound values have their native C type and lvalue semantics, and the type must be complete. Inside a `with values`, `with members` or `with elements` block, any entry may itself be a nested `with values`, `with members` or `with elements` block, so nested structures and arrays are built in a single compound value.
 
 `Select by type of expression with CType as result followed by CType as result otherwise result done` is a C11 generic selection. Each type association is checked at compile time and only the association matching the controlling expression's native type is evaluated at run time; `otherwise` is optional when an association is guaranteed to match.
 
@@ -331,7 +331,7 @@ Reading a qualified scalar follows C value conversion: top-level qualifiers do n
 
 For array spellings, `constant array of T ...` and `volatile array of T ...` qualify the element type, matching C's array qualification rules.
 
-One lowering boundary remains: direct top-level native objects are declared at C file scope while most PlainSpeak initializers execute later in `main`. A top-level const object with a runtime `with value` initializer is therefore rejected until the constant-initializer tranche can emit that initializer at file scope. Likewise, aggregate initializer forms that currently lower as zero-initialize-then-member-store are rejected when const subobjects or atomic aggregate objects would make those post-declaration stores invalid. Local scalar/pointer const initialization is already emitted directly in the C declaration.
+One lowering boundary remains: direct top-level native objects are declared at C file scope while most PlainSpeak initializers execute later in `main`. A top-level const object with a runtime `with value` initializer is therefore rejected until the constant-initializer tranche can emit that initializer at file scope. Top-level const subobjects and atomic aggregate objects lower to C brace initializers when every element and member value is a file-scope constant, such as a literal or enumerator; a runtime-valued element or member is rejected with E0024 because those post-declaration stores would be invalid. Declare such an aggregate inside a Procedure to use runtime values. Local scalar/pointer const initialization is already emitted directly in the C declaration.
 
 ## Null pointer constants and C23 `nullptr_t`
 
@@ -419,7 +419,7 @@ Structure, union, and enumeration tags use C's shared tag namespace and are pre-
 
 Fixed arrays and already-complete structures may be fields. Array fields can be reached with native `Element at`, including nested expressions. Whole-array member assignment is still intentionally rejected.
 
-Native structures can be copied by assignment, initialized positionally or with named member designators, and transported by value through typed Procedures when their tags match. Compound literals and anonymous aggregate members remain separate work.
+Native structures can be copied by assignment, initialized positionally or with named member designators, and transported by value through typed Procedures when their tags match. Anonymous aggregate members remain separate work.
 
 ## Native unions
 
@@ -435,7 +435,7 @@ Unions share C's tag namespace with structures, so `Structure value` and `Union 
 
 PlainSpeak does **not** add a runtime active-member discriminator. Writing one member and then reading another follows whatever semantics the generated C program has on the target/compiler; the language does not reinterpret C unions as tagged variants. The conformance tests therefore validate same-member reads/writes and layout, not type-punning assumptions.
 
-Unions can be initialized through their first member positionally or one named member designator. Compound literals and anonymous aggregate members remain separate work.
+Unions can be initialized through their first member positionally or one named member designator. Anonymous aggregate members remain separate work.
 
 ## Bit-fields and flexible array members
 
@@ -517,7 +517,7 @@ Designators must be unique in this tranche, array indexes must be in range, and 
 Declare grid as array of array of integer with length 3 with length 2 with values with values 1 followed by 5 followed by 9 done followed by with values 2 followed by 6 done done.
 ```
 
-The outer `with length` is the last one listed (length 2), so this matches C `int grid[2][3] = {{1, 5, 9}, {2, 6}};`. A nested block that initializes a scalar is rejected with E0021, and an inner block that lists too many values is rejected with the same E0021 message naming the inner element. Whole-array assignment (`with value` on an array, or assigning one array to another) stays rejected with E0017 because C has no whole-array assignment. Ordinary `with value` remains the scalar/native assignment-style initializer and can still copy compatible complete structures/unions or consume typed Procedure results; arrays use the aggregate forms instead. Compound values do not accept nested blocks yet.
+The outer `with length` is the last one listed (length 2), so this matches C `int grid[2][3] = {{1, 5, 9}, {2, 6}};`. A nested block that initializes a scalar is rejected with E0021, and an inner block that lists too many values is rejected with the same E0021 message naming the inner element. Whole-array assignment (`with value` on an array, or assigning one array to another) stays rejected with E0017 because C has no whole-array assignment. Ordinary `with value` remains the scalar/native assignment-style initializer and can still copy compatible complete structures/unions or consume typed Procedure results; arrays use the aggregate forms instead. Compound values accept nested blocks in the same way, for example `Compound value of type array of array of integer with length 2 with length 3 with elements at 0 as with values 4 followed by 5 done done` lowers to a nested C compound literal.
 
 ## Procedures and typed signatures
 
@@ -543,7 +543,9 @@ Procedure first takes values as array of integer with length 4 returns integer: 
 
 Typed call arguments are checked against the registered parameter types using the same supported assignment conversions as native object initialization. Typed calls may return arithmetic scalars or object pointers. C functions cannot return arrays directly, so an array return type is rejected; return a pointer instead.
 
-A `void` typed procedure may fall through or use bare `Return.`. A non-void typed procedure must currently end with a `Return` statement, and every returned value is checked against its declared return type. This final-statement rule is intentionally conservative until full control-flow definite-return analysis lands.
+A `void` typed procedure may fall through or use bare `Return.`. A non-void typed procedure must currently end with a `Return` statement, and every returned value is checked against its declared return type. Definite-return analysis checks every control path through If, Switch and loop statements, so a typed non-void Procedure is rejected (E0018) only when some path can reach its end without a Return.
+
+Outside any Procedure, `Return expression.` sets the program's exit status. The value must be a whole number (integer, boolean or enumeration); a non-integral value is rejected with E0018. A bare `Return.` at top level exits with status 0, and the status is passed through the generated C `return` in `main`.
 
 Procedure signatures are registered before bodies are checked and generated C prototypes are emitted before definitions. Forward calls and mutual recursion therefore do not depend on source order.
 
@@ -704,7 +706,7 @@ The compiler's structural semantic type system also represents functions, qualif
 
 - `sizeof`/alignment results are boxed into legacy `number`; a first-class unsigned `size_t`-equivalent remains pending.
 - Function pointers and the complete C pointer-conversion model remain pending. Null pointer values/literal-zero constants are implemented, but general integer constant-expression recognition for zero-valued null pointer constants is not yet complete.
-- Variable-length arrays, nested aggregate initializers, compound literals, anonymous aggregate members, enum constant-expression/underlying-type extensions, storage/linkage specifiers, allocation and C23 pointer additions remain pending. Atomic memory-order APIs, fences and lock-free queries are also still pending beyond the native `atomic` object foundation.
+- Variable-length arrays, brace elision, compound literal lifetime edge cases, anonymous aggregate members, enum constant-expression/underlying-type extensions, storage/linkage specifiers, allocation and C23 pointer additions remain pending. Atomic memory-order APIs, fences and lock-free queries are also still pending beyond the native `atomic` object foundation.
 - Legacy Procedure parameters/returns remain boxed and permissive; use typed Procedures for native C signatures. Variadics, function pointers and full prototype-compatibility rules remain pending.
 - Heap storage used by string concatenation, list snapshots, and lists is released only at process exit.
 - Lists cannot contain lists, native pointers, native arrays, or native aggregates.

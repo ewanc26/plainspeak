@@ -52,6 +52,15 @@ def check_case(case, bin_path, cc, tmp, statuses):
     if compiled.returncode != 0:
         return False, [f"{name}: PlainSpeak did not compile {eng.name}", compiled.stdout + compiled.stderr]
 
+    generated = run([str(bin_path), str(eng), "--show-generated-c"])
+    if generated.returncode != 0:
+        return False, [f"{name}: PlainSpeak did not emit C for {eng.name}", generated.stdout + generated.stderr]
+    gen_src = pathlib.Path(tmp) / f"{name}_generated.c"
+    gen_src.write_text(generated.stdout)
+    gen_compiled = run([cc, *C_FLAGS, "-I", str(ROOT / "runtime"), "-c", "-o", str(pathlib.Path(tmp) / f"{name}_gen.o"), str(gen_src)])
+    if gen_compiled.returncode != 0:
+        return False, [f"{name}: generated C is not warning-free under {' '.join(C_FLAGS)}", gen_compiled.stdout + gen_compiled.stderr]
+
     c_compiled = run([cc, *C_FLAGS, "-o", str(c_bin), str(csrc)])
     if c_compiled.returncode != 0:
         return False, [f"{name}: C reference did not compile {csrc.name}", c_compiled.stdout + c_compiled.stderr]

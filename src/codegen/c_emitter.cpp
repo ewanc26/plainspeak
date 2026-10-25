@@ -255,25 +255,69 @@ void emitAggregateStores(const std::string &name, const Type &declared,
     }
 }
 
-std::string emitCompoundLiteral(const Type &type, const AggregateInitializer &initializer,
-                                const AnalysisResult &analysis) {
-    std::string result = "((" + emitCType(type) + "){";
-    if (initializer.kind == AggregateInitKind::Empty) {
-        result += "0";
-    } else if (initializer.kind == AggregateInitKind::Scalar) {
-        result += emitRawExpr(initializer.entries.front().expr, analysis);
+// Emits a C brace initializer for an aggregate whose const or atomic subobjects
+// cannot be assigned after the declaration. Nested with-blocks become nested
+// braces, and element/member designators are kept, so the C object is
+// initialized exactly as the PlainSpeak aggregate describes.
+std::string emitBraceInitializer(const Type &declared, const AggregateInitializer &aggregate,
+                                 const AnalysisResult &analysis) {
+    if (aggregate.kind == AggregateInitKind::Empty) return "{0}";
+    if (aggregate.kind == AggregateInitKind::Scalar) return emitRawExpr(aggregate.entries.front().expr, analysis);
+
+    std::string result = "{";
+    bool first = true;
+    auto add = [&](const std::string &designator, const Type &targetType, const AggregateInitEntry &entry) {
+        if (!first) result += ", ";
+        first = false;
+        result += designator;
+        result += entry.nested ? emitBraceInitializer(targetType, *entry.nested, analysis)
+                               : emitRawExpr(entry.expr, analysis);
+    };
+
+    if (aggregate.kind == AggregateInitKind::Positional) {
+        if (declared.isArray()) {
+            for (const auto &entry : aggregate.entries) add("", *declared.elementType, entry);
+        } else {
+            const StructureInfo *info = nullptr;
+            if (declared.kind == TypeKind::Structure) {
+                auto it = analysis.structures.find(declared.tag);
+                if (it != analysis.structures.end()) info = &it->second;
+            } else if (declared.kind == TypeKind::Union) {
+                auto it = analysis.unions.find(declared.tag);
+                if (it != analysis.unions.end()) info = &it->second;
+            }
+            if (info) {
+                std::vector<const AggregateFieldInfo *> positionalFields;
+                for (const auto &field : info->fields) {
+                    if (!field.name.empty() && !field.flexibleArray) positionalFields.push_back(&field);
+                }
+                std::size_t count = std::min(aggregate.entries.size(), positionalFields.size());
+                if (declared.kind == TypeKind::Union) count = std::min<std::size_t>(count, 1);
+                for (std::size_t i = 0; i < count; ++i) {
+                    add("", positionalFields[i]->type, aggregate.entries[i]);
+                }
+            }
+        }
+    } else if (aggregate.kind == AggregateInitKind::Members) {
+        for (const auto &entry : aggregate.entries) {
+            const AggregateFieldInfo *field = findNamedAggregateField(declared, entry.memberName, analysis);
+            if (!field) continue;
+            add("." + mangle(entry.memberName) + " = ", field->type, entry);
+        }
     } else {
-        for (std::size_t i = 0; i < initializer.entries.size(); ++i) {
-            if (i) result += ", ";
-            const auto &entry = initializer.entries[i];
-            if (initializer.kind == AggregateInitKind::Members)
-                result += "." + mangle(entry.memberName) + " = ";
-            else if (initializer.kind == AggregateInitKind::Elements)
-                result += "[" + std::to_string(entry.elementIndex) + "] = ";
-            result += emitRawExpr(entry.expr, analysis);
+        for (const auto &entry : aggregate.entries) {
+            add("[" + std::to_string(entry.elementIndex) + "] = ", *declared.elementType, entry);
         }
     }
-    return result + "})";
+    return result + "}";
+}
+
+std::string emitCompoundLiteral(const Type &type, const AggregateInitializer &initializer,
+                                const AnalysisResult &analysis) {
+    if (initializer.kind == AggregateInitKind::Scalar) {
+        return "((" + emitCType(type) + "){" + emitRawExpr(initializer.entries.front().expr, analysis) + "})";
+    }
+    return "((" + emitCType(type) + ")" + emitBraceInitializer(type, initializer, analysis) + ")";
 }
 
 std::string emitGenericSelection(const GenericSelectionExpr &selection,
@@ -818,6 +862,43 @@ void collectVariadicCopies(const std::vector<Stmt *> &stmts, std::set<std::strin
     }
 }
 
+bool isComparisonOp(BinOp op) {
+    return op == BinOp::Eq || op == BinOp::Ne || op == BinOp::Lt ||
+           op == BinOp::Gt || op == BinOp::Le || op == BinOp::Ge;
+}
+
+// True when the emitted C text has a parenthesis at index 0 whose match is the
+// final character, skipping string and character literal contents.
+bool wrapsWholeExpression(const std::string &text) {
+    int depth = 0;
+    for (std::size_t i = 0; i < text.size(); ++i) {
+        char c = text[i];
+        if (c == '"' || c == '\'') {
+            for (++i; i < text.size() && text[i] != c; ++i) {
+                if (text[i] == '\\') ++i;
+            }
+            continue;
+        }
+        if (c == '(') ++depth;
+        else if (c == ')') {
+            if (--depth == 0) return i == text.size() - 1;
+        }
+    }
+    return false;
+}
+
+// Emits a controlling expression for if/while/do/assert without the extra
+// parentheses that comparison emission adds. Clang's -Wparentheses-equality
+// fires on `if ((a == b))`, so a comparison that is already wrapped by the
+// statement's own parentheses is emitted as `a == b` there.
+std::string emitRawCondition(const Expr *e, const AnalysisResult &analysis) {
+    std::string raw = emitRawExpr(e, analysis);
+    const auto *binary = std::get_if<BinaryExpr>(&e->node);
+    if (!binary || !isComparisonOp(binary->op)) return raw;
+    if (raw.size() < 4 || raw.front() != '(' || raw.back() != ')' || !wrapsWholeExpression(raw)) return raw;
+    return raw.substr(1, raw.size() - 2);
+}
+
 void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
               int &loopCounter, const AnalysisResult &analysis,
               const std::unordered_map<int, std::string> *sourceLines,
@@ -844,10 +925,10 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
         } else if constexpr (std::is_same_v<T, StaticAssertStmt>) {
             const std::string &message = node.message && !node.message->empty()
                                        ? *node.message : "PlainSpeak static assertion";
-            out << indent << "_Static_assert(" << emitRawExpr(node.condition, analysis)
+            out << indent << "_Static_assert(" << emitRawCondition(node.condition, analysis)
                 << ", \"" << message << "\");\n";
         } else if constexpr (std::is_same_v<T, RuntimeAssertStmt>) {
-            out << indent << "assert(" << emitRawExpr(node.condition, analysis) << ");\n";
+            out << indent << "assert(" << emitRawCondition(node.condition, analysis) << ");\n";
         } else if constexpr (std::is_same_v<T, AtomicFenceStmt>) {
             out << indent << "atomic_thread_fence(memory_order_seq_cst);\n";
         } else if constexpr (std::is_same_v<T, AtomicStoreStmt>) {
@@ -885,8 +966,12 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             out << (node.threadLocal ? "_Thread_local " : "")
                 << (node.constexprObject ? "const " : "")
                 << emitCDeclaration(type, mangle(node.name), &analysis);
+            bool braceAggregate = node.aggregateInitializer &&
+                analysis.braceInitializedAggregates.count(s) != 0;
             if (node.initializer) {
                 out << " = " << emitRawExpr(node.initializer, analysis);
+            } else if (braceAggregate) {
+                out << " = " << emitBraceInitializer(type, *node.aggregateInitializer, analysis);
             } else if (node.aggregateInitializer) {
                 out << " = {0}";
             } else if (type.kind == TypeKind::Nullptr) {
@@ -896,7 +981,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
                 out << " = 0";
             }
             out << ";\n";
-            if (node.aggregateInitializer) {
+            if (node.aggregateInitializer && !braceAggregate) {
                 emitAggregateStores(mangle(node.name), type, *node.aggregateInitializer,
                                     out, indent, analysis);
             }
@@ -961,7 +1046,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
         } else if constexpr (std::is_same_v<T, IfStmt>) {
             Type condType = exprType(node.cond, analysis);
             if (isCScalarType(condType)) {
-                out << indent << "if (" << emitRawExpr(node.cond, analysis) << ") {\n";
+                out << indent << "if (" << emitRawCondition(node.cond, analysis) << ") {\n";
             } else {
                 out << indent << "if (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
             }
@@ -983,7 +1068,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
         } else if constexpr (std::is_same_v<T, WhileStmt>) {
             Type condType = exprType(node.cond, analysis);
             if (isCScalarType(condType)) {
-                out << indent << "while (" << emitRawExpr(node.cond, analysis) << ") {\n";
+                out << indent << "while (" << emitRawCondition(node.cond, analysis) << ") {\n";
             } else {
                 out << indent << "while (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << ")) {\n";
             }
@@ -994,7 +1079,7 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             for (Stmt *inner : node.body) emitStmt(inner, out, indent + "    ", loopCounter, analysis, sourceLines, currentProcedure);
             Type condType = exprType(node.cond, analysis);
             if (isCScalarType(condType)) {
-                out << indent << "} while (" << emitRawExpr(node.cond, analysis) << ");\n";
+                out << indent << "} while (" << emitRawCondition(node.cond, analysis) << ");\n";
             } else {
                 out << indent << "} while (ps_truthy(" << emitBoxedExpr(node.cond, analysis) << "));\n";
             }
@@ -1059,7 +1144,18 @@ void emitStmt(const Stmt *s, std::ostream &out, const std::string &indent,
             }
             out << "));\n";
         } else if constexpr (std::is_same_v<T, ReturnStmt>) {
-            if (currentProcedure && currentProcedure->nativeTyped) {
+            if (!currentProcedure) {
+                // Top-level Return becomes the C main return, i.e. the exit status.
+                std::string status = "0";
+                if (node.expr) {
+                    Type statusType = exprType(node.expr, analysis);
+                    status = isCScalarType(statusType) && (statusType.isInteger() || statusType.kind == TypeKind::Boolean ||
+                                                                  statusType.kind == TypeKind::Enumeration)
+                        ? emitRawExpr(node.expr, analysis)
+                        : "(int)ps_as_int(" + emitBoxedExpr(node.expr, analysis) + ")";
+                }
+                out << indent << "return " << status << ";\n";
+            } else if (currentProcedure->nativeTyped) {
                 if (currentProcedure->returnType.kind == TypeKind::Void) {
                     out << indent << "return;\n";
                 } else {
@@ -1248,6 +1344,8 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             out << emitCDeclaration(analysis.declarationTypes.at(s), mangle(decl->name));
             if (decl->constexprObject && decl->initializer)
                 out << " = " << emitRawExpr(decl->initializer, analysis);
+            else if (decl->aggregateInitializer && analysis.braceInitializedAggregates.count(s))
+                out << " = " << emitBraceInitializer(analysis.declarationTypes.at(s), *decl->aggregateInitializer, analysis);
             out << ";\n";
         }
     }
@@ -1282,7 +1380,7 @@ std::string emitProgram(const std::vector<Stmt *> &program,
             if (decl->initializer && !decl->constexprObject) {
                 out << "    " << mangle(decl->name) << " = "
                     << emitRawExpr(decl->initializer, analysis) << ";\n";
-            } else if (decl->aggregateInitializer) {
+            } else if (decl->aggregateInitializer && !analysis.braceInitializedAggregates.count(s)) {
                 emitAggregateStores(mangle(decl->name), analysis.declarationTypes.at(s),
                                     *decl->aggregateInitializer, out, "    ", analysis);
             }

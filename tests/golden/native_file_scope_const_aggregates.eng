@@ -1,0 +1,5 @@
+Structure point: Field x as integer. Field y as integer. End structure.
+Declare sparse as constant array of array of integer with length 3 with length 2 with elements at 1 as with elements at 2 as 7 done done.
+Say Element at 2 in (Element at 1 in sparse).
+Declare p as constant structure point with members x as 1 followed by y as 4 done.
+Say Member y of p.

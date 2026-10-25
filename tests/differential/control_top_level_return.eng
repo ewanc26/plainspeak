@@ -1,0 +1,4 @@
+Declare total as integer with value 4.
+Add 3 to total.
+Say total.
+Return total minus 4.

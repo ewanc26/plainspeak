@@ -1,0 +1,1 @@
+error[E0018]: A top-level Return sets the program's exit status, so it needs a whole number, not string.

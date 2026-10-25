@@ -1578,6 +1578,13 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 }
             };
 
+            // Nested with-blocks check against the element or member type, exactly
+            // like the same block inside a declaration.
+            auto checkEntry = [&](const Type &valueTarget, const AggregateInitEntry &entry) {
+                if (entry.nested) checkAggregateInitializer(valueTarget, *entry.nested, "compound value", line, diags);
+                else checkValue(valueTarget, entry.expr);
+            };
+
             if (initializer.kind == AggregateInitKind::Empty) return target;
             if (initializer.kind == AggregateInitKind::Scalar) {
                 if (!isArithmeticScalar(target) && !target.isPointer() && target.kind != TypeKind::Nullptr) {
@@ -1598,7 +1605,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                     }
                     const std::size_t count = std::min(initializer.entries.size(), *target.arrayBound);
                     for (std::size_t i = 0; i < count; ++i)
-                        checkValue(*target.elementType, initializer.entries[i].expr);
+                        checkEntry(*target.elementType, initializer.entries[i]);
                 } else if (target.kind == TypeKind::Structure || target.kind == TypeKind::Union) {
                     const StructureInfo *info = target.kind == TypeKind::Structure
                         ? (structureTable_.count(target.tag) ? &structureTable_.at(target.tag) : nullptr)
@@ -1616,11 +1623,11 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                     }
                     const std::size_t count = std::min(initializer.entries.size(), allowed);
                     for (std::size_t i = 0; i < count; ++i)
-                        checkValue(fields[i]->type, initializer.entries[i].expr);
+                        checkEntry(fields[i]->type, initializer.entries[i]);
                 } else {
                     diags.push_back({21, line, "Compound values needs an array, structure, or union target for positional initializers, not " +
                                              typeToString(target) + "."});
-                    for (const auto &entry : initializer.entries) inferExpr(entry.expr, line, diags);
+                    for (const auto &entry : initializer.entries) inferAggregateEntry(entry, line, diags);
                 }
                 return target;
             }
@@ -1629,7 +1636,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 if (target.kind != TypeKind::Structure && target.kind != TypeKind::Union) {
                     diags.push_back({21, line, "Compound member designators need a structure or union target, not " +
                                              typeToString(target) + "."});
-                    for (const auto &entry : initializer.entries) inferExpr(entry.expr, line, diags);
+                    for (const auto &entry : initializer.entries) inferAggregateEntry(entry, line, diags);
                     return target;
                 }
                 if (target.kind == TypeKind::Union && initializer.entries.size() > 1)
@@ -1638,18 +1645,18 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 for (const auto &entry : initializer.entries) {
                     if (!used.insert(entry.memberName).second) {
                         diags.push_back({21, line, "Compound member designator \"" + entry.memberName + "\" appears more than once."});
-                        inferExpr(entry.expr, line, diags);
+                        inferAggregateEntry(entry, line, diags);
                         continue;
                     }
                     const AggregateFieldInfo *field = findAggregateField(target, entry.memberName);
                     if (!field) {
                         diags.push_back({21, line, "Compound value has no member \"" + entry.memberName + "\"."});
-                        inferExpr(entry.expr, line, diags);
+                        inferAggregateEntry(entry, line, diags);
                     } else if (field->flexibleArray) {
                         diags.push_back({21, line, "Flexible member \"" + entry.memberName + "\" cannot initialize a compound value."});
-                        inferExpr(entry.expr, line, diags);
+                        inferAggregateEntry(entry, line, diags);
                     } else {
-                        checkValue(field->type, entry.expr);
+                        checkEntry(field->type, entry);
                     }
                 }
                 return target;
@@ -1658,7 +1665,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             if (!target.isArray() || !target.elementType || !target.arrayBound) {
                 diags.push_back({21, line, "Compound element designators need a fixed native array target, not " +
                                          typeToString(target) + "."});
-                for (const auto &entry : initializer.entries) inferExpr(entry.expr, line, diags);
+                for (const auto &entry : initializer.entries) inferAggregateEntry(entry, line, diags);
                 return target;
             }
             std::unordered_set<std::size_t> used;
@@ -1666,12 +1673,12 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
                 if (entry.elementIndex >= *target.arrayBound) {
                     diags.push_back({21, line, "Compound element designator " + std::to_string(entry.elementIndex) +
                                              " is outside the array of length " + std::to_string(*target.arrayBound) + "."});
-                    inferExpr(entry.expr, line, diags);
+                    inferAggregateEntry(entry, line, diags);
                 } else if (!used.insert(entry.elementIndex).second) {
                     diags.push_back({21, line, "Compound element designator " + std::to_string(entry.elementIndex) + " appears more than once."});
-                    inferExpr(entry.expr, line, diags);
+                    inferAggregateEntry(entry, line, diags);
                 } else {
-                    checkValue(*target.elementType, entry.expr);
+                    checkEntry(*target.elementType, entry);
                 }
             }
             return target;
@@ -2336,6 +2343,27 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
     return result;
 }
 
+// True when every leaf value of an aggregate initializer is a C constant
+// expression, which is required for a file-scope brace initializer.
+bool fileScopeConstantEntries(const AggregateInitializer &aggregate) {
+    for (const auto &entry : aggregate.entries) {
+        if (entry.nested) {
+            if (!fileScopeConstantEntries(*entry.nested)) return false;
+            continue;
+        }
+        if (!entry.expr) return false;
+        if (integerConstantValue(entry.expr)) continue;
+        const auto &node = entry.expr->node;
+        if (std::holds_alternative<FloatLit>(node) || std::holds_alternative<BoolLit>(node) ||
+            std::holds_alternative<NullptrLit>(node) || std::holds_alternative<EnumeratorExpr>(node) ||
+            std::holds_alternative<SizeOfTypeExpr>(node) || std::holds_alternative<AlignOfTypeExpr>(node)) {
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+
 void Sema::inferAggregateEntry(const AggregateInitEntry &entry, int line, std::vector<Diag> &diags) {
     if (entry.nested) {
         inferAggregateEntries(entry.nested->entries, line, diags);
@@ -2882,10 +2910,15 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
                 diags.push_back({24, s->line, "A top-level constant native object cannot use a runtime PlainSpeak initializer yet; this backend must emit constant initialization at C file scope first."});
                 return;
             }
-            if (node.aggregateInitializer &&
-                (hasConstSubobject(declared) || declared.qualifiers.isAtomic)) {
-                diags.push_back({24, s->line, "This aggregate initializer requires post-declaration member stores, which are not valid for constant subobjects or atomic aggregate objects."});
-                return;
+            if (node.aggregateInitializer && (hasConstSubobject(declared) || declared.qualifiers.isAtomic)) {
+                // Const and atomic subobjects cannot be assigned after the declaration,
+                // so the backend lowers them to a C brace initializer.
+                if (analysis_) analysis_->braceInitializedAggregates.insert(s);
+                if (scopes_.size() == 1 && !fileScopeConstantEntries(*node.aggregateInitializer)) {
+                    diags.push_back({24, s->line, "A top-level constant or atomic aggregate is initialized at C file scope, so every element and member value must be a constant. \"" +
+                                              node.name + "\" uses a runtime value; use literal or enumerator values, or declare it inside a Procedure."});
+                    return;
+                }
             }
             if (node.initializer) {
                 std::size_t diagnosticCount = diags.size();
@@ -3369,8 +3402,16 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
         }
         else if constexpr (std::is_same_v<T, ReturnStmt>) {
             if (!currentProcedure_) {
-                diags.push_back({18, s->line, "Return can only appear inside a Procedure."});
-                if (node.expr) inferExpr(node.expr, s->line, diags);
+                // At the top level, Return ends the program with an exit status.
+                // A bare Return. exits with status 0.
+                if (node.expr) {
+                    std::size_t before = diags.size();
+                    Type status = inferExpr(node.expr, s->line, diags);
+                    if (diags.size() == before && !isIntegralType(status)) {
+                        diags.push_back({18, s->line, "A top-level Return sets the program's exit status, so it needs a whole number, not " +
+                                                  typeToString(status) + "."});
+                    }
+                }
                 return;
             }
 
