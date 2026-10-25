@@ -18,26 +18,29 @@ An arbitrary-C escape hatch does **not** count as parity.
 | ID | Status | Scope |
 |---|---|---|
 | `types.integer-model` | implemented | Signed and unsigned char, short, int and long integer objects, with ordinary promotions and conversions, match C in differential tests. `_BitInt` rank interactions and the remaining conversion edge cases are pending. |
+| `types.char-literals` | implemented | the character "A" yields the int value of a single-byte character constant, matching C 'A' in differential tests. Wide, multi-byte and prefixed character constants remain pending. |
+| `literals.numeric` | implemented | Decimal, hexadecimal (0x or 0X) integer constants and decimal floating constants with fractions or exponents (e, E, optionally signed) match C in differential tests. Octal, binary and digit-separator forms, hexadecimal floating constants and suffixes remain pending. |
 | `types.bitint` | foundation | C23 bit-precise integer type is structurally representable. |
-| `types.floating-model` | foundation | Float/double/long-double ranks are structurally represented and native objects can use all three; the full C floating environment/model is still incomplete. |
+| `types.floating-model` | implemented | float, double and long double values, arithmetic and conversion to integer match C in differential tests. The complete floating environment (rounding modes, FENV_ACCESS, NaN and infinity handling) and the wider floating model remain pending. |
 | `types.complex` | foundation | Native complex decimal object representation exists; complete arithmetic and library parity remain pending. |
 | `types.boolean` | implemented | Native `_Bool` objects, legacy true/false literals, logical operators and integer-to-boolean conversion match C in differential tests. |
 | `types.nullptr` | foundation | C23 `null pointer` and `null pointer type` are source-spellable; the distinct scalar type has void-pointer/character-pointer-compatible layout, C23 default initialization, native object storage, and supported null-constant/pointer/bool conversions enforced semantically. |
 | `types.object-representation` | foundation | Explicit scalar, pointer, fixed-array, tagged-structure, tagged-union and tagged-enumeration objects use real C storage, address, size and target layout; padding/effective-type rules and complete lifetime semantics remain pending. |
-| `types.sizeof-alignof` | foundation | Type queries plus object-expression `Size of` preserve fixed-array extent and complete structure/union/enum layout as well as scalar/pointer layout; requested alignment and native `size_t` remain pending. |
-| `types.qualifiers` | foundation | Recursive `constant`/`volatile`/`restricted`/`atomic` source qualifiers lower to native C const/volatile/restrict/_Atomic, preserve pointer placement, enforce const modifiability and directional pointee qualification; full typedef/array compatibility details and constant-initializer lowering remain pending. |
-| `types.pointers` | foundation | Recursive object pointers support address/dereference, array decay, element-scaled +/- arithmetic, pointer difference/comparison, +=/-= offsets, pointer-level qualifiers and qualifier-adding pointee conversions. Parameterized and variadic function-pointer types, function addresses, value calls, and void statement calls are source-spellable; null function-pointer conversions and complete compatibility rules remain pending. |
+| `types.sizeof-alignof` | implemented | Size of type T and Alignment of type T match C sizeof and _Alignof for integer, floating, and pointer types. Size of applied to named objects is covered by the same queries; size_t compatibility, _Alignas and complete aggregate queries remain pending. |
+| `types.qualifiers` | implemented | volatile objects and pointers to constant integers match C in differential tests. restrict, _Atomic, and typedef/array qualifier compatibility rules remain pending. |
+| `types.pointers` | implemented | Pointer declarations with Address of, and indirection through Value at, match C for integer objects in differential tests. Function-pointer types, pointer arithmetic beyond these forms, and null-pointer rules remain pending. |
+| `func.pointers` | implemented | Function pointer types with parameters and return types, and calls through them, match C in differential tests. Null function-pointer conversions and variadic function pointers remain pending. |
 | `types.function-types` | implemented | Explicit typed Procedure parameters/returns lower to native C function types with recursive native qualifiers, C array-parameter adjustment, checked calls, generated prototypes, forward calls and mutual recursion. Variadics, function pointers and complete compatible-type rules remain pending in their own rows. |
-| `types.arrays` | foundation | Positive fixed-bound native arrays are source-spellable with C storage, sizeof, subscript/store and ordinary array-to-pointer decay; incomplete source declarations and whole-array initialization remain pending. |
+| `types.arrays` | implemented | Fixed-bound arrays, including arrays of arrays, have real storage, sizeof, subscript/store, decay, positional initializers and cv-qualified element semantics; two-dimensional element reads and assignments match C in differential tests. Nested aggregate initializers (rejected with E0021), whole-array assignment (E0017), VLAs and incomplete source declarations remain pending. |
 | `types.fixed-arrays` | implemented | Positive fixed-length native arrays with positional initializers, zero-based element reads and writes, and loop traversal match C in differential tests. |
 | `types.strings` | implemented | String literals with quote escapes, `Say` output, concatenation with `plus`, and equality match C in differential tests. |
 | `io.console-output` | implemented | `Say` output of integer, boolean and string values matches C `printf` output in differential tests. Floating and aggregate output formatting and stream APIs remain under `lib.stdio`. |
 | `types.vla` | foundation | Block-scope variable-length native arrays accept native integral bounds, lower to C99 VLAs, support subscripting and runtime sizeof, and reject file-scope, aggregate-member, invalid-bound, and initializer cases; variably modified pointer/function shapes remain pending. |
-| `types.structures` | foundation | Tagged structures have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access, bit-fields and flexible-array tails; anonymous members remain pending. |
+| `types.structures` | implemented | Tagged structures with named fields, positional initialization and member access match C in differential tests. Bit-fields, flexible array members and anonymous members remain pending. |
 | `types.bit-fields` | foundation | Named/unnamed native C bit-fields support width checks, width-0 unnamed separators, member access/store and initialization, with completed enums required before layout; C23 _BitInt source types and exhaustive implementation-defined base/enum-representation detection remain pending. |
 | `types.flexible-array-members` | foundation | C99 trailing flexible structure members have native incomplete-array layout, sizeof/completeness and initializer constraints, including recursive propagation through unions for structure-member/array-element restrictions; allocation of extended objects remains pending. |
-| `types.unions` | foundation | Tagged unions have source definitions, completeness checking, native layout, self/forward pointers, by-value transport/member access and native bit-fields; unions may contain flexible-array structures while inheriting C's placement restrictions; anonymous members remain pending. |
-| `types.enumerations` | foundation | Tagged enumerations have source definitions, implicit/explicit int-range enumerators, native enum storage, qualified enumerator expressions and typed transport; general integer constant expressions and C23 fixed underlying/wider rules remain pending. |
+| `types.unions` | implemented | Tagged unions with named fields and member access match C in differential tests. Bit-fields and anonymous members remain pending. |
+| `types.enumerations` | implemented | Enumerations with implicit and explicit enumerator values and enumerator access match C in differential tests. C23 fixed underlying types and general constant expressions remain pending. |
 | `types.aliases` | implemented | Named aliases resolve to the structural native type model. |
 | `types.typeof` | foundation | C23 `typeof` / `typeof_unqual` capability for native object names and parenthesized expressions. |
 | `types.auto-inference` | planned | C23 inferred `auto` capability. |
@@ -55,11 +58,13 @@ An arbitrary-C escape hatch does **not** count as parity.
 | `expr.shifts` | foundation |
 | `expr.integer-operators` | implemented |
 | `expr.assignment` | implemented | Assignment to declared scalar objects and fixed-array elements matches C in differential tests. Struct, union and pointer assignment and assignment-expression edge cases remain pending. |
-| `expr.increment-decrement` | foundation |
+| `expr.compound-assign` | implemented | Add N to x and Subtract N from x match C += and -= on integer variables in differential tests. The other compound assignment operators remain pending. |
+| `expr.increment-decrement` | implemented | Prefix and postfix increment and decrement on named integer variables match C in differential tests. Increment through pointers, members and array elements remains covered only by the native golden tests. |
 | `expr.address-indirection` | foundation |
 | `expr.subscript-member` | foundation |
-| `expr.casts` | foundation |
-| `expr.conditional` | foundation |
+| `expr.casts` | implemented | Convert X to type T matches C casts between arithmetic types in differential tests. Pointer casts, casts to void, and function-pointer casts remain pending. |
+| `expr.conditional` | implemented | Choose A when C otherwise B matches C's ?: for integer operands in differential tests. Pointer, null-pointer and aggregate branch rules remain pending. |
+| `expr.comma` | implemented | Evaluate X then Y matches C's comma operator for scalar operands in differential tests. Comma use inside declarations or call arguments is not expressible. |
 | `expr.sequencing` | foundation |
 | `expr.function-calls` | foundation |
 | `expr.compound-literals` | foundation |
@@ -94,7 +99,7 @@ Explicit scalar conversions are now source-spellable and lower to native C casts
 | `decl.storage-duration` | foundation |
 | `decl.linkage` | foundation | Native declarations can request internal or external linkage in generated C; cross-translation-unit and redeclaration compatibility remain pending. |
 | `decl.storage-specifiers` | foundation | Plain-English `static storage`, `internal linkage`, and `external linkage` clauses lower to C specifiers alongside thread-local storage; inline and full interaction rules remain pending. |
-| `decl.initializers` | foundation |
+| `decl.initializers` | implemented | Positional struct initializers for named local objects match C in differential tests. Nested aggregate initializers (rejected with E0021), designated initializers, and top-level constant initializers (rejected with E0024) remain pending. |
 | `decl.designated-initializers` | foundation |
 | `decl.empty-initialization` | foundation | Native declarations of scalar, pointer, fixed-array, structure, union, enumeration and decimal objects with no initializer clause, or with the plain-English `with empty braces` clause, are zero-initialized in the generated C: integer/boolean/enumeration objects get 0, pointers get the platform null, decimal objects get 0.0, fixed-array elements and aggregate members are recursively zero-initialized. Legacy boxed declarations and the remaining C23 initializer-context rules remain pending. |
 | `decl.static-assert` | implemented | `Assert that` lowers to C11 `_Static_assert` after integer-constant-expression validation, with an optional C11 diagnostic/C23 optional message. |
@@ -135,7 +140,7 @@ PlainSpeak's `For each` is a language extension and is not counted as a replacem
 | `func.typed-signatures` | foundation |
 | `func.prototypes` | foundation |
 | `func.variadic` | foundation |
-| `func.recursion` | foundation |
+| `func.recursion` | implemented | Recursive Procedure calls match C in differential tests. Mutual recursion is covered by the typed-procedure golden tests; complete declaration and linkage compatibility remains pending. |
 | `func.inline` | foundation |
 | `func.noreturn` | foundation |
 

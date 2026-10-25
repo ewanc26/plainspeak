@@ -1,0 +1,4 @@
+Union value: Field whole as integer. Field fraction as decimal. End union.
+Declare v as union value.
+Set member whole of v to 42.
+Say Member whole of v.

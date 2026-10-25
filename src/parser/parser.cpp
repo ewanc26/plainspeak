@@ -1593,6 +1593,25 @@ Expr *Parser::parsePrimary() {
     if (t.kind == TokKind::Number) { advance(); return arena_.makeExpr(IntLit{t.num}, t.line); }
     if (t.kind == TokKind::Float) { advance(); return arena_.makeExpr(FloatLit{t.fval}, t.line); }
     if (t.kind == TokKind::String) { advance(); return arena_.makeExpr(StringLit{t.text}, t.line); }
+    if (checkWord("the") && checkWordAt(1, "character") && peek(2).kind == TokKind::String) {
+        int line = peek().line;
+        advance(); advance();
+        const Token &lit = peek();
+        if (lit.text.size() != 1) {
+            error("A character literal holds exactly one character, not \"" + lit.text + "\".");
+        }
+        long value = static_cast<unsigned char>(lit.text[0]);
+        advance();
+        return arena_.makeExpr(IntLit{value}, line);
+    }
+    if (checkWord("evaluate")) {
+        int line = peek().line;
+        advance();
+        Expr *first = parseExpr();
+        expectWord("then");
+        Expr *last = parseExpr();
+        return arena_.makeExpr(BinaryExpr{BinOp::Comma, first, last}, line);
+    }
     if (checkWord("true"))  { advance(); return arena_.makeExpr(BoolLit{true}, t.line); }
     if (checkWord("false")) { advance(); return arena_.makeExpr(BoolLit{false}, t.line); }
     if (checkWord("minus")) {

@@ -1,0 +1,9 @@
+Declare grid as array of array of integer with length 3 with length 2.
+Set element at 0 in (Element at 0 in grid) to 1.
+Set element at 1 in (Element at 0 in grid) to 5.
+Set element at 2 in (Element at 0 in grid) to 9.
+Set element at 0 in (Element at 1 in grid) to 2.
+Set element at 1 in (Element at 1 in grid) to 6.
+Set element at 2 in (Element at 1 in grid) to 10.
+Say Element at 2 in (Element at 0 in grid).
+Say Element at 1 in (Element at 1 in grid).

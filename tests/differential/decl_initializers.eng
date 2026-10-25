@@ -1,0 +1,3 @@
+Structure point: Field x as integer. Field y as integer. End structure.
+Declare p as structure point with values 1 followed by 2 done.
+Say Member y of p.

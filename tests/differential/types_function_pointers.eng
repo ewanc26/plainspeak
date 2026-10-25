@@ -1,0 +1,3 @@
+Procedure double_it takes value as integer returns integer: Return value times 2. End procedure.
+Declare cb as pointer to function taking integer returning integer with value Address of double_it.
+Say Call through cb with 21 done.

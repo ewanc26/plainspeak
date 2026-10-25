@@ -1,0 +1,5 @@
+Declare x as integer with value 7.
+Declare p as pointer to integer with value Address of x.
+Set value at p to 42.
+Say Value at p.
+Say x.

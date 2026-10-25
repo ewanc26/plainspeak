@@ -1,0 +1,3 @@
+Enumeration color: Enumerator red. Enumerator green as 5. Enumerator blue. End enumeration.
+Declare current as enumeration color with value Enumerator blue of color.
+Say current.

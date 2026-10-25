@@ -334,6 +334,7 @@ const char *emitBinaryOperator(BinOp op) {
         case BinOp::BitOr: return "|";
         case BinOp::And: return "&&";
         case BinOp::Or: return "||";
+        case BinOp::Comma: return ",";
     }
     return "?";
 }
