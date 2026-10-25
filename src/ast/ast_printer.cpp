@@ -5,6 +5,29 @@
 namespace {
 
 std::string printExpr(const Expr *e);
+std::string printAggregateBody(const AggregateInitializer &aggregate);
+
+std::string printAggregateValue(const AggregateInitEntry &entry) {
+    return entry.nested ? "with " + printAggregateBody(*entry.nested) : printExpr(entry.expr);
+}
+
+// Prints "values ... done", "members ... done", "elements ... done", or
+// "empty braces" without the leading "with" so nested blocks can reuse it.
+std::string printAggregateBody(const AggregateInitializer &aggregate) {
+    if (aggregate.kind == AggregateInitKind::Empty) return "empty braces";
+    std::string out;
+    if (aggregate.kind == AggregateInitKind::Positional) out = "values ";
+    else if (aggregate.kind == AggregateInitKind::Members) out = "members ";
+    else out = "elements ";
+    for (std::size_t i = 0; i < aggregate.entries.size(); ++i) {
+        if (i) out += " followed by ";
+        const auto &entry = aggregate.entries[i];
+        if (aggregate.kind == AggregateInitKind::Members) out += entry.memberName + " as ";
+        else if (aggregate.kind == AggregateInitKind::Elements) out += "at " + std::to_string(entry.elementIndex) + " as ";
+        out += printAggregateValue(entry);
+    }
+    return out + " done";
+}
 
 std::string printTypeSpec(const TypeSpec &type) {
     std::string prefix;
@@ -287,18 +310,7 @@ std::string printStmt(const Stmt *s) {
             if (node.initializer) {
                 out += " with value " + printExpr(node.initializer);
             } else if (node.aggregateInitializer) {
-                const auto &aggregate = *node.aggregateInitializer;
-                if (aggregate.kind == AggregateInitKind::Positional) out += " with values ";
-                else if (aggregate.kind == AggregateInitKind::Members) out += " with members ";
-                else out += " with elements ";
-                for (size_t i = 0; i < aggregate.entries.size(); ++i) {
-                    if (i) out += " followed by ";
-                    const auto &entry = aggregate.entries[i];
-                    if (aggregate.kind == AggregateInitKind::Members) out += entry.memberName + " as ";
-                    else if (aggregate.kind == AggregateInitKind::Elements) out += "at " + std::to_string(entry.elementIndex) + " as ";
-                    out += printExpr(entry.expr);
-                }
-                out += " done";
+                out += " with " + printAggregateBody(*node.aggregateInitializer);
             }
             return out + ". ";
         } else if constexpr (std::is_same_v<T, StoreThroughStmt>) {

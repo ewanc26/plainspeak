@@ -99,6 +99,8 @@ private:
     Expr *parsePower();
     Expr *parsePrimary();
     Expr *parseCompoundLiteral();
+    AggregateInitializer parseAggregateBlock();
+    AggregateInitEntry parseAggregateEntryValue(AggregateInitEntry entry);
     Expr *parseGenericSelection();
     Expr *parseVaArg();
 };

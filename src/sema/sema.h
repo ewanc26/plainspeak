@@ -148,5 +148,9 @@ private:
     const AggregateFieldInfo *findAggregateField(const Type &base, const std::string &name) const;
     bool isNativeLvalueExpr(const Expr *e) const;
     Type inferExpr(const Expr *e, int line, std::vector<Diag> &diags);
+    void inferAggregateEntry(const AggregateInitEntry &entry, int line, std::vector<Diag> &diags);
+    void inferAggregateEntries(const std::vector<AggregateInitEntry> &entries, int line, std::vector<Diag> &diags);
+    void checkAggregateInitializer(const Type &declared, const AggregateInitializer &aggregate,
+                                   const std::string &label, int line, std::vector<Diag> &diags);
     void checkStmt(const Stmt *s, std::vector<Diag> &diags);
 };

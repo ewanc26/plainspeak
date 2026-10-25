@@ -1,0 +1,6 @@
+Declare grid as array of array of integer with length 3 with length 2 with values with values 1 followed by 5 followed by 9 done followed by with values 2 followed by 6 done done.
+Declare sparse as array of array of integer with length 3 with length 2 with elements at 1 as with elements at 2 as 7 done done.
+Say Element at 2 in (Element at 0 in grid).
+Say Element at 2 in (Element at 1 in grid).
+Say Element at 0 in (Element at 1 in sparse).
+Say Element at 2 in (Element at 1 in sparse).

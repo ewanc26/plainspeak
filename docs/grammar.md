@@ -511,7 +511,13 @@ Declare a as array of integer with length 4 with elements at 3 as 9 followed by 
 
 Omitted structure members and array elements are zero-initialized. Automatic aggregate objects use an explicit generated C zero-initializer before the selected member/element stores; file-scope native objects already have C static zero initialization. This keeps PlainSpeak initializer expressions free to use runtime expressions instead of pretending they are all C translation-time constants.
 
-Designators must be unique in this tranche, array indexes must be in range, and a union initializer selects exactly one member. Nested array aggregate initialization is not yet recursive: an array-valued field/element needs a later nested-initializer facility rather than assignment syntax. Ordinary `with value` remains the scalar/native assignment-style initializer and can still copy compatible complete structures/unions or consume typed Procedure results; arrays use the aggregate forms instead.
+Designators must be unique in this tranche, array indexes must be in range, and a union initializer selects exactly one member. An aggregate-typed member or element is initialized by its own nested block, which takes the same `with values`, `with members`, `with elements`, or `with empty braces` forms and ends with its own `done`. Arrays of arrays therefore use nested blocks:
+
+```text
+Declare grid as array of array of integer with length 3 with length 2 with values with values 1 followed by 5 followed by 9 done followed by with values 2 followed by 6 done done.
+```
+
+The outer `with length` is the last one listed (length 2), so this matches C `int grid[2][3] = {{1, 5, 9}, {2, 6}};`. A nested block that initializes a scalar is rejected with E0021, and an inner block that lists too many values is rejected with the same E0021 message naming the inner element. Whole-array assignment (`with value` on an array, or assigning one array to another) stays rejected with E0017 because C has no whole-array assignment. Ordinary `with value` remains the scalar/native assignment-style initializer and can still copy compatible complete structures/unions or consume typed Procedure results; arrays use the aggregate forms instead. Compound values do not accept nested blocks yet.
 
 ## Procedures and typed signatures
 

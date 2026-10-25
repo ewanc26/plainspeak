@@ -54,3 +54,40 @@ TEST_CASE("sema rejects duplicate designated aggregate members", "[sema][initial
     REQUIRE(diags.size() == 1);
     CHECK(diags[0].code == 21);
 }
+
+TEST_CASE("parser and sema represent nested aggregate initializers", "[parser][sema][initializers][c99]") {
+    Tokenizer tokenizer(
+        "Declare grid as array of array of integer with length 3 with length 2 "
+        "with values with values 1 followed by 5 done followed by with elements at 1 as 6 done done.");
+    Arena arena;
+    Parser parser(tokenizer.tokenize(), arena);
+    auto program = parser.parseProgram();
+    REQUIRE(program.size() == 1);
+
+    const auto &grid = std::get<NativeDeclStmt>(program[0]->node);
+    REQUIRE(grid.aggregateInitializer);
+    REQUIRE(grid.aggregateInitializer->entries.size() == 2);
+    const auto &row = grid.aggregateInitializer->entries[0];
+    CHECK(row.expr == nullptr);
+    REQUIRE(row.nested);
+    CHECK(row.nested->kind == AggregateInitKind::Positional);
+    CHECK(row.nested->entries.size() == 2);
+    CHECK(grid.aggregateInitializer->entries[1].nested->kind == AggregateInitKind::Elements);
+
+    Sema sema;
+    CHECK(sema.check(program).empty());
+}
+
+TEST_CASE("sema rejects nested aggregate initializers that overfill a row", "[sema][initializers][diagnostics]") {
+    Tokenizer tokenizer(
+        "Declare grid as array of array of integer with length 2 with length 2 "
+        "with values with values 1 followed by 2 followed by 3 done done.");
+    Arena arena;
+    Parser parser(tokenizer.tokenize(), arena);
+    auto program = parser.parseProgram();
+    Sema sema;
+    auto diags = sema.check(program);
+    REQUIRE(diags.size() == 1);
+    CHECK(diags[0].code == 21);
+    CHECK(diags[0].message == "Array element 0 of \"grid\" has length 2 but received 3 positional initializers.");
+}

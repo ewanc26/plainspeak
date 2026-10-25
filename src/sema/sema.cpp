@@ -2336,6 +2336,153 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
     return result;
 }
 
+void Sema::inferAggregateEntry(const AggregateInitEntry &entry, int line, std::vector<Diag> &diags) {
+    if (entry.nested) {
+        inferAggregateEntries(entry.nested->entries, line, diags);
+    } else {
+        inferExpr(entry.expr, line, diags);
+    }
+}
+
+void Sema::inferAggregateEntries(const std::vector<AggregateInitEntry> &entries, int line, std::vector<Diag> &diags) {
+    for (const auto &entry : entries) inferAggregateEntry(entry, line, diags);
+}
+
+// Validates an aggregate initializer against its target type. Nested
+// with-blocks recurse with the sub-object's type; label names the object being
+// initialized (for example "\"grid\"" or "element 0 of \"grid\"") in messages.
+void Sema::checkAggregateInitializer(const Type &declared, const AggregateInitializer &aggregate,
+                                     const std::string &label, int line, std::vector<Diag> &diags) {
+    auto checkValue = [&](const Type &target, Expr *expr, const std::string &where) {
+        std::size_t before = diags.size();
+        Type source = inferExpr(expr, line, diags);
+        if (target.isArray()) {
+            if (diags.size() == before) {
+                diags.push_back({21, line, where + " is an array and needs its own with values or with elements block; a single value cannot initialize it."});
+            }
+        } else if (diags.size() == before && !assignableExprTo(target, source, expr)) {
+            diags.push_back({21, line, "I can't initialize " + where + ", which is a " +
+                                      typeToString(target) + ", with a " + typeToString(source) + "."});
+        }
+    };
+    auto checkEntry = [&](const Type &target, const AggregateInitEntry &entry, const std::string &where) {
+        if (entry.nested) checkAggregateInitializer(target, *entry.nested, where, line, diags);
+        else checkValue(target, entry.expr, where);
+    };
+
+    if (aggregate.kind == AggregateInitKind::Empty) {
+        // C23 empty-brace initialization recursively produces
+        // the zero value for every supported native object type.
+    } else if (aggregate.kind == AggregateInitKind::Positional) {
+        if (declared.isArray() && declared.elementType && declared.arrayBound) {
+            if (aggregate.entries.size() > *declared.arrayBound) {
+                diags.push_back({21, line, "Array " + label + " has length " +
+                                          std::to_string(*declared.arrayBound) + " but received " +
+                                          std::to_string(aggregate.entries.size()) + " positional initializers."});
+            }
+            std::size_t count = std::min(aggregate.entries.size(), *declared.arrayBound);
+            for (std::size_t i = 0; i < count; ++i) {
+                checkEntry(*declared.elementType, aggregate.entries[i],
+                           "element " + std::to_string(i) + " of " + label);
+            }
+        } else if (declared.kind == TypeKind::Structure || declared.kind == TypeKind::Union) {
+            const StructureInfo *info = nullptr;
+            if (declared.kind == TypeKind::Structure) {
+                auto it = structureTable_.find(declared.tag);
+                if (it != structureTable_.end()) info = &it->second;
+            } else {
+                auto it = unionTable_.find(declared.tag);
+                if (it != unionTable_.end()) info = &it->second;
+            }
+            if (info && info->complete) {
+                std::vector<const AggregateFieldInfo *> positionalFields;
+                for (const auto &field : info->fields) {
+                    if (!field.name.empty() && !field.flexibleArray) positionalFields.push_back(&field);
+                }
+                std::size_t allowed = declared.kind == TypeKind::Union
+                                        ? std::min<std::size_t>(1, positionalFields.size())
+                                        : positionalFields.size();
+                if (aggregate.entries.size() > allowed) {
+                    diags.push_back({21, line, (declared.kind == TypeKind::Union ? "Union" : "Structure") +
+                                              std::string(" \"") + declared.tag + "\" accepts at most " +
+                                              std::to_string(allowed) + " positional initializer" +
+                                              (allowed == 1 ? "" : "s") + "."});
+                }
+                std::size_t count = std::min(aggregate.entries.size(), allowed);
+                for (std::size_t i = 0; i < count; ++i) {
+                    checkEntry(positionalFields[i]->type, aggregate.entries[i],
+                               "member \"" + positionalFields[i]->name + "\" of " + label);
+                }
+            }
+        } else {
+            diags.push_back({21, line, "with values requires an array, structure, or union target, not " +
+                                      typeToString(declared) + "."});
+            inferAggregateEntries(aggregate.entries, line, diags);
+        }
+    } else if (aggregate.kind == AggregateInitKind::Members) {
+        if (declared.kind == TypeKind::Union && aggregate.entries.size() > 1) {
+            diags.push_back({21, line, "A union initializer selects exactly one member; " + label +
+                                      " received " + std::to_string(aggregate.entries.size()) + " member designators."});
+        }
+        if (declared.kind != TypeKind::Structure && declared.kind != TypeKind::Union) {
+            diags.push_back({21, line, "with members requires a structure or union target, not " +
+                                      typeToString(declared) + "."});
+            inferAggregateEntries(aggregate.entries, line, diags);
+        } else {
+            std::unordered_set<std::string> used;
+            for (const auto &entry : aggregate.entries) {
+                if (!used.insert(entry.memberName).second) {
+                    diags.push_back({21, line, "Member designator \"" + entry.memberName +
+                                              "\" appears more than once in the initializer for " + label + "."});
+                    inferAggregateEntry(entry, line, diags);
+                    continue;
+                }
+                Type aggregateType = declared;
+                const AggregateFieldInfo *field = findAggregateField(aggregateType, entry.memberName);
+                if (!field) {
+                    diags.push_back({21, line, (declared.kind == TypeKind::Structure ? "Structure" : "Union") +
+                                              std::string(" \"") + declared.tag + "\" has no member \"" +
+                                              entry.memberName + "\" to initialize."});
+                    inferAggregateEntry(entry, line, diags);
+                    continue;
+                }
+                if (field->flexibleArray) {
+                    diags.push_back({21, line, "Flexible member \"" + entry.memberName +
+                                              "\" is not an initializer target; C flexible array storage is outside sizeof the structure."});
+                    inferAggregateEntry(entry, line, diags);
+                    continue;
+                }
+                checkEntry(field->type, entry, "member \"" + entry.memberName + "\" of " + label);
+            }
+        }
+    } else {
+        if (!declared.isArray() || !declared.elementType || !declared.arrayBound) {
+            diags.push_back({21, line, "with elements requires a fixed native array target, not " +
+                                      typeToString(declared) + "."});
+            inferAggregateEntries(aggregate.entries, line, diags);
+        } else {
+            std::unordered_set<std::size_t> used;
+            for (const auto &entry : aggregate.entries) {
+                if (entry.elementIndex >= *declared.arrayBound) {
+                    diags.push_back({21, line, "Element designator " + std::to_string(entry.elementIndex) +
+                                              " is outside array " + label + " of length " +
+                                              std::to_string(*declared.arrayBound) + "."});
+                    inferAggregateEntry(entry, line, diags);
+                    continue;
+                }
+                if (!used.insert(entry.elementIndex).second) {
+                    diags.push_back({21, line, "Element designator " + std::to_string(entry.elementIndex) +
+                                              " appears more than once in the initializer for " + label + "."});
+                    inferAggregateEntry(entry, line, diags);
+                    continue;
+                }
+                checkEntry(*declared.elementType, entry,
+                           "element " + std::to_string(entry.elementIndex) + " of " + label);
+            }
+        }
+    }
+}
+
 void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
     auto validateBitField = [&](const StructureField &field, const Type &fieldType) {
         bool valid = true;
@@ -2755,131 +2902,8 @@ void Sema::checkStmt(const Stmt *s, std::vector<Diag> &diags) {
             }
 
             if (node.aggregateInitializer) {
-                const auto &aggregate = *node.aggregateInitializer;
-                auto checkValue = [&](const Type &target, Expr *expr, const std::string &where) {
-                    std::size_t before = diags.size();
-                    Type source = inferExpr(expr, s->line, diags);
-                    if (target.isArray()) {
-                        if (diags.size() == before) {
-                            diags.push_back({21, s->line, where + " is an array and needs its own aggregate initializer; nested aggregate initializers are not in this tranche."});
-                        }
-                    } else if (diags.size() == before && !assignableExprTo(target, source, expr)) {
-                        diags.push_back({21, s->line, "I can't initialize " + where + ", which is a " +
-                                                  typeToString(target) + ", with a " + typeToString(source) + "."});
-                    }
-                };
-
-                if (aggregate.kind == AggregateInitKind::Empty) {
-                    // C23 empty-brace initialization recursively produces
-                    // the zero value for every supported native object type.
-                } else if (aggregate.kind == AggregateInitKind::Positional) {
-                    if (declared.isArray() && declared.elementType && declared.arrayBound) {
-                        if (aggregate.entries.size() > *declared.arrayBound) {
-                            diags.push_back({21, s->line, "Array \"" + node.name + "\" has length " +
-                                                      std::to_string(*declared.arrayBound) + " but received " +
-                                                      std::to_string(aggregate.entries.size()) + " positional initializers."});
-                        }
-                        std::size_t count = std::min(aggregate.entries.size(), *declared.arrayBound);
-                        for (std::size_t i = 0; i < count; ++i) {
-                            checkValue(*declared.elementType, aggregate.entries[i].expr,
-                                       "element " + std::to_string(i) + " of \"" + node.name + "\"");
-                        }
-                    } else if (declared.kind == TypeKind::Structure || declared.kind == TypeKind::Union) {
-                        const StructureInfo *info = nullptr;
-                        if (declared.kind == TypeKind::Structure) {
-                            auto it = structureTable_.find(declared.tag);
-                            if (it != structureTable_.end()) info = &it->second;
-                        } else {
-                            auto it = unionTable_.find(declared.tag);
-                            if (it != unionTable_.end()) info = &it->second;
-                        }
-                        if (info && info->complete) {
-                            std::vector<const AggregateFieldInfo *> positionalFields;
-                            for (const auto &field : info->fields) {
-                                if (!field.name.empty() && !field.flexibleArray) positionalFields.push_back(&field);
-                            }
-                            std::size_t allowed = declared.kind == TypeKind::Union
-                                                    ? std::min<std::size_t>(1, positionalFields.size())
-                                                    : positionalFields.size();
-                            if (aggregate.entries.size() > allowed) {
-                                diags.push_back({21, s->line, (declared.kind == TypeKind::Union ? "Union" : "Structure") +
-                                                          std::string(" \"") + declared.tag + "\" accepts at most " +
-                                                          std::to_string(allowed) + " positional initializer" +
-                                                          (allowed == 1 ? "" : "s") + "."});
-                            }
-                            std::size_t count = std::min(aggregate.entries.size(), allowed);
-                            for (std::size_t i = 0; i < count; ++i) {
-                                checkValue(positionalFields[i]->type, aggregate.entries[i].expr,
-                                           "member \"" + positionalFields[i]->name + "\" of \"" + node.name + "\"");
-                            }
-                        }
-                    } else {
-                        diags.push_back({21, s->line, "with values requires an array, structure, or union target, not " +
-                                                  typeToString(declared) + "."});
-                        for (const auto &entry : aggregate.entries) inferExpr(entry.expr, s->line, diags);
-                    }
-                } else if (aggregate.kind == AggregateInitKind::Members) {
-                    if (declared.kind == TypeKind::Union && aggregate.entries.size() > 1) {
-                        diags.push_back({21, s->line, "A union initializer selects exactly one member; \"" + node.name +
-                                                  "\" received " + std::to_string(aggregate.entries.size()) + " member designators."});
-                    }
-                    if (declared.kind != TypeKind::Structure && declared.kind != TypeKind::Union) {
-                        diags.push_back({21, s->line, "with members requires a structure or union target, not " +
-                                                  typeToString(declared) + "."});
-                        for (const auto &entry : aggregate.entries) inferExpr(entry.expr, s->line, diags);
-                    } else {
-                        std::unordered_set<std::string> used;
-                        for (const auto &entry : aggregate.entries) {
-                            if (!used.insert(entry.memberName).second) {
-                                diags.push_back({21, s->line, "Member designator \"" + entry.memberName +
-                                                          "\" appears more than once in the initializer for \"" + node.name + "\"."});
-                                inferExpr(entry.expr, s->line, diags);
-                                continue;
-                            }
-                            Type aggregateType = declared;
-                            const AggregateFieldInfo *field = findAggregateField(aggregateType, entry.memberName);
-                            if (!field) {
-                                diags.push_back({21, s->line, (declared.kind == TypeKind::Structure ? "Structure" : "Union") +
-                                                          std::string(" \"") + declared.tag + "\" has no member \"" +
-                                                          entry.memberName + "\" to initialize."});
-                                inferExpr(entry.expr, s->line, diags);
-                                continue;
-                            }
-                            if (field->flexibleArray) {
-                                diags.push_back({21, s->line, "Flexible member \"" + entry.memberName +
-                                                          "\" is not an initializer target; C flexible array storage is outside sizeof the structure."});
-                                inferExpr(entry.expr, s->line, diags);
-                                continue;
-                            }
-                            checkValue(field->type, entry.expr, "member \"" + entry.memberName + "\" of \"" + node.name + "\"");
-                        }
-                    }
-                } else {
-                    if (!declared.isArray() || !declared.elementType || !declared.arrayBound) {
-                        diags.push_back({21, s->line, "with elements requires a fixed native array target, not " +
-                                                  typeToString(declared) + "."});
-                        for (const auto &entry : aggregate.entries) inferExpr(entry.expr, s->line, diags);
-                    } else {
-                        std::unordered_set<std::size_t> used;
-                        for (const auto &entry : aggregate.entries) {
-                            if (entry.elementIndex >= *declared.arrayBound) {
-                                diags.push_back({21, s->line, "Element designator " + std::to_string(entry.elementIndex) +
-                                                          " is outside array \"" + node.name + "\" of length " +
-                                                          std::to_string(*declared.arrayBound) + "."});
-                                inferExpr(entry.expr, s->line, diags);
-                                continue;
-                            }
-                            if (!used.insert(entry.elementIndex).second) {
-                                diags.push_back({21, s->line, "Element designator " + std::to_string(entry.elementIndex) +
-                                                          " appears more than once in the initializer for \"" + node.name + "\"."});
-                                inferExpr(entry.expr, s->line, diags);
-                                continue;
-                            }
-                            checkValue(*declared.elementType, entry.expr,
-                                       "element " + std::to_string(entry.elementIndex) + " of \"" + node.name + "\"");
-                        }
-                    }
-                }
+                checkAggregateInitializer(declared, *node.aggregateInitializer,
+                                          "\"" + node.name + "\"", s->line, diags);
             }
         }
         else if constexpr (std::is_same_v<T, StoreThroughStmt>) {
