@@ -280,6 +280,7 @@ std::optional<long> integerConstantValue(const Expr *expr) {
                 case BinOp::BitOr: return *lhs | *rhs;
                 case BinOp::And: return *rhs != 0 ? 1L : 0L;
                 case BinOp::Or: return *rhs != 0 ? 1L : 0L;
+                case BinOp::Comma: return *rhs;
             }
             return std::nullopt;
         } else if constexpr (std::is_same_v<T, ConditionalExpr>) {
@@ -380,7 +381,7 @@ std::optional<std::string> findUnsequencedConflict(const Expr *expr,
         if constexpr (std::is_same_v<T, BinaryExpr>) {
             if (auto conflict = findUnsequencedConflict(node.lhs, analysis)) return conflict;
             if (auto conflict = findUnsequencedConflict(node.rhs, analysis)) return conflict;
-            if (node.op == BinOp::And || node.op == BinOp::Or) return std::nullopt;
+            if (node.op == BinOp::And || node.op == BinOp::Or || node.op == BinOp::Comma) return std::nullopt;
             ExpressionEffects lhs = expressionEffects(node.lhs, analysis);
             ExpressionEffects rhs = expressionEffects(node.rhs, analysis);
             for (const auto &written : lhs.writes) {
@@ -1965,7 +1966,7 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
         else if constexpr (std::is_same_v<T, BinaryExpr>) {
             Type lhs = inferExpr(node.lhs, line, diags);
             Type rhs = inferExpr(node.rhs, line, diags);
-            if (analysis_ && node.op != BinOp::And && node.op != BinOp::Or &&
+            if (analysis_ && node.op != BinOp::And && node.op != BinOp::Or && node.op != BinOp::Comma &&
                 !findUnsequencedConflict(node.lhs, *analysis_) &&
                 !findUnsequencedConflict(node.rhs, *analysis_)) {
                 ExpressionEffects lhsEffects = expressionEffects(node.lhs, *analysis_);
@@ -1992,6 +1993,16 @@ Type Sema::inferExpr(const Expr *e, int line, std::vector<Diag> &diags) {
             }
             Type lhsValue = decayArray(lhs);
             Type rhsValue = decayArray(rhs);
+            if (node.op == BinOp::Comma) {
+                bool lhsScalar = isArithmeticScalar(lhsValue) || lhsValue.isPointer();
+                bool rhsScalar = isArithmeticScalar(rhsValue) || rhsValue.isPointer();
+                if (!lhsScalar || !rhsScalar) {
+                    diags.push_back({2, line, "Evaluate ... then ... needs C scalar values on both sides, not " +
+                                              typeToString(lhs) + " and " + typeToString(rhs) + "."});
+                    return Type::number();
+                }
+                return rhsValue;
+            }
             bool lhsPointer = lhsValue.isPointer();
             bool rhsPointer = rhsValue.isPointer();
             bool equality = node.op == BinOp::Eq || node.op == BinOp::Ne;

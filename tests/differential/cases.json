@@ -17,6 +17,24 @@
     {"name": "fixed_arrays", "features": ["types.fixed-arrays"]},
     {"name": "strings", "features": ["types.strings", "io.console-output"]},
     {"name": "ffi_call", "features": ["ffi.call-c"]},
-    {"name": "ffi_user_source", "features": ["ffi.call-c"]}
+    {"name": "ffi_user_source", "features": ["ffi.call-c"]},
+    {"name": "expr_conditional", "features": ["expr.conditional"]},
+    {"name": "expr_increment_decrement", "features": ["expr.increment-decrement"]},
+    {"name": "expr_casts", "features": ["expr.casts"]},
+    {"name": "expr_compound_assign", "features": ["expr.compound-assign"]},
+    {"name": "types_sizeof", "features": ["types.sizeof-alignof"]},
+    {"name": "types_pointers", "features": ["types.pointers"]},
+    {"name": "types_structures", "features": ["types.structures"]},
+    {"name": "types_unions", "features": ["types.unions"]},
+    {"name": "types_enumerations", "features": ["types.enumerations"]},
+    {"name": "decl_initializers", "features": ["decl.initializers"]},
+    {"name": "types_function_pointers", "features": ["func.pointers"]},
+    {"name": "func_recursion", "features": ["func.recursion"]},
+    {"name": "types_qualifiers", "features": ["types.qualifiers"]},
+    {"name": "types_floating", "features": ["types.floating-model"]},
+    {"name": "expr_comma", "features": ["expr.comma"]},
+    {"name": "literals_char", "features": ["types.char-literals"]},
+    {"name": "literals_numeric", "features": ["literals.numeric"]},
+    {"name": "types_multidim_arrays", "features": ["types.arrays"]}
   ]
 }

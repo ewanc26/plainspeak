@@ -141,14 +141,45 @@ std::vector<Token> Tokenizer::tokenize() {
 
         if (std::isdigit(static_cast<unsigned char>(c))) {
             int line = line_;
+            auto peekAt = [&](size_t offset) -> char {
+                return pos_ + offset < src_.size() ? src_[pos_ + offset] : '\0';
+            };
+            if (c == '0' && (peekAt(1) == 'x' || peekAt(1) == 'X') &&
+                std::isxdigit(static_cast<unsigned char>(peekAt(2)))) {
+                advanceChar();
+                advanceChar();
+                std::string hex;
+                while (!atEnd() && std::isxdigit(static_cast<unsigned char>(peekChar())))
+                    hex += advanceChar();
+                Token t;
+                t.kind = TokKind::Number;
+                t.text = hex;
+                t.num = std::stol(hex, nullptr, 16);
+                t.line = line;
+                tokens.push_back(t);
+                continue;
+            }
             std::string digits;
             while (!atEnd() && std::isdigit(static_cast<unsigned char>(peekChar())))
                 digits += advanceChar();
-            if (peekChar() == '.' && pos_ + 1 < src_.size() &&
-                std::isdigit(static_cast<unsigned char>(src_[pos_ + 1]))) {
+            bool isFloat = false;
+            if (peekChar() == '.' && std::isdigit(static_cast<unsigned char>(peekAt(1)))) {
+                isFloat = true;
                 digits += advanceChar(); // consume '.'
                 while (!atEnd() && std::isdigit(static_cast<unsigned char>(peekChar())))
                     digits += advanceChar();
+            }
+            bool signedExponent = (peekAt(1) == '+' || peekAt(1) == '-') &&
+                                  std::isdigit(static_cast<unsigned char>(peekAt(2)));
+            if ((peekChar() == 'e' || peekChar() == 'E') &&
+                (std::isdigit(static_cast<unsigned char>(peekAt(1))) || signedExponent)) {
+                isFloat = true;
+                digits += advanceChar();
+                if (signedExponent) digits += advanceChar();
+                while (!atEnd() && std::isdigit(static_cast<unsigned char>(peekChar())))
+                    digits += advanceChar();
+            }
+            if (isFloat) {
                 Token t;
                 t.kind = TokKind::Float;
                 t.text = digits;

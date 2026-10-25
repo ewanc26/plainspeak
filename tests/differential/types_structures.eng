@@ -1,0 +1,6 @@
+Structure point: Field x as integer. Field y as integer. End structure.
+Declare p as structure point.
+Set member x of p to 10.
+Set member y of p to 20.
+Say Member x of p.
+Say Member y of p.

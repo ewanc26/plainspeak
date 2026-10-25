@@ -1,0 +1,5 @@
+Declare x as integer with value 1.
+Say Size of type integer.
+Say Size of type pointer to integer.
+Say Size of x.
+Say Alignment of type long decimal.

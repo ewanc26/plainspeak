@@ -207,7 +207,8 @@ std::string printExpr(const Expr *e) {
                           : node.op == BinOp::BitAnd ? "bitwise and"
                           : node.op == BinOp::BitXor ? "bitwise xor"
                           : node.op == BinOp::BitOr ? "bitwise or"
-                          : node.op == BinOp::And ? "and" : "or";
+                          : node.op == BinOp::And ? "and"
+                          : node.op == BinOp::Comma ? "then" : "or";
             return "(" + printExpr(node.lhs) + " " + std::string(op) + " " + printExpr(node.rhs) + ")";
         } else if constexpr (std::is_same_v<T, UnaryExpr>) {
             const char *op = node.op == UnaryOp::Not ? "not" :

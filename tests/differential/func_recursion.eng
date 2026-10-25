@@ -1,0 +1,2 @@
+Procedure fact takes n as integer returns integer: If n is less than 2 then: Return 1. End if. Return n times Call fact with n minus 1 done. End procedure.
+Say Call fact with 5 done.

@@ -1,0 +1,4 @@
+Declare total as integer with value 10.
+Add 5 to total.
+Subtract 3 from total.
+Say total.

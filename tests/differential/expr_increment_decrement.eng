@@ -1,0 +1,5 @@
+Declare x as integer with value 5.
+Say Increment before x.
+Say Increment after x.
+Say Decrement before x.
+Say x.

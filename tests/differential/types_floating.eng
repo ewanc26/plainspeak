@@ -1,0 +1,4 @@
+Declare f as float with value 2.5.
+Declare g as decimal with value 1.25.
+Say Convert (f times 4) to type integer.
+Say Convert (g times 8) to type integer.

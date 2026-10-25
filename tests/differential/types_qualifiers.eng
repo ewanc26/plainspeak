@@ -1,0 +1,5 @@
+Declare x as integer with value 5.
+Declare v as volatile integer with value 7.
+Declare p as pointer to constant integer with value Address of x.
+Say Value at p.
+Say v.

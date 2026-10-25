@@ -101,7 +101,7 @@ struct AggregateInitializer {
     std::vector<AggregateInitEntry> entries;
 };
 
-enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or };
+enum class BinOp { Add, Sub, Mul, Div, Mod, ShiftLeft, ShiftRight, Gt, Lt, Eq, Ne, Ge, Le, BitAnd, BitXor, BitOr, And, Or, Comma };
 enum class UnaryOp { Not, Neg, BitNot };
 struct UnaryExpr       { UnaryOp op; Expr *rhs; };
 struct LengthExpr      { Expr *operand; };
