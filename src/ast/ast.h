@@ -91,10 +91,14 @@ struct TypeSpec {
 };
 
 enum class AggregateInitKind { Empty, Scalar, Positional, Members, Elements };
+struct AggregateInitializer;
 struct AggregateInitEntry {
     std::string memberName{};
     std::size_t elementIndex = 0;
     Expr *expr = nullptr;
+    // A nested "with values/members/elements ... done" block initializing an
+    // aggregate-typed member or element. When set, expr is null.
+    std::shared_ptr<AggregateInitializer> nested{};
 };
 struct AggregateInitializer {
     AggregateInitKind kind = AggregateInitKind::Positional;

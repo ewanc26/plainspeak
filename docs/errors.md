@@ -26,7 +26,7 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0018 | Invalid typed Procedure signature, argument, return, prototype, or return placement; typed non-void Procedure reaches its end without a Return on some path |
 | E0019 | Invalid structure definition, completeness, member access, or member store |
 | E0020 | Invalid union definition, shared tag namespace, completeness, member access, or member store |
-| E0021 | Invalid positional or designated aggregate initializer |
+| E0021 | Invalid positional, designated, or nested aggregate initializer |
 | E0022 | Invalid enumeration definition, tag, enumerator, value, or use |
 | E0023 | Invalid bit-field or flexible-array-member layout/use |
 | E0024 | Invalid native type qualifier, forbidden const mutation, or unsupported qualified-object lowering |

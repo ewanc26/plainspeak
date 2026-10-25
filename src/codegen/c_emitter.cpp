@@ -177,19 +177,44 @@ std::string mangleEnumerator(const std::string &enumeration, const std::string &
 std::string emitBoxedExpr(const Expr *e, const AnalysisResult &analysis);
 std::string emitRawExpr(const Expr *e, const AnalysisResult &analysis);
 
+// Finds a named structure or union member for a with-members entry.
+const AggregateFieldInfo *findNamedAggregateField(const Type &declared, const std::string &name,
+                                                  const AnalysisResult &analysis) {
+    const StructureInfo *info = nullptr;
+    if (declared.kind == TypeKind::Structure) {
+        auto it = analysis.structures.find(declared.tag);
+        if (it != analysis.structures.end()) info = &it->second;
+    } else if (declared.kind == TypeKind::Union) {
+        auto it = analysis.unions.find(declared.tag);
+        if (it != analysis.unions.end()) info = &it->second;
+    }
+    if (!info) return nullptr;
+    for (const auto &field : info->fields) {
+        if (field.name == name) return &field;
+    }
+    return nullptr;
+}
+
+// Emits the element and member stores for an aggregate initializer. A nested
+// with-block recurses into its sub-object, so grid[row][column] stores are
+// plain C assignments after the declaration zero-initializes the object.
 void emitAggregateStores(const std::string &name, const Type &declared,
                          const AggregateInitializer &aggregate,
                          std::ostream &out, const std::string &indent,
                          const AnalysisResult &analysis) {
     if (aggregate.kind == AggregateInitKind::Empty) return;
-    auto emitStore = [&](const std::string &target, Expr *expr) {
-        out << indent << target << " = " << emitRawExpr(expr, analysis) << ";\n";
+    auto emitEntry = [&](const std::string &target, const Type &targetType, const AggregateInitEntry &entry) {
+        if (entry.nested) {
+            emitAggregateStores(target, targetType, *entry.nested, out, indent, analysis);
+        } else {
+            out << indent << target << " = " << emitRawExpr(entry.expr, analysis) << ";\n";
+        }
     };
 
     if (aggregate.kind == AggregateInitKind::Positional) {
         if (declared.isArray()) {
             for (std::size_t i = 0; i < aggregate.entries.size(); ++i) {
-                emitStore(name + "[" + std::to_string(i) + "]", aggregate.entries[i].expr);
+                emitEntry(name + "[" + std::to_string(i) + "]", *declared.elementType, aggregate.entries[i]);
             }
             return;
         }
@@ -210,20 +235,23 @@ void emitAggregateStores(const std::string &name, const Type &declared,
         std::size_t count = std::min(aggregate.entries.size(), positionalFields.size());
         if (declared.kind == TypeKind::Union) count = std::min<std::size_t>(count, 1);
         for (std::size_t i = 0; i < count; ++i) {
-            emitStore("(" + name + ")." + mangle(positionalFields[i]->name), aggregate.entries[i].expr);
+            emitEntry("(" + name + ")." + mangle(positionalFields[i]->name), positionalFields[i]->type,
+                      aggregate.entries[i]);
         }
         return;
     }
 
     if (aggregate.kind == AggregateInitKind::Members) {
         for (const auto &entry : aggregate.entries) {
-            emitStore("(" + name + ")." + mangle(entry.memberName), entry.expr);
+            const AggregateFieldInfo *field = findNamedAggregateField(declared, entry.memberName, analysis);
+            if (!field) continue;
+            emitEntry("(" + name + ")." + mangle(entry.memberName), field->type, entry);
         }
         return;
     }
 
     for (const auto &entry : aggregate.entries) {
-        emitStore(name + "[" + std::to_string(entry.elementIndex) + "]", entry.expr);
+        emitEntry(name + "[" + std::to_string(entry.elementIndex) + "]", *declared.elementType, entry);
     }
 }
 

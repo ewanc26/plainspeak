@@ -35,6 +35,7 @@
     {"name": "expr_comma", "features": ["expr.comma"]},
     {"name": "literals_char", "features": ["types.char-literals"]},
     {"name": "literals_numeric", "features": ["literals.numeric"]},
-    {"name": "types_multidim_arrays", "features": ["types.arrays"]}
+    {"name": "types_multidim_arrays", "features": ["types.arrays"]},
+    {"name": "types_multidim_initializers", "features": ["types.arrays", "decl.initializers"]}
   ]
 }

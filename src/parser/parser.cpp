@@ -447,67 +447,8 @@ Stmt *Parser::parseDeclare() {
         if (checkWord("value")) {
             advance();
             initializer = parseExpr();
-        } else if (checkWord("empty") && checkWordAt(1, "braces")) {
-            advance();
-            advance();
-            AggregateInitializer aggregate;
-            aggregate.kind = AggregateInitKind::Empty;
-            aggregateInitializer = std::move(aggregate);
-        } else if (checkWord("values")) {
-            advance();
-            AggregateInitializer aggregate;
-            aggregate.kind = AggregateInitKind::Positional;
-            if (checkWord("done")) error("with values needs at least one initializer value");
-            for (;;) {
-                aggregate.entries.push_back(AggregateInitEntry{"", 0, parseExpr()});
-                if (checkWord("followed") && checkWordAt(1, "by")) {
-                    advance(); advance();
-                    continue;
-                }
-                break;
-            }
-            expectWord("done");
-            aggregateInitializer = std::move(aggregate);
-        } else if (checkWord("members")) {
-            advance();
-            AggregateInitializer aggregate;
-            aggregate.kind = AggregateInitKind::Members;
-            if (checkWord("done")) error("with members needs at least one member initializer");
-            for (;;) {
-                std::string member = expectIdentName();
-                expectWord("as");
-                aggregate.entries.push_back(AggregateInitEntry{std::move(member), 0, parseExpr()});
-                if (checkWord("followed") && checkWordAt(1, "by")) {
-                    advance(); advance();
-                    continue;
-                }
-                break;
-            }
-            expectWord("done");
-            aggregateInitializer = std::move(aggregate);
-        } else if (checkWord("elements")) {
-            advance();
-            AggregateInitializer aggregate;
-            aggregate.kind = AggregateInitKind::Elements;
-            if (checkWord("done")) error("with elements needs at least one element initializer");
-            for (;;) {
-                expectWord("at");
-                if (peek().kind != TokKind::Number || peek().num < 0) {
-                    error("an aggregate element designator needs a non-negative whole-number literal index");
-                }
-                std::size_t index = static_cast<std::size_t>(advance().num);
-                expectWord("as");
-                aggregate.entries.push_back(AggregateInitEntry{"", index, parseExpr()});
-                if (checkWord("followed") && checkWordAt(1, "by")) {
-                    advance(); advance();
-                    continue;
-                }
-                break;
-            }
-            expectWord("done");
-            aggregateInitializer = std::move(aggregate);
         } else {
-            error("expected value, values, members, or elements after with");
+            aggregateInitializer = parseAggregateBlock();
         }
     }
     expectDot();
@@ -1480,6 +1421,83 @@ Expr *Parser::parsePower() {
         lhs = arena_.makeExpr(PowExpr{lhs, rhs}, line);
     }
     return lhs;
+}
+
+// Parses the body of a with empty braces, with values, with members, or
+// with elements block after "with" has been consumed. Blocks that list
+// entries end with "done". Entries may nest further blocks, so an aggregate
+// member or element can be initialized by its own "with ... done" block.
+AggregateInitializer Parser::parseAggregateBlock() {
+    AggregateInitializer aggregate;
+    if (checkWord("empty") && checkWordAt(1, "braces")) {
+        advance();
+        advance();
+        aggregate.kind = AggregateInitKind::Empty;
+        return aggregate;
+    }
+    if (checkWord("values")) {
+        advance();
+        aggregate.kind = AggregateInitKind::Positional;
+        if (checkWord("done")) error("with values needs at least one initializer value");
+        for (;;) {
+            aggregate.entries.push_back(parseAggregateEntryValue(AggregateInitEntry{}));
+            if (checkWord("followed") && checkWordAt(1, "by")) {
+                advance(); advance();
+                continue;
+            }
+            break;
+        }
+    } else if (checkWord("members")) {
+        advance();
+        aggregate.kind = AggregateInitKind::Members;
+        if (checkWord("done")) error("with members needs at least one member initializer");
+        for (;;) {
+            AggregateInitEntry entry;
+            entry.memberName = expectIdentName();
+            expectWord("as");
+            aggregate.entries.push_back(parseAggregateEntryValue(std::move(entry)));
+            if (checkWord("followed") && checkWordAt(1, "by")) {
+                advance(); advance();
+                continue;
+            }
+            break;
+        }
+    } else if (checkWord("elements")) {
+        advance();
+        aggregate.kind = AggregateInitKind::Elements;
+        if (checkWord("done")) error("with elements needs at least one element initializer");
+        for (;;) {
+            expectWord("at");
+            if (peek().kind != TokKind::Number || peek().num < 0) {
+                error("an aggregate element designator needs a non-negative whole-number literal index");
+            }
+            AggregateInitEntry entry;
+            entry.elementIndex = static_cast<std::size_t>(advance().num);
+            expectWord("as");
+            aggregate.entries.push_back(parseAggregateEntryValue(std::move(entry)));
+            if (checkWord("followed") && checkWordAt(1, "by")) {
+                advance(); advance();
+                continue;
+            }
+            break;
+        }
+    } else {
+        error("expected value, values, members, or elements after with");
+    }
+    if (aggregate.kind != AggregateInitKind::Empty) expectWord("done");
+    return aggregate;
+}
+
+// Fills the value of one aggregate entry: a plain expression, or a nested
+// with-block for an aggregate-typed member or element.
+AggregateInitEntry Parser::parseAggregateEntryValue(AggregateInitEntry entry) {
+    if (checkWord("with")) {
+        advance();
+        entry.nested = std::make_shared<AggregateInitializer>(parseAggregateBlock());
+    } else {
+        entry.expr = parseExpr();
+    }
+    return entry;
 }
 
 Expr *Parser::parseCompoundLiteral() {
