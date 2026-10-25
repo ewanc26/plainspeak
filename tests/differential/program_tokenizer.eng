@@ -1,0 +1,69 @@
+(Character kinds: 1 is a letter, 2 is a digit, 3 is a space, 4 is any other symbol.)
+Procedure classify takes c as integer returns integer:
+    If c is equal to the character " " then:
+        Return 3.
+    End if.
+    If c is greater than or equal to the character "a" and c is less than or equal to the character "z" then:
+        Return 1.
+    End if.
+    If c is greater than or equal to the character "0" and c is less than or equal to the character "9" then:
+        Return 2.
+    End if.
+    Return 4.
+End procedure.
+
+(The text "12 ab+c3 4" stored one character code per element.)
+Declare text as array of integer with length 10 with values the character "1" followed by the character "2" followed by the character " " followed by the character "a" followed by the character "b" followed by the character "+" followed by the character "c" followed by the character "3" followed by the character " " followed by the character "4" done.
+
+(State 0 is between tokens, 1 is inside a word, 2 is inside a number.)
+Declare state as integer with value 0.
+Declare words as integer with value 0.
+Declare numbers as integer with value 0.
+Declare symbols as integer with value 0.
+
+For i from 0 to 9:
+    Declare kind as integer with value Call classify with Element at i in text done.
+    Switch state:
+        When 0:
+            If kind is equal to 1 then:
+                Set state to 1.
+                Add 1 to words.
+            End if.
+            If kind is equal to 2 then:
+                Set state to 2.
+                Add 1 to numbers.
+            End if.
+            If kind is equal to 4 then:
+                Add 1 to symbols.
+            End if.
+            Break.
+        When 1:
+            If kind is equal to 3 then:
+                Set state to 0.
+            End if.
+            If kind is equal to 4 then:
+                Set state to 0.
+                Add 1 to symbols.
+            End if.
+            Break.
+        When 2:
+            If kind is equal to 1 then:
+                Set state to 1.
+                Add 1 to words.
+            End if.
+            If kind is equal to 3 then:
+                Set state to 0.
+            End if.
+            If kind is equal to 4 then:
+                Set state to 0.
+                Add 1 to symbols.
+            End if.
+            Break.
+        Otherwise:
+            Break.
+    End switch.
+End for.
+
+Say "Words: " plus words.
+Say "Numbers: " plus numbers.
+Say "Symbols: " plus symbols.
