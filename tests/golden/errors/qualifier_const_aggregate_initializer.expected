@@ -1,1 +1,1 @@
-error[E0024]: This aggregate initializer requires post-declaration member stores, which are not valid for constant subobjects or atomic aggregate objects.
+error[E0024]: A top-level constant or atomic aggregate is initialized at C file scope, so every element and member value must be a constant. "p" uses a runtime value; use literal or enumerator values, or declare it inside a Procedure.

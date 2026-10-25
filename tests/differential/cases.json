@@ -39,6 +39,10 @@
     {"name": "types_multidim_initializers", "features": ["types.arrays", "decl.initializers"]},
     {"name": "program_record_sort", "features": ["types.structures", "types.arrays", "decl.initializers", "types.function-types", "control.for", "control.if", "expr.integer-operators", "io.console-output", "types.strings"]},
     {"name": "program_tokenizer", "features": ["types.char-literals", "types.fixed-arrays", "control.switch", "control.break", "control.for", "control.if", "expr.integer-operators", "expr.compound-assign", "types.function-types", "io.console-output", "types.strings"]},
-    {"name": "program_dispatch_calculator", "features": ["func.pointers", "types.function-types", "types.arrays", "control.for", "control.if", "expr.integer-operators", "io.console-output", "types.strings"]}
+    {"name": "program_dispatch_calculator", "features": ["func.pointers", "types.function-types", "types.arrays", "control.for", "control.if", "expr.integer-operators", "io.console-output", "types.strings"]},
+    {"name": "control_top_level_return", "features": ["control.return", "expr.compound-assign"]},
+    {"name": "decl_file_scope_aggregates", "features": ["decl.initializers", "types.arrays", "types.structures", "types.qualifiers"]},
+    {"name": "expr_compound_nested", "features": ["types.arrays", "types.structures", "decl.initializers"]},
+    {"name": "control_if_equal_native", "features": ["control.if"]}
   ]
 }

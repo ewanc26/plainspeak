@@ -1509,62 +1509,21 @@ Expr *Parser::parseCompoundLiteral() {
     TypeSpec type = parseTypeSpec();
     expectWord("with");
 
-    AggregateInitializer initializer;
-    if (checkWord("empty") && checkWordAt(1, "braces")) {
-        advance(); advance();
-        initializer.kind = AggregateInitKind::Empty;
-    } else if (checkWord("value")) {
+    if (checkWord("value")) {
         advance();
+        AggregateInitializer initializer;
         initializer.kind = AggregateInitKind::Scalar;
         initializer.entries.push_back(AggregateInitEntry{"", 0, parseExpr()});
-    } else if (checkWord("values")) {
-        advance();
-        initializer.kind = AggregateInitKind::Positional;
-        if (checkWord("done")) error("compound values needs at least one initializer value");
-        for (;;) {
-            initializer.entries.push_back(AggregateInitEntry{"", 0, parseExpr()});
-            if (checkWord("followed") && checkWordAt(1, "by")) {
-                advance(); advance();
-                continue;
-            }
-            break;
-        }
-    } else if (checkWord("members")) {
-        advance();
-        initializer.kind = AggregateInitKind::Members;
-        if (checkWord("done")) error("compound members needs at least one member initializer");
-        for (;;) {
-            std::string member = expectIdentName();
-            expectWord("as");
-            initializer.entries.push_back(AggregateInitEntry{std::move(member), 0, parseExpr()});
-            if (checkWord("followed") && checkWordAt(1, "by")) {
-                advance(); advance();
-                continue;
-            }
-            break;
-        }
-    } else if (checkWord("elements")) {
-        advance();
-        initializer.kind = AggregateInitKind::Elements;
-        if (checkWord("done")) error("compound elements needs at least one element initializer");
-        for (;;) {
-            expectWord("at");
-            if (peek().kind != TokKind::Number || peek().num < 0) {
-                error("a compound element designator needs a non-negative whole-number literal index");
-            }
-            std::size_t index = static_cast<std::size_t>(advance().num);
-            expectWord("as");
-            initializer.entries.push_back(AggregateInitEntry{"", index, parseExpr()});
-            if (checkWord("followed") && checkWordAt(1, "by")) {
-                advance(); advance();
-                continue;
-            }
-            break;
-        }
-    } else {
+        expectWord("done");
+        return arena_.makeExpr(CompoundLiteralExpr{std::move(type), std::move(initializer)}, line);
+    }
+    // The remaining forms share the with-block grammar, including nested blocks
+    // for aggregate-typed elements and members.
+    if (!(checkWord("empty") || checkWord("values") || checkWord("members") || checkWord("elements"))) {
         error("expected value, values, members, elements, or empty braces after compound value type");
     }
-    expectWord("done");
+    AggregateInitializer initializer = parseAggregateBlock();
+    if (initializer.kind == AggregateInitKind::Empty) expectWord("done");
     return arena_.makeExpr(CompoundLiteralExpr{std::move(type), std::move(initializer)}, line);
 }
 

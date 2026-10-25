@@ -1,0 +1,7 @@
+Declare x as integer with value 2.
+If x is equal to 2 then:
+    Say "yes".
+End if.
+If x is equal to 3 then:
+    Say "no".
+End if.

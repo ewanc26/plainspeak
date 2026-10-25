@@ -230,7 +230,8 @@
         "plainspeak": {
           "status": "implemented",
           "tests": [
-            "tests/differential/decl_initializers.eng"
+            "tests/differential/decl_initializers.eng",
+            "tests/differential/decl_file_scope_aggregates.eng"
           ]
         },
         "numlang": {

@@ -23,13 +23,13 @@ Every diagnostic emitted by the compiler has a stable `E00xx` code. Error messag
 | E0015 | Dereference/store-through applied to a non-pointer or `void *` without a concrete pointee |
 | E0016 | Invalid or still-unsupported native pointer operation |
 | E0017 | Invalid fixed native array declaration, subscript, element store, or whole-array operation |
-| E0018 | Invalid typed Procedure signature, argument, return, prototype, or return placement; typed non-void Procedure reaches its end without a Return on some path |
+| E0018 | Invalid typed Procedure signature, argument, return, prototype, or return placement; a top-level Return with a non-integral value; typed non-void Procedure reaches its end without a Return on some path |
 | E0019 | Invalid structure definition, completeness, member access, or member store |
 | E0020 | Invalid union definition, shared tag namespace, completeness, member access, or member store |
 | E0021 | Invalid positional, designated, or nested aggregate initializer |
 | E0022 | Invalid enumeration definition, tag, enumerator, value, or use |
 | E0023 | Invalid bit-field or flexible-array-member layout/use |
-| E0024 | Invalid native type qualifier, forbidden const mutation, or unsupported qualified-object lowering |
+| E0024 | Invalid native type qualifier, forbidden const mutation, unsupported qualified-object lowering, or a top-level constant or atomic aggregate whose element or member value is not a file-scope constant |
 | E0025 | Invalid bitwise or shift operand |
 | E0026 | Invalid explicit C conversion/cast |
 | E0027 | Invalid prefix/postfix increment or decrement operand |
