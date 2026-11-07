@@ -20,4 +20,4 @@ an esoteric programming language - speak plainly to the computer!
 
 ## Recent history
 
-Sync AGENTS.md from zincfox; Sync AGENTS.md from zincfox; Sync CONTRIBUTING.md from zincfox; Sync CONTRIBUTING.md from zincfox; Add compile-time conditional compilation
+Add compile-time conditional compilation

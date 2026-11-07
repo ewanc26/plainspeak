@@ -16,4 +16,4 @@ an esoteric programming language - speak plainly to the computer!
 
 ## Recent direction
 
-Recent commits: Sync AGENTS.md from zincfox; Sync AGENTS.md from zincfox; Sync CONTRIBUTING.md from zincfox; Sync CONTRIBUTING.md from zincfox; Add compile-time conditional compilation
+Recent commits: Add compile-time conditional compilation
