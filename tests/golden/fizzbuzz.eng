@@ -1,0 +1,17 @@
+( FizzBuzz from 1 to 15. )
+( Exercises ranged for loops, modulo, and nested if-else ladders. )
+For i from 1 to 15:
+    If i mod 3 is equal to 0 then:
+        If i mod 5 is equal to 0 then:
+            Say "FizzBuzz".
+        Else:
+            Say "Fizz".
+        End if.
+    Else:
+        If i mod 5 is equal to 0 then:
+            Say "Buzz".
+        Else:
+            Say i.
+        End if.
+    End if.
+End for.
