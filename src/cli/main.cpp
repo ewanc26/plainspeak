@@ -147,7 +147,12 @@ int main(int argc, char **argv) {
     // PlainSpeak source via PLAINSPEAK_CC.
     const char *configuredCompiler = std::getenv("PLAINSPEAK_CC");
     std::string compiler = configuredCompiler && *configuredCompiler ? configuredCompiler : "cc";
-    std::string cmd = compiler + " -std=c11 -O2 -I" PLAINSPEAK_RUNTIME_DIR
+    // Compile with FMA contraction disabled: contracted multiply-adds change
+        // results of adjacent float operations, and programs like the donut
+        // engine rely on per-operation float32 semantics matching the plain
+        // C expressions PlainSpeak emits (contraction occurs even at plain
+        // -O0 on arm64).
+    std::string cmd = compiler + " -std=c11 -O2 -ffp-contract=off -I" PLAINSPEAK_RUNTIME_DIR
                        " \"" + tmpC + "\" \"" PLAINSPEAK_RUNTIME_C "\" -lm";
     const std::filesystem::path sourceDir = std::filesystem::path(srcPath).parent_path();
     for (const auto &header : analysis.cHeaders)

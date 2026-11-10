@@ -2,9 +2,11 @@
 """Generate the PlainSpeak donut engine: a faithful doughnut.c stream.
 
 The canonical renderer is doughnut.c (800x600, U_STEPS=50 / V_STEPS=30,
-R_MAJOR=2.0 / R_MINOR=0.8, fov=500, camera_dist=5.0). host/donut_host.c is a
-faithful embed of its rasterizer; the language program computes everything
-doughnut.c computes per frame vertex and streams it:
+R_MAJOR=2.0 / R_MINOR=0.8, fov=500, camera_dist=5.0), a float32 program:
+every operation, assignment and constant folds to IEEE single precision
+(no FMA contraction), and trig/sqrt run through libm's float32-accurate
+cosf/sinf/sqrtf. host/donut_host.c embeds its rasterizer; the language
+program recomputes the exact same float32 pipeline and streams:
 
     F                                  begin frame
     px py z intensity                 one vertex, one value per line (%g)
@@ -13,16 +15,20 @@ doughnut.c computes per frame vertex and streams it:
 
 Frame n (0-indexed) uses, exactly as doughnut.c does:
     angleX = angleY = 0.5 (fixed)
-    angleZ = 0.003 * n                  (advanced AFTER each rendered frame)
-    light_angle = 0.025 * (n + 1)      (advanced BEFORE computing)
-    light_pos = (cos(la)*4.5, sin(la)*4.5, sin(la*0.7)*2.5)
+    angleZ += 0.003f                   (advanced AFTER each rendered frame)
+    light_angle += 0.025f               (advanced BEFORE computing)
+    light_pos = (cosf(la)*4.5f, sinf(la)*4.5f, sinf(la*0.7f)*2.5f)
 
-Per vertex, all arithmetic in double, exactly in the reference engine's order:
-rotate_vector X then Y then Z, normalized light direction, Lambertian
-intensity with the 0.08 ambient floor and 1/(1+0.04*dist) attenuation, then
-perspective projection px=(x/(z+5))*500+400, py=(y/(z+5))*500+300, z=z+5.
-Every value is printed with its own printf("%g\\n") through the imported C
-printf.
+To mirror the C float expressions exactly, every arithmetic variable is
+declared `as float` (a C float, so each assignment folds once), every
+constant lives in a float variable exactly like a `0.8f` literal folds,
+the trig and sqrt are the imported `cosf`/`sinf`/`sqrtf` (float32 like
+doughnut.c), and per-vertex statement structure follows doughnut.c's
+operator order. The ring/tube angles keep doughnut.c's exact
+`((float)i / 50.0f * 2.0f) * M_PI` shape: fold in float through the
+constant variables, promote only at the final multiply by the double
+`dpi`, and fold back at the assignment. Values print via printf("%g\\n")
+with the float promoted to double, which prints the canonical token text.
 
 Run:
 
@@ -36,28 +42,85 @@ Then:
 """
 
 import argparse
-import math
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 
 U_STEPS, V_STEPS = 50, 30
-CAM_DIST = 5.0
-FOV = 500.0
-ANGLE_XY = 0.5
-LIGHT_STEP = 0.025
-SPIN_STEP = 0.003
-CAXY = round(math.cos(ANGLE_XY), 12)
-SAXY = round(math.sin(ANGLE_XY), 12)
-U_STEP = round(2 * math.pi / U_STEPS, 12)
-V_STEP = round(2 * math.pi / V_STEPS, 12)
+M_PI = 3.141592653589793  # repr(math.pi): exactly the double M_PI parses to
 
+# float32-folded constants: C folds `0.025f`, `0.8f`, ... exactly once at
+# these declarations, and every later arithmetic stays in float.
+CONSTS = (
+    ("k05", "0.5"),  # angleX = angleY
+    ("k2", "2.0"),  # R_MAJOR and the *2.0f of u/v
+    ("k08", "0.8"),  # R_MINOR
+    ("k50", "50.0"),  # U_STEPS divisor (as float)
+    ("k30", "30.0"),  # V_STEPS divisor (as float)
+    ("k025", "0.025"),  # light_angle step
+    ("k003", "0.003"),  # angleZ step
+    ("k07", "0.7"),  # light z frequency
+    ("k45", "4.5"),  # light orbit radius
+    ("k25", "2.5"),  # light z scale
+    ("k08f", "0.08"),  # ambient floor
+    ("k004", "0.04"),  # attenuation
+    ("k1", "1.0"),
+    ("ke5", "0.00001"),  # normalize threshold (1e-5f)
+    ("k5", "5.0"),  # camera_dist
+    ("kfov", "500.0"),  # fov
+    ("k400", "400.0"),  # WIDTH / 2.0f
+    ("k300", "300.0"),  # HEIGHT / 2.0f
+)
 
-def num(v):
-    # Same literal form as the canonical engine's generator: the shortest
-    # repr of the 12-digit rounded value, so both programs parse the exact
-    # same double literal.
-    return repr(round(v, 12))
+# All arithmetic names; every one is a C float so each assignment folds
+# exactly where doughnut.c's expression folds.
+VARS = (
+    "az",
+    "la",
+    "lx",
+    "ly",
+    "lz",
+    "caxy",
+    "saxy",
+    "caz",
+    "saz",
+    "u",
+    "cu",
+    "su",
+    "v",
+    "cv",
+    "sv",
+    "bx",
+    "by",
+    "bz",
+    "nx",
+    "ny",
+    "nz",
+    "py1",
+    "pz1",
+    "px2",
+    "pz2",
+    "rx",
+    "ry",
+    "ny1",
+    "nz1",
+    "nx2",
+    "nz2",
+    "rnx",
+    "rny",
+    "dx",
+    "dy",
+    "dz",
+    "dst",
+    "inten",
+    "w",
+    "pxv",
+    "pyv",
+    "i",
+    "j",
+)
+
+TILT = "caxy"  # angleX and angleY are both 0.5; cos/sin are shared
 
 
 def generate(frames):
@@ -66,74 +129,112 @@ def generate(frames):
     def sent(text):
         L.append(text)
 
-    sent("(A live orbit-lit torus, written in native PlainSpeak.)")
+    sent(
+        "(A live orbit-lit torus, written in native PlainSpeak: a faithful"
+        " float32 recomputation of the canonical doughnut.c vertex"
+        " stream.)"
+    )
     sent("(Generated by scripts/gen_donut_engine.py; do not edit by hand.)")
     sent(
-        "(It is a faithful companion to the canonical doughnut.c renderer:"
-        " the program computes the per-frame vertex stream — torus mesh"
-        " R_MAJOR 2.0 / R_MINOR 0.8 with %d by %d steps, rotate_vector in X,"
-        " Y, Z order, an orbiting point light advanced by 0.025 before each"
-        " frame, angle Z advanced by 0.003 after it, normalized Lambertian"
-        " lighting with the 0.08 ambient floor and 1/(1+0.04*dist)"
-        " attenuation, and perspective projection at fov 500 and camera"
-        " distance 5 — while host/donut_host.c embeds the 800x600"
-        " z-buffered Gouraud rasterizer.)" % (U_STEPS, V_STEPS)
+        "(It mirrors doughnut.c's single-precision pipeline: every"
+        " variable and constant is a C float and folds per operation,"
+        " trigonometry and square roots go through the C cosf, sinf and"
+        " sqrtf, the torus mesh is R_MAJOR 2.0 / R_MINOR 0.8 with 50 by 30"
+        " steps, the point light advances by 0.025 before each frame and"
+        " angle Z by 0.003 after it, lighting is normalized Lambertian"
+        " with the 0.08 ambient floor and 1/(1+0.04*dist) attenuation, and"
+        " projection uses fov 500 and camera distance 5, while"
+        " host/donut_host.c embeds the 800x600 z-buffered Gouraud"
+        " rasterizer.)"
     )
     sent(
-        'Import the C function printf taking a pointer to character and variadic'
-        ' parameters, returning an integer, from the header "stdio.h".'
+        'Import the C function printf taking a pointer to character and'
+        ' variadic parameters, returning an integer, from the header'
+        ' "stdio.h".'
+    )
+    sent(
+        'Import the C function cosf taking a float, returning a float,'
+        ' from the header "math.h".'
+    )
+    sent(
+        'Import the C function sinf taking a float, returning a float,'
+        ' from the header "math.h".'
+    )
+    sent(
+        'Import the C function sqrtf taking a float, returning a float,'
+        ' from the header "math.h".'
     )
     if frames is None:
-        sent("(This variant animates forever; stop it with Ctrl-C or the host's"
-             " window close.)")
+        sent(
+            "(This variant animates forever; stop it with Ctrl-C or the"
+            " host's window close.)"
+        )
     else:
-        sent("(A finite %d-frame prefix of the same animation, used by the"
-             " golden and canonical-parity pipelines.)" % frames)
+        sent(
+            "(A finite %d-frame prefix of the same animation, used by the"
+            " golden and canonical-parity pipelines.)" % frames
+        )
 
-    sent("Set az to 0.0.")
-    sent("Set la to 0.0.")
-    sent("Set caxy to %s." % num(CAXY))
-    sent("Set saxy to %s." % num(SAXY))
+    for name, value in CONSTS:
+        sent("Declare %s as float with value %s." % (name, value))
+    sent("Declare dpi as decimal with value %s." % repr(M_PI))
+    for name in VARS:
+        sent("Declare %s as float with value 0.0." % name)
+
+    # doughnut.c calls cosf(0.5f)/sinf(0.5f) inside rotate_vector; the
+    # values are the float32 cosf/sinf results exactly.
+    sent("Set caxy to Call cosf with k05 done.")
+    sent("Set saxy to Call sinf with k05 done.")
     if frames is None:
         sent("While true:")
     else:
         sent("For f from 1 to %d:" % frames)
 
-    # The light angle advances BEFORE the frame is computed, as doughnut.c does.
-    sent("Add %s to la." % num(LIGHT_STEP))
-    sent("Set lx to cosine of la times 4.5.")
-    sent("Set ly to sine of la times 4.5.")
-    sent("Set lz to sine of (la times 0.7) times 2.5.")
-    sent("Set caz to cosine of az.")
-    sent("Set saz to sine of az.")
+    # The light angle advances BEFORE the frame, as doughnut.c does.
+    sent("Add k025 to la.")
+    sent("Set lx to Call cosf with la done.")
+    sent("Set lx to lx times k45.")
+    sent("Set ly to Call sinf with la done.")
+    sent("Set ly to ly times k45.")
+    sent("Set nx to la times k07.")
+    sent("Set lz to Call sinf with nx done.")
+    sent("Set lz to lz times k25.")
+    sent("Set caz to Call cosf with az done.")
+    sent("Set saz to Call sinf with az done.")
     sent('Call printf with "F\\n" done.')
 
     sent("Set i to 0.0.")
     sent("While i is less than %d:" % U_STEPS)
-    sent("Set cu to cosine of (i times %s)." % num(U_STEP))
-    sent("Set su to sine of (i times %s)." % num(U_STEP))
+    # u = ((float)i / 50.0f * 2.0f) * M_PI: float folds through the float
+    # constant variables, the double dpi promotes only the final multiply,
+    # and the assignment folds back to float — doughnut.c exactly.
+    sent("Set u to i divided by k50 times k2 times dpi.")
+    sent("Set cu to Call cosf with u done.")
+    sent("Set su to Call sinf with u done.")
     sent("Set j to 0.0.")
     sent("While j is less than %d:" % V_STEPS)
-    sent("Set cv to cosine of (j times %s)." % num(V_STEP))
-    sent("Set sv to sine of (j times %s)." % num(V_STEP))
+    sent("Set v to j divided by k30 times k2 times dpi.")
+    sent("Set cv to Call cosf with v done.")
+    sent("Set sv to Call sinf with v done.")
 
     # Torus position and normal at (u, v), doughnut.c generate_torus().
-    sent("Set rad to 2.0 plus 0.8 times cv.")
-    sent("Set bx to rad times cu.")
-    sent("Set by to rad times su.")
-    sent("Set bz to 0.8 times sv.")
+    sent("Set bx to (k2 plus k08 times cv) times cu.")
+    sent("Set by to (k2 plus k08 times cv) times su.")
+    sent("Set bz to k08 times sv.")
     sent("Set nx to cv times cu.")
     sent("Set ny to cv times su.")
     # (the normal z component is sv)
 
-    # rotate_vector(pos, angleX, angleY, angleZ): X, then Y, then Z.
+    # rotate_vector X then Y then Z, doughnut.c's exact operator order
+    # (the subtract form z1*cos - x1*sin rounds identically to
+    # -x1*sin + z1*cos: negation and float addition are exact).
     sent("Set py1 to by times caxy minus bz times saxy.")
     sent("Set pz1 to by times saxy plus bz times caxy.")
     sent("Set px2 to bx times caxy plus pz1 times saxy.")
     sent("Set pz2 to pz1 times caxy minus bx times saxy.")
     sent("Set rx to px2 times caz minus py1 times saz.")
     sent("Set ry to px2 times saz plus py1 times caz.")
-    # rotate_vector(normal, ...) with the same fixed tilts and spin.
+    # (the rotated position z component is pz2)
     sent("Set ny1 to ny times caxy minus sv times saxy.")
     sent("Set nz1 to ny times saxy plus sv times caxy.")
     sent("Set nx2 to nx times caxy plus nz1 times saxy.")
@@ -146,32 +247,34 @@ def generate(frames):
     sent("Set dx to lx minus rx.")
     sent("Set dy to ly minus ry.")
     sent("Set dz to lz minus pz2.")
-    sent("Set dst to square root of (dx times dx plus dy times dy plus dz times dz).")
+    sent("Set dst to Call sqrtf with dx times dx plus dy times dy plus dz times dz done.")
+    sent("If dst is greater than ke5 then:")
     sent("Set dx to dx divided by dst.")
     sent("Set dy to dy divided by dst.")
     sent("Set dz to dz divided by dst.")
+    sent("End if.")
     # Lambert + 0.08 ambient floor + 1/(1+0.04*dist) attenuation.
     sent("Set inten to rnx times dx plus rny times dy plus nz2 times dz.")
-    sent(
-        "Set inten to (Choose 0.08 when inten is less than 0.08 otherwise"
-        " inten) divided by (1 plus 0.04 times dst)."
-    )
+    sent("If inten is less than k08f then:")
+    sent("Set inten to k08f.")
+    sent("End if.")
+    sent("Set inten to inten divided by (k1 plus k004 times dst).")
     # Perspective projection: camera_dist 5, fov 500, centred 400/300.
-    sent("Set w to pz2 plus %s." % num(CAM_DIST))
-    sent("Set pxv to rx divided by w times %s plus 400." % num(FOV))
-    sent("Set pyv to ry divided by w times %s plus 300." % num(FOV))
+    sent("Set w to pz2 plus k5.")
+    sent("Set pxv to rx divided by w times kfov plus k400.")
+    sent("Set pyv to ry divided by w times kfov plus k300.")
     sent('Call printf with "%g\\n", pxv done.')
     sent('Call printf with "%g\\n", pyv done.')
     sent('Call printf with "%g\\n", w done.')
     sent('Call printf with "%g\\n", inten done.')
 
-    sent("Add 1.0 to j.")
+    sent("Add k1 to j.")
     sent("End while.")
-    sent("Add 1.0 to i.")
+    sent("Add k1 to i.")
     sent("End while.")
     sent('Call printf with "S\\n" done.')
     # The spin angle advances AFTER the rendered frame, as doughnut.c does.
-    sent("Add %s to az." % num(SPIN_STEP))
+    sent("Add k003 to az.")
     if frames is None:
         sent("End while.")
     else:
