@@ -1,12 +1,17 @@
 #!/usr/bin/env python3
 """Cross-language parity gate for the donut engine.
 
-All languages' donut animations must be IDENTICAL. The canonical engine is the
-sigi implementation (sigi/scripts/gen_donut_engine.py); this script compiles
-examples/donut_engine_finite.eng with the PlainSpeak compiler and compares its
-first frames byte-for-byte against the vendored canonical fixture
-tests/fixtures/donut_canonical_8f.txt (captured from the canonical engine's
-48-frame stream, so CI does not need sigi or SDL2 installed).
+All languages' donut animations must be IDENTICAL. The canonical is
+doughnut.c's renderer, and the sigi repo's generator (sigi/scripts/
+gen_donut_engine.py) defines the reference vertex stream; this script
+compiles examples/donut_engine_finite.eng with the PlainSpeak compiler and
+compares its output byte-for-byte against the vendored canonical fixture
+tests/fixtures/donut_canonical_v2_2f.txt (captured from the canonical
+engine's first 2 frames, so CI does not need sigi or SDL2 installed).
+
+Protocol per frame: token "F", then for each of 1500 vertices (ordered
+i*30+j, i in 0..49, j in 0..29) four lines px py z intensity (one %g value
+per line), then "S".
 
 Usage: python3 scripts/check_donut_canonical.py <path-to-plainspeak> [--frames N]
 """
@@ -19,13 +24,16 @@ import tempfile
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 ENGINE = ROOT / "examples" / "donut_engine_finite.eng"
-FIXTURE = ROOT / "tests" / "fixtures" / "donut_canonical_8f.txt"
+FIXTURE = ROOT / "tests" / "fixtures" / "donut_canonical_v2_2f.txt"
+
+U_STEPS, V_STEPS = 50, 30
+N_VERTS = U_STEPS * V_STEPS
 
 
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("binary", nargs="?", default="build/plainspeak")
-    parser.add_argument("--frames", type=int, default=8)
+    parser.add_argument("--frames", type=int, default=2)
     args = parser.parse_args()
 
     with tempfile.TemporaryDirectory() as tmp:
@@ -48,67 +56,68 @@ def main() -> int:
 
         produced = run.stdout.splitlines()
         fixture = FIXTURE.read_text(encoding="utf-8").splitlines()
-        if len(fixture) % len(produced) != 0 or len(produced) == 0:
-            pass  # ratio checked below by prefix comparison
-        if len(produced) > len(fixture):
-            print("FAIL: engine produced more tokens than the fixture holds",
-                  file=sys.stderr)
-            return 1
 
-        n_lines = 0
+        # Structural validation of the F / (1500 x px py z intensity) / S
+        # protocol, independent of the byte comparison.
         frames = 0
-        for line in produced:
-            n_lines += 1
-            if line == "S":
+        vals = 0
+        expected = "F"
+        vertices_per_frame = {}
+        for idx, token in enumerate(produced):
+            if expected == "F":
+                if token != "F":
+                    print("FAIL: expected F at line {}, got {!r}".format(
+                        idx + 1, token), file=sys.stderr)
+                    return 1
+                vals = 0
+                expected = "value"
+            elif expected == "S":
+                if token != "S":
+                    print("FAIL: expected S at line {}, got {!r}".format(
+                        idx + 1, token), file=sys.stderr)
+                    return 1
+                if vals != N_VERTS * 4:
+                    print("FAIL: frame {} has {} values, expected {}".format(
+                        frames, vals, N_VERTS * 4), file=sys.stderr)
+                    return 1
+                vertices_per_frame[frames] = vals // 4
                 frames += 1
+                expected = "F"
+            else:
+                try:
+                    value = float(token)
+                except ValueError:
+                    print("FAIL: expected a number at line {}, got {!r}".format(
+                        idx + 1, token), file=sys.stderr)
+                    return 1
+                if value != value or value in (float("inf"), float("-inf")):
+                    print("FAIL: non-finite vertex value at line {}".format(
+                        idx + 1), file=sys.stderr)
+                    return 1
+                vals += 1
+                if vals == N_VERTS * 4:
+                    expected = "S"
+
         if frames < args.frames:
-            print("FAIL: engine produced only {} frames, expected at least {}".format(
+            print("FAIL: engine produced {} frames, expected at least {}".format(
                 frames, args.frames), file=sys.stderr)
             return 1
 
-        count = 0
-        quads = 0
-        quads_per_frame = {}
-        tokens = iter(enumerate(produced))
-        for idx, token in tokens:
-            if token == "F":
-                count = 0
-            elif token == "P":
-                count += 1
-                for _ in range(11):
-                    try:
-                        value = float(next(tokens)[1])
-                    except StopIteration:
-                        print("FAIL: truncated quad at line {}".format(idx),
-                              file=sys.stderr)
-                        return 1
-                    if value != value or value in (float("inf"), float("-inf")):
-                        print("FAIL: non-finite quad value at line {}".format(idx),
-                              file=sys.stderr)
-                        return 1
-            elif token == "S":
-                quads_per_frame[frames] = count
-            elif token not in ("F",):
-                print("FAIL: unexpected token {!r} at line {}".format(token, idx),
-                      file=sys.stderr)
-                return 1
-
-        if produced != fixture[: len(produced)]:
+        if produced != fixture:
             for i, (a, b) in enumerate(zip(produced, fixture)):
                 if a != b:
                     print("FAIL: first byte difference at line {}:".format(i + 1),
                           file=sys.stderr)
-                    print("  engine:   {!r}".format(a), file=sys.stderr)
-                    print("  canonical:{!r}".format(b), file=sys.stderr)
+                    print("  engine:    {!r}".format(a), file=sys.stderr)
+                    print("  canonical: {!r}".format(b), file=sys.stderr)
                     return 1
             print("FAIL: engine output is a prefix but differs in length",
                   file=sys.stderr)
             return 1
 
-        per_frame = set(quads_per_frame.values())
         print("donut canonical parity OK: {} frames byte-identical, "
-              "{}/frame quads ({} tokens)".format(
-                  frames, sorted(per_frame)[0], n_lines))
+              "{} vertices each ({} lines)".format(
+                  frames, N_VERTS, len(produced)))
         return 0
 
 
