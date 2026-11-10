@@ -1,0 +1,34 @@
+( Statistics over a list of readings: count, sum, mean, minimum, maximum. )
+Set readings to Empty list of numbers. (Build a sample of sensor readings as prose.)
+Append 7 to readings.
+Append 3 to readings.
+Append 42 to readings.
+Append 19 to readings.
+Append 5 to readings.
+
+Set total to 0.
+Set smallest to 7. (The first reading seeds both extremes.)
+Set largest to 7.
+Set count to 0.
+
+For each value in readings:
+    Add value to total.
+    Increase count by 1.
+    If value is less than smallest then:
+        Set smallest to value.
+    End if.
+    If value is greater than largest then:
+        Set largest to value.
+    End if.
+End for.
+
+Say "count:".
+Say count.
+Say "sum:".
+Say total.
+Say "mean:".
+Say total divided by count.
+Say "min:".
+Say smallest.
+Say "max:".
+Say largest.
