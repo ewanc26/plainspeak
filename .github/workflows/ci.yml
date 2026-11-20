@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: Cache Catch2 sources
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         with:
           path: build/_deps
           key: catch2-v3.5.0-${{ runner.os }}-${{ hashFiles('CMakeLists.txt') }}
